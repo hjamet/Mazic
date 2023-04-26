@@ -1,8 +1,15 @@
 import pygame
 
+import logging
+from Logger import Logger
+
+
 class Mazic:
     
     def __init__(self) -> None:
+        # Instantiate Logger
+        self.logger = Logger(self.__class__.__name__,logging.INFO)
+        
         # Instantiate pygame
         pygame.init()
         
