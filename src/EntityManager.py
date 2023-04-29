@@ -1,0 +1,1 @@
+#TODO Créer une classe capable de gérer toutes les entités du jeu !!! 
