@@ -6,15 +6,24 @@ class EntityManager:
     def __init__(self) -> None:
         self.entities = []
         self.logger = Logger(self.__class__.__name__)
-        self.logger.info("Instantiated")
 
         # Asset loading
         self.asset = {}
 
     def add(self, entity: object, kwargs: dict = {}) -> None:
+        """Adds an entity to the game.
+
+        Args:
+            entity (object): The entity class.
+            kwargs (dict, optional): The entity attributes. Defaults to {}.
+
+        Returns:
+            int: The entity id.
+        """
         # Create entity instance
         entity_instance = entity(**kwargs)
         self.entities.append(entity_instance)
+        return entity_instance
 
     def get_free_id(self):
         return max(self.entities, key=lambda x: x.id).id + 1 if self.entities else 0
@@ -33,6 +42,16 @@ class EntityManager:
 
         self.asset[name] = pygame.image.load(f"assets/frames/{name}.png")
         return self.asset[name]
+
+    def get_animated_entities(self):
+        """Returns all animated entities.
+
+        Returns:
+            list: A list of animated entities.
+        """
+        return [
+            entity for entity in self.entities if isinstance(entity, AnimatedEntity)
+        ]
 
 
 # Instantiates the EntityManager
@@ -74,3 +93,13 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
         # Set hitbox
         self.hitbox = self.animations["idle"][0].get_rect()
+
+        # Set current animation
+        self.current_animation_type = "idle"
+        self.current_animation_index = 0
+
+    def get_current_animation(self):
+        """Returns the current animation."""
+        return self.animations[self.current_animation_type][
+            self.current_animation_index
+        ]

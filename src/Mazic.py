@@ -1,7 +1,8 @@
 import pygame
 from Logger import Logger
 import EntityManager
-from Character import Character
+from Entity.Character import Character
+from Camera import Camera
 
 
 class Mazic:
@@ -28,12 +29,22 @@ class Mazic:
         self.running = True
 
         # Spawn initial entities
+        self.camera = None  # Will be set in spawn_initial_entities
         self.spawn_initial_entities()
 
     def spawn_initial_entities(self) -> None:
         """Spawns the initial entities."""
-        self.entity_manager.add(Character, {"name": "Alice"})
+
+        # Spawn main character
+        main_character = self.entity_manager.add(Character, {"name": "Alice"}).id
+
+        # Spawn other characters
         self.entity_manager.add(Character, {"name": "Bob"})
+
+        # Spawn Camera
+        self.camera = self.entity_manager.add(
+            Camera, {"game": self, "entity_manager": self.entity_manager}
+        )
 
     def run(self) -> None:
         # Game loop
