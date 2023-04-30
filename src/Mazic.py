@@ -1,11 +1,16 @@
 import pygame
-import logging
 from Logger import Logger
+import EntityManager
+from Character import Character
+
 
 class Mazic:
+    # Sets the entity manager
+    entity_manager = EntityManager.entity_manager
+
     def __init__(self) -> None:
         # Instantiate Logger
-        self.logger = Logger(self.__class__.__name__, logging.INFO)
+        self.logger = Logger(self.__class__.__name__)
 
         # Instantiate pygame
         pygame.init()
@@ -21,6 +26,14 @@ class Mazic:
         # Instantiate attributes
         self.clock = pygame.time.Clock()
         self.running = True
+
+        # Spawn initial entities
+        self.spawn_initial_entities()
+
+    def spawn_initial_entities(self) -> None:
+        """Spawns the initial entities."""
+        self.entity_manager.add(Character, {"name": "Alice"})
+        self.entity_manager.add(Character, {"name": "Bob"})
 
     def run(self) -> None:
         # Game loop

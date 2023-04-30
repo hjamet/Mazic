@@ -3,7 +3,7 @@ import logging.handlers
 import os
 
 
-def Logger(name, level):
+def Logger(name, level=logging.DEBUG):
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
@@ -11,13 +11,13 @@ def Logger(name, level):
         os.makedirs("logs")
 
     handler = logging.handlers.RotatingFileHandler(
-            f"logs/{name}.log",
-            mode="a",
-            encoding="utf-8",
-            maxBytes=5 * 1024 * 1024,
-            delay=0,
-        )
-    
+        f"logs/{name}.log",
+        mode="a",
+        encoding="utf-8",
+        maxBytes=5 * 1024 * 1024,
+        delay=0,
+    )
+
     handler.setLevel(level)
     handler.setFormatter(
         logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")

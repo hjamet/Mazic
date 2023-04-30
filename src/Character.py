@@ -1,10 +1,9 @@
-from Logger import Logger
+import pygame
+from EntityManager import Entity
 
 
-class Character:
+class Character(Entity):
     def __init__(self, name: str) -> None:
-        # Saves *args
-        self.name = name
+        super().__init__()
 
-        # Instantiates Logger
-        self.logger = Logger(f"{self.__class__.__name__}_{self.name}")
+        self.name = name
