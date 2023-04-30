@@ -21,6 +21,12 @@ class Character(Entity, AnimatedEntity):
         ],
     }
 
+    animation_speed = {
+        "idle": 0.05,
+        "run": 0.2,
+        "hit": 0.1,
+    }
+
     def __init__(self, name: str) -> None:
         """A class for the players character."""
 

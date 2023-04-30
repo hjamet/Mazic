@@ -181,13 +181,19 @@ class AnimatedEntity(pygame.sprite.Sprite):
     def get_current_animation(self):
         """Returns the current animation."""
         current_frame = self.animations[self.current_animation_type][
-            self.current_animation_index
+            int(self.current_animation_index)
         ]
 
         # Update current frame
-        self.current_animation_index = (self.current_animation_index + 1) % len(
-            self.animations[self.current_animation_type]
+        animation_speed = (
+            self.animation_speed[self.current_animation_type]
+            if hasattr(self, "animation_speed")
+            and self.current_animation_type in self.animation_speed
+            else 1
         )
+        self.current_animation_index = (
+            self.current_animation_index + animation_speed
+        ) % len(self.animations[self.current_animation_type])
 
         # Rotate frame
         current_frame = pygame.transform.rotate(current_frame, self.rotation)
