@@ -1,6 +1,8 @@
 from typing import Any
-from Logger import Logger
-from EntityManager import EntityManager, Entity
+
+import pygame
+
+from EntityManager import Entity, EntityManager
 
 
 class Camera(Entity):
@@ -26,8 +28,9 @@ class Camera(Entity):
         self.x = 0
         self.y = 0
 
-        # Set camera speed
+        # Set camera current configuration
         self.speed = 10  # The higher the speed, the slower the camera
+        self.zoom = 3  # The higher the zoom, the closer the camera
 
         # Indicates the entity to be followed
         self.following_id = following_id
@@ -44,8 +47,8 @@ class Camera(Entity):
                 self.following_id = None
             else:
                 entity = entities[0]
-                self.x += (entity.x - self.x) / self.speed
-                self.y += (entity.y - self.y) / self.speed
+                self.x += (entity.x * self.zoom - self.x * self.zoom) / self.speed
+                self.y += (entity.y * self.zoom - self.y * self.zoom) / self.speed
 
         return self
 
@@ -55,10 +58,29 @@ class Camera(Entity):
         self.game.screen.fill((0, 0, 0))
 
         for animated_entity in self.entity_manager.get_animated_entities():
-            self.game.screen.blit(
-                animated_entity.get_current_animation(),
+            image = animated_entity.get_current_animation()
+
+            # Apply zoom
+            image = pygame.transform.scale(
+                image,
                 (
-                    (animated_entity.x - self.x) + self.game.screen.get_width() / 2,
-                    (animated_entity.y - self.y) + self.game.screen.get_height() / 2,
+                    int(image.get_width() * self.zoom),
+                    int(image.get_height() * self.zoom),
+                ),
+            )
+
+            self.game.screen.blit(
+                image,
+                (
+                    int(
+                        (animated_entity.x * self.zoom - self.x * self.zoom)
+                        + self.game.screen.get_width() / 2
+                        - image.get_width() / 2
+                    ),
+                    int(
+                        (animated_entity.y * self.zoom - self.y * self.zoom)
+                        + self.game.screen.get_height() / 2
+                        - image.get_height() / 2
+                    ),
                 ),
             )
