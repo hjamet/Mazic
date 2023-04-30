@@ -50,10 +50,29 @@ class Mazic:
         # Game loop
         while self.running:
             self.clock.tick(60)
+
+            # Capture events
             self.events()
 
+            # Update entities
+            self.entity_manager(external_events=self.events)
+
+            # Update display
+            self.camera.update()
+            pygame.display.update()
+
     def events(self) -> None:
+        """Capture external events like key presses and mouse clicks.
+        Eventualy generates in-game events from them.
+
+        Returns:
+            list (Event) : The events that have been generated.
+        """
+        in_game_events = []
+
         # Event loop
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+
+        return in_game_events

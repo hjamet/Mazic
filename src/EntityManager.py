@@ -4,7 +4,9 @@ from Logger import Logger
 
 class EntityManager:
     def __init__(self) -> None:
-        self.entities = []
+        self.entities = []  # List of entities
+        self.events = []  # List of events to be processed by the entities
+        self.next_events = []  # List of events newly created by the entities
         self.logger = Logger(self.__class__.__name__)
 
         # Asset loading
@@ -53,6 +55,30 @@ class EntityManager:
             entity for entity in self.entities if isinstance(entity, AnimatedEntity)
         ]
 
+    def __call__(self, *args, **kwds):
+        """Update all entities.
+
+        Returns:
+            self: The instance itself.
+        """
+
+        for entity in self.entities:
+            entity(self.events)
+
+        self.update_events()
+        return self
+
+    def update_events(self):
+        """Update the events list by deleting the events that have been processed and adding the new ones.
+
+        Returns:
+            self: The instance itself.
+        """
+        self.events = self.next_events
+        self.next_events = []
+
+        return self
+
 
 # Instantiates the EntityManager
 entity_manager = EntityManager()
@@ -68,6 +94,22 @@ class Entity:
 
         # Instantiates Logger
         self.logger = Logger(f"{self.__class__.__name__}_{self.id}")
+
+    def __call__(self, events: list) -> None:
+        """Update the entity.
+
+        Args:
+            events (list): The events to be processed by the entity.
+
+        Returns:
+            self: The instance itself.
+        """
+        # Select events targeting the entity
+        entity_events = [event for event in events if self.id in event.targets]
+
+        # Process events and get new ones
+        new_events = self.update(entity_events)
+        self.entity_manager.next_events.extend(new_events)
 
 
 class AnimatedEntity(pygame.sprite.Sprite):
@@ -98,8 +140,35 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.current_animation_type = "idle"
         self.current_animation_index = 0
 
+        # Set current position
+        self.x = 0
+        self.y = 0
+
     def get_current_animation(self):
         """Returns the current animation."""
-        return self.animations[self.current_animation_type][
+        current_frame = self.animations[self.current_animation_type][
             self.current_animation_index
         ]
+
+        # Update current frame
+        self.current_animation_index = (self.current_animation_index + 1) % len(
+            self.animations[self.current_animation_type]
+        )
+
+        return current_frame
+
+
+class Event:
+    def __init__(self, targets: list, type: str, **kwargs):
+        self.targets = targets
+        self.type = type
+        self.kwargs = kwargs
+
+        # Transform class into ids
+        index = 0
+        while index < len(self.targets):
+            if not (isinstance(self.targets[index], int)):
+                for entity in self.entity_manager.entities:
+                    if entity == self.targets[index]:
+                        self.targets.append(entity.id)
+                self.targets.pop(index)

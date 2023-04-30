@@ -30,3 +30,14 @@ class Character(Entity, AnimatedEntity):
 
         # Set attributes
         self.name = name
+
+    def update(self, events: list) -> None:
+        """Update the entity.
+
+        Args:
+            events (list): The events to process.
+
+        Returns:
+            list : The events the entity generated.
+        """
+        return []
