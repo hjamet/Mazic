@@ -29,7 +29,7 @@ class Camera(Entity):
         self.y = 0
 
         # Set camera current configuration
-        self.speed = 10  # The higher the speed, the slower the camera
+        self.speed = 80  # The higher the speed, the slower the camera
         self.zoom = 3  # The higher the zoom, the closer the camera
 
         # Indicates the entity to be followed
