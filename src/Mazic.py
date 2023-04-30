@@ -36,14 +36,19 @@ class Mazic:
         """Spawns the initial entities."""
 
         # Spawn main character
-        main_character = self.entity_manager.add(Character, {"name": "Alice"}).id
+        main_character_id = self.entity_manager.add(Character, {"name": "Alice"}).id
 
         # Spawn other characters
         self.entity_manager.add(Character, {"name": "Bob"})
 
         # Spawn Camera
         self.camera = self.entity_manager.add(
-            Camera, {"game": self, "entity_manager": self.entity_manager}
+            Camera,
+            {
+                "game": self,
+                "entity_manager": self.entity_manager,
+                "following_id": main_character_id,
+            },
         )
 
     def run(self) -> None:

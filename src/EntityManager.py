@@ -55,6 +55,28 @@ class EntityManager:
             entity for entity in self.entities if isinstance(entity, AnimatedEntity)
         ]
 
+    def get_entities(self, id: int, entity_type: object = None):
+        """Returns an entity by its id.
+
+        Args:
+            id (int): The entity id.
+            entity_type (object, optional): The entity type. Defaults to None.
+
+        Returns:
+            object: The entity.
+        """
+        if entity_type is not None:
+            return [
+                entity
+                for entity in self.entities
+                if entity.id == id and isinstance(entity, entity_type)
+            ]
+        elif id is not None:
+            return [entity for entity in self.entities if entity.id == id]
+        else:
+            self.logger.error("No id or entity_type provided.")
+            return []
+
     def __call__(self, *args, **kwds):
         """Update all entities.
 
