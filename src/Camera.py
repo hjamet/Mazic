@@ -51,6 +51,9 @@ class Camera(Entity):
 
     def update(self) -> None:
         """Display the entities."""
+        # Fill the screen with black
+        self.game.screen.fill((0, 0, 0))
+
         for animated_entity in self.entity_manager.get_animated_entities():
             self.game.screen.blit(
                 animated_entity.get_current_animation(),

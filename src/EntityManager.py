@@ -77,12 +77,17 @@ class EntityManager:
             self.logger.error("No id or entity_type provided.")
             return []
 
-    def __call__(self, *args, **kwds):
+    def __call__(self, external_events: list = []) -> None:
         """Update all entities.
+
+        Args:
+            external_events (list, optional): The events to add to the events list. Defaults to [].
 
         Returns:
             self: The instance itself.
         """
+        # Add external events to the events list
+        self.events += external_events
 
         for entity in self.entities:
             entity(self.events)
@@ -133,6 +138,10 @@ class Entity:
         new_events = self.update(entity_events)
         self.entity_manager.next_events.extend(new_events)
 
+        # If child class is AnimatedEntity, update the hitbox
+        if isinstance(self, AnimatedEntity):
+            self.update_hitbox()
+
 
 class AnimatedEntity(pygame.sprite.Sprite):
     def __init__(self) -> None:
@@ -179,12 +188,17 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
         return current_frame
 
+    def update_hitbox(self):
+        """Updates the hitbox."""
+        self.hitbox.x = self.x
+        self.hitbox.y = self.y
+
 
 class Event:
-    def __init__(self, targets: list, type: str, **kwargs):
+    def __init__(self, targets: list, type: str, data: dict = {}) -> None:
         self.targets = targets
         self.type = type
-        self.kwargs = kwargs
+        self.data = data
 
         # Transform class into ids
         index = 0
@@ -194,3 +208,6 @@ class Event:
                     if entity == self.targets[index]:
                         self.targets.append(entity.id)
                 self.targets.pop(index)
+
+            else:
+                index += 1

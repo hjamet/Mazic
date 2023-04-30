@@ -31,13 +31,39 @@ class Character(Entity, AnimatedEntity):
         # Set attributes
         self.name = name
 
-    def update(self, events: list) -> None:
+        # Set default attributes
+        self.speed = 2
+
+    def update(self, event_list: list) -> None:
         """Update the entity.
 
         Args:
-            events (list): The events to process.
+            event_list (list): The events to process.
 
         Returns:
             list : The events the entity generated.
         """
+        for event in event_list:
+            # Move character
+            if event.type == "move":
+                self.__move(**event.data)
+
         return []
+
+    def __move(self, direction: str) -> None:
+        """Move the character in the given direction.
+
+        Args:
+            direction (str): The direction to move the character.
+        """
+        if direction == "up":
+            self.y -= self.speed
+
+        elif direction == "down":
+            self.y += self.speed
+        elif direction == "left":
+            self.x -= self.speed
+        elif direction == "right":
+            self.x += self.speed
+        else:
+            raise ValueError(f"Invalid direction: {direction}")
