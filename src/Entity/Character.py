@@ -43,10 +43,14 @@ class Character(Entity, AnimatedEntity):
         Returns:
             list : The events the entity generated.
         """
+        animation = "idle"
         for event in event_list:
             # Move character
             if event.type == "move":
-                self.__move(**event.data)
+                animation = self.__move(**event.data)
+
+        # Update animation
+        self.set_animation(animation)
 
         return []
 
@@ -67,3 +71,5 @@ class Character(Entity, AnimatedEntity):
             self.x += self.speed
         else:
             raise ValueError(f"Invalid direction: {direction}")
+
+        return "run"

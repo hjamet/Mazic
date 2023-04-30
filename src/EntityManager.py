@@ -193,6 +193,21 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.hitbox.x = self.x
         self.hitbox.y = self.y
 
+    def set_animation(self, animation_type: str):
+        """Change l'animation actuelle de l'entité
+
+        Args:
+            animation_type (str): Le type d'animation à utiliser
+
+        Returns:
+            self: L'instance elle-même.
+        """
+        # Reset animation index if animation type changed
+        if self.current_animation_type != animation_type:
+            self.current_animation_index = 0
+            self.current_animation_type = animation_type
+        return self
+
 
 class Event:
     def __init__(self, targets: list, type: str, data: dict = {}) -> None:
