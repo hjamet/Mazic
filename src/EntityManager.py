@@ -171,9 +171,12 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.current_animation_type = "idle"
         self.current_animation_index = 0
 
-        # Set current position
+        # Set current state
         self.x = 0
         self.y = 0
+        self.rotation = 90
+        self.size = 1
+        self.reverse = False
 
     def get_current_animation(self):
         """Returns the current animation."""
@@ -186,6 +189,22 @@ class AnimatedEntity(pygame.sprite.Sprite):
             self.animations[self.current_animation_type]
         )
 
+        # Rotate frame
+        current_frame = pygame.transform.rotate(current_frame, self.rotation)
+
+        # Resize frame
+        current_frame = pygame.transform.scale(
+            current_frame,
+            (
+                int(current_frame.get_width() * self.size),
+                int(current_frame.get_height() * self.size),
+            ),
+        )
+
+        # Reverse frame
+        if self.reverse:
+            current_frame = pygame.transform.flip(current_frame, True, False)
+
         return current_frame
 
     def update_hitbox(self):
@@ -193,7 +212,13 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.hitbox.x = self.x
         self.hitbox.y = self.y
 
-    def set_animation(self, animation_type: str):
+    def set_animation(
+        self,
+        animation: str,
+        reverse: bool = False,
+        size: float = 1,
+        rotation: int = 0,
+    ):
         """Change l'animation actuelle de l'entité
 
         Args:
@@ -202,10 +227,15 @@ class AnimatedEntity(pygame.sprite.Sprite):
         Returns:
             self: L'instance elle-même.
         """
+        # Set current state
+        self.reverse = reverse if reverse is not None else self.reverse
+        self.size = size if size is not None else self.size
+        self.rotation = rotation if rotation is not None else self.rotation
+
         # Reset animation index if animation type changed
-        if self.current_animation_type != animation_type:
+        if self.current_animation_type != animation:
             self.current_animation_index = 0
-            self.current_animation_type = animation_type
+            self.current_animation_type = animation
         return self
 
 

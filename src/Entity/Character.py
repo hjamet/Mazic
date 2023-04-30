@@ -43,14 +43,14 @@ class Character(Entity, AnimatedEntity):
         Returns:
             list : The events the entity generated.
         """
-        animation = "idle"
+        animation = {"animation": "idle", "reverse": None}
         for event in event_list:
             # Move character
             if event.type == "move":
                 animation = self.__move(**event.data)
 
         # Update animation
-        self.set_animation(animation)
+        self.set_animation(**animation)
 
         return []
 
@@ -60,16 +60,18 @@ class Character(Entity, AnimatedEntity):
         Args:
             direction (str): The direction to move the character.
         """
+        reverse = None
         if direction == "up":
             self.y -= self.speed
-
         elif direction == "down":
             self.y += self.speed
         elif direction == "left":
             self.x -= self.speed
+            reverse = True
         elif direction == "right":
             self.x += self.speed
+            reverse = False
         else:
             raise ValueError(f"Invalid direction: {direction}")
 
-        return "run"
+        return {"animation": "run", "reverse": reverse}
