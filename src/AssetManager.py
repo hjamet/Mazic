@@ -21,7 +21,7 @@ class AssetManager:
                 os.path.join("assets/frames", file)
             )
 
-    def get_asset(self, asset) -> pygame.Surface:
+    def get_image(self, asset) -> pygame.Surface:
         """Load an asset and apply transformations.
 
         Args:
@@ -156,13 +156,32 @@ class Asset:
         """
         return f"{self.asset_name}_{self.rotation_factor}_{self.scale_factor}_{self.reverse_factor}"
 
-    def get_image(self) -> pygame.Surface:
+    def get_image(
+        self, angle: int = 0, scale: int = 1, reverse: bool = 0
+    ) -> pygame.Surface:
         """Get the asset.
 
         Returns:
             pygame.Surface: The asset.
         """
-        return self.asset_manager.get_asset(self)
+        # Apply transformations
+        self.rotation_factor += angle
+        self.scale_factor *= scale
+        self.reverse_factor = (
+            not (self.reverse_factor) if reverse else self.reverse_factor
+        )
+
+        # Get image
+        image = self.asset_manager.get_image(self)
+
+        # Revert transformations
+        self.rotation_factor -= angle
+        self.scale_factor /= scale
+        self.reverse_factor = (
+            not (self.reverse_factor) if reverse else self.reverse_factor
+        )
+
+        return image
 
     def get_size(self) -> tuple:
         """Get the size of the asset.

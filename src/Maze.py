@@ -207,21 +207,22 @@ class Floor(AnimatedEntity, Entity):
         }
 
         # Init parent class
-        Entity.__init__(self, log_initialization=False)
+        Entity.__init__(self)
         AnimatedEntity.__init__(self)
-
-        # Set attributes
-        ## Get image size
-        image = self.animations["idle"][0].get_image()
-        self.x = x * image.get_width()
-        self.y = y * image.get_height()
 
         # Set animation
         self.set_animation(
             "idle",
             reverse=np.random.choice([True, False]),
             rotation=np.random.choice([0, 90, 180, 270]),
+            size=2,
         )
+
+        # Set attributes
+        ## Get image size
+        image = self.animations["idle"][0].get_image()
+        self.x = x * image.get_width() * self.size
+        self.y = y * image.get_height() * self.size
 
     def update(self, *args, **kwargs) -> List[Event]:
         """Update the entity. (Do nothing)
@@ -270,16 +271,14 @@ class Wall(AnimatedEntity, Entity):
         Entity.__init__(self, log_initialization=False)
         AnimatedEntity.__init__(self)
 
+        # Set animation
+        self.set_animation("idle", size=2)
+
         # Set attributes
         ## Get image size
         image = self.animations["idle"][0].get_image()
-        self.x = x * image.get_width()
-        self.y = y * image.get_height()
-
-        # Set animation
-        self.set_animation(
-            "idle",
-        )
+        self.x = x * image.get_width() * self.size
+        self.y = y * image.get_height() * self.size
 
     def update(self, *args, **kwargs) -> List[Event]:
         """Update the entity. (Do nothing)
