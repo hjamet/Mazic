@@ -3,7 +3,17 @@ import logging.handlers
 import os
 
 
-def Logger(name, level=logging.DEBUG):
+def Logger(name, level=logging.DEBUG, log_initialization=True):
+    """Initialize a logger.
+
+    Args:
+        name (str): The name of the logger.
+        level (int, optional): The level of the logger. Defaults to logging.DEBUG.
+        log_initialization (bool, optional): Whether to log the initialization or not. Defaults to True.
+
+    Returns:
+        logging.Logger: The logger.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
@@ -31,6 +41,9 @@ def Logger(name, level=logging.DEBUG):
     )
     logger.addHandler(stdout_logger)
 
-    logger.info("Logger initialized, {name}, {level}".format(name=name, level=level))
+    if log_initialization:
+        logger.info(
+            "Logger initialized, {name}, {level}".format(name=name, level=level)
+        )
 
     return logger

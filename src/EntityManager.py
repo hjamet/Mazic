@@ -115,12 +115,19 @@ class Entity:
     # Sets the entity manager
     entity_manager = entity_manager
 
-    def __init__(self) -> None:
-        """A base class for all entities in the game."""
+    def __init__(self, log_initialization: bool = True) -> None:
+        """A base class for all entities in the game.
+
+        Args:
+            log_initialization (bool, optional): Whether to log the initialization of the entity. Defaults to True.
+        """
         self.id = self.entity_manager.get_free_id()
 
         # Instantiates Logger
-        self.logger = Logger(f"{self.__class__.__name__}_{self.id}")
+        self.logger = Logger(
+            f"{self.__class__.__name__}_{self.id}",
+            log_initialization=log_initialization,
+        )
 
     def update(self, events: list) -> list:
         """Default update method. To be overridden by child classes.
