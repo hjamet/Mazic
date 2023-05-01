@@ -1,7 +1,5 @@
 from typing import Any
 
-import pygame
-
 from EntityManager import Entity, EntityManager
 
 
@@ -58,16 +56,13 @@ class Camera(Entity):
         self.game.screen.fill((0, 0, 0))
 
         for animated_entity in self.entity_manager.get_animated_entities():
-            image = animated_entity.get_current_animation()
+            asset = animated_entity.get_current_animation()
 
             # Apply zoom
-            image = pygame.transform.scale(
-                image,
-                (
-                    int(image.get_width() * self.zoom),
-                    int(image.get_height() * self.zoom),
-                ),
-            )
+            asset = asset.scale(self.zoom)
+
+            # Apply all transformations and get final image
+            image = asset.get_image()
 
             self.game.screen.blit(
                 image,

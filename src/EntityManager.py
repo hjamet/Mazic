@@ -1,5 +1,6 @@
 import pygame
 from Logger import Logger
+from AssetManager import asset_manager, Asset
 
 
 class EntityManager:
@@ -8,9 +9,6 @@ class EntityManager:
         self.events = []  # List of events to be processed by the entities
         self.next_events = []  # List of events newly created by the entities
         self.logger = Logger(self.__class__.__name__)
-
-        # Asset loading
-        self.asset = {}
 
     def add(self, entity: object, kwargs: dict = {}) -> None:
         """Adds an entity to the game.
@@ -29,21 +27,6 @@ class EntityManager:
 
     def get_free_id(self):
         return max(self.entities, key=lambda x: x.id).id + 1 if self.entities else 0
-
-    def load_asset(self, name: str) -> None:
-        """Return an asset from the assets folder.
-
-        Args:
-            name (str): The name of the asset.
-
-        Returns:
-            pygame.Surface: The asset.
-        """
-        if name in self.asset:
-            return self.asset[name]
-
-        self.asset[name] = pygame.image.load(f"assets/frames/{name}.png")
-        return self.asset[name]
 
     def get_animated_entities(self):
         """Returns all animated entities.
@@ -165,6 +148,8 @@ class Entity:
 
 
 class AnimatedEntity(pygame.sprite.Sprite):
+    asset_manager = asset_manager
+
     def __init__(self) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
@@ -176,17 +161,14 @@ class AnimatedEntity(pygame.sprite.Sprite):
                 f"{self.__class__.__name__} must have assets_needed attribute."
             )
 
-        # Load assets
-        self.animations = {}
-        for asset_type, assets in self.assets_needed.items():
-            self.animations[asset_type] = []
-            for asset in assets:
-                self.animations[asset_type].append(
-                    self.entity_manager.load_asset(asset)
-                )
+        # Load animations
+        self.animations = {
+            animation_type: [Asset(asset_name) for asset_name in assets_name]
+            for animation_type, assets_name in self.assets_needed.items()
+        }
 
         # Set hitbox
-        self.hitbox = self.animations["idle"][0].get_rect()
+        self.hitbox = self.animations["idle"][0].get_image().get_rect()
 
         # Set current animation
         self.current_animation_type = "idle"
@@ -201,7 +183,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
     def get_current_animation(self):
         """Returns the current animation."""
-        current_frame = self.animations[self.current_animation_type][
+        current_asset = self.animations[self.current_animation_type][
             int(self.current_animation_index)
         ]
 
@@ -217,22 +199,15 @@ class AnimatedEntity(pygame.sprite.Sprite):
         ) % len(self.animations[self.current_animation_type])
 
         # Rotate frame
-        current_frame = pygame.transform.rotate(current_frame, self.rotation)
+        current_asset = current_asset.rotate(self.rotation)
 
         # Resize frame
-        current_frame = pygame.transform.scale(
-            current_frame,
-            (
-                int(current_frame.get_width() * self.size),
-                int(current_frame.get_height() * self.size),
-            ),
-        )
+        current_asset = current_asset.scale(self.size)
 
         # Reverse frame
-        if self.reverse:
-            current_frame = pygame.transform.flip(current_frame, True, False)
+        current_asset = current_asset.reverse(self.reverse)
 
-        return current_frame
+        return current_asset
 
     def update_hitbox(self):
         """Updates the hitbox."""

@@ -15,3 +15,4 @@ class Config:
         "right": [pygame.K_RIGHT, pygame.K_d],
     }
     fps = 60
+    max_hashed_assets = 10000

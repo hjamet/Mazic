@@ -212,7 +212,7 @@ class Floor(AnimatedEntity, Entity):
 
         # Set attributes
         ## Get image size
-        image = self.animations["idle"][0]
+        image = self.animations["idle"][0].get_image()
         self.x = x * image.get_width()
         self.y = y * image.get_height()
 
@@ -272,7 +272,7 @@ class Wall(AnimatedEntity, Entity):
 
         # Set attributes
         ## Get image size
-        image = self.animations["idle"][0]
+        image = self.animations["idle"][0].get_image()
         self.x = x * image.get_width()
         self.y = y * image.get_height()
 
