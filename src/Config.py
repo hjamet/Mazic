@@ -14,3 +14,4 @@ class Config:
         "left": [pygame.K_LEFT, pygame.K_q],
         "right": [pygame.K_RIGHT, pygame.K_d],
     }
+    fps = 60

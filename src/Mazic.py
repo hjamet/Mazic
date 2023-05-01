@@ -1,9 +1,12 @@
+import time
+
 import pygame
-from Logger import Logger
+
 import EntityManager
-from Entity.Character import Character
 from Camera import Camera
 from Config import Config
+from Entity.Character import Character
+from Logger import Logger
 from Maze import Maze
 
 
@@ -20,6 +23,7 @@ class Mazic:
 
         # Instantiate pygame
         pygame.init()
+        self.start_time = time.time()
 
         # Create the display
         self.screen = pygame.display.set_mode((1200, 1000))
@@ -73,7 +77,11 @@ class Mazic:
     def run(self) -> None:
         # Game loop
         while self.running:
-            self.clock.tick(60)
+            self.clock.tick(self.config.fps)
+
+            # Log FPS every 1 second
+            if (time.time() - self.start_time) % 1 < 2 / (self.config.fps):
+                self.logger.debug(f"FPS: {self.clock.get_fps()}")
 
             # Capture events
             external_events = self.events()
