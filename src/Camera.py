@@ -1,6 +1,7 @@
 from typing import Any
 
 from EntityManager import Entity, EntityManager
+from AssetManager import asset_manager, Asset
 
 
 class Camera(Entity):
@@ -56,10 +57,37 @@ class Camera(Entity):
         self.game.screen.fill((0, 0, 0))
 
         for animated_entity in self.entity_manager.get_animated_entities():
+            # Get the current animation
             asset = animated_entity.get_current_animation()
+            asset_size = asset.get_size()
 
             # Apply zoom
             asset = asset.scale(self.zoom)
+
+            # Check if the entity is in the camera view
+            if (
+                animated_entity.x * self.zoom
+                - self.x * self.zoom
+                + self.game.screen.get_width() / 2
+                + asset_size[0] * 2
+                < 0
+                or animated_entity.x * self.zoom
+                - self.x * self.zoom
+                + self.game.screen.get_width() / 2
+                - asset_size[0] * 2
+                > self.game.screen.get_width()
+                or animated_entity.y * self.zoom
+                - self.y * self.zoom
+                + self.game.screen.get_height() / 2
+                + asset_size[1] * 2
+                < 0
+                or animated_entity.y * self.zoom
+                - self.y * self.zoom
+                + self.game.screen.get_height() / 2
+                - asset_size[1] * 2
+                > self.game.screen.get_height()
+            ):
+                continue
 
             # Apply all transformations and get final image
             image = asset.get_image()

@@ -76,6 +76,21 @@ class AssetManager:
         # Return asset
         return asset_surface
 
+    def get_asset_size(self, asset) -> tuple:
+        """Get the size of an asset.
+
+        Args:
+            asset: The asset to load.
+
+        Returns:
+            tuple: The size of the asset.
+        """
+        raw_image_size = self.raw_asset[asset.asset_name].get_size()
+        return (
+            int(raw_image_size[0] * asset.scale_factor),
+            int(raw_image_size[1] * asset.scale_factor),
+        )
+
 
 asset_manager = AssetManager()
 
@@ -148,3 +163,11 @@ class Asset:
             pygame.Surface: The asset.
         """
         return self.asset_manager.get_asset(self)
+
+    def get_size(self) -> tuple:
+        """Get the size of the asset.
+
+        Returns:
+            tuple: The size of the asset.
+        """
+        return self.asset_manager.get_asset_size(self)
