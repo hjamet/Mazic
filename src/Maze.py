@@ -37,7 +37,9 @@ class Maze:
         self.maze_array = self.generate()
 
         # Create the entities
-        self.structure_entities = self.__create_entities()
+        self.structure_entities = (
+            self.__create_entities()
+        )  # This attribute will be overwritten by the EntityManager to a list of entities.
 
     def generate(
         self,
@@ -144,6 +146,9 @@ class Maze:
         maze_array[-1, :] = -2
         maze_array[:, -1] = -2
 
+        # Add Surrounding Empty Space
+        maze_array = np.pad(maze_array, 2, constant_values=0)
+
         return maze_array
 
     def __create_entities(self) -> List[Entity]:
@@ -156,14 +161,42 @@ class Maze:
         structure_entities = []
 
         # Create the floors
-        for i in range(self.length + 2):
-            for j in range(self.width + 2):
+        for i in range(1, self.length + 3):
+            for j in range(1, self.width + 3):
                 if self.maze_array[i, j] == 1:
                     structure_entities.append(
                         {"entity": Floor, "kwargs": {"x": j, "y": i}}
                     )
 
+        # Create the walls
+        for i in range(1, self.length + 4):
+            for j in range(1, self.width + 4):
+                if self.maze_array[i, j] == -2:
+                    structure_entities.append(
+                        {
+                            "entity": Wall,
+                            "kwargs": {
+                                "x": j,
+                                "y": i,
+                                "environment": self.maze_array[
+                                    i - 1 : i + 2, j - 1 : j + 2
+                                ],
+                            },
+                        }
+                    )
+
         return structure_entities
+
+    def get_structure_entities(self, type: object) -> List[Entity]:
+        """Get the structure entities of a given type in the maze.
+
+        Args:
+            type (object): The type of the entities to get.
+
+        Returns:
+            List[Entity]: The entities.
+        """
+        return [entity for entity in self.entities if isinstance(entity, type)]
 
 
 class Floor(AnimatedEntity, Entity):
@@ -188,6 +221,64 @@ class Floor(AnimatedEntity, Entity):
             "idle",
             reverse=np.random.choice([True, False]),
             rotation=np.random.choice([0, 90, 180, 270]),
+        )
+
+    def update(self, *args, **kwargs) -> List[Event]:
+        """Update the entity. (Do nothing)
+
+        Returns:
+            List[Event]: The events.
+
+        """
+        return []
+
+
+class Wall(AnimatedEntity, Entity):
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        environment: np.ndarray,
+    ):
+        """Create a wall entity.
+
+        Args:
+            x (int): The x position of the entity.
+            y (int): The y position of the entity.
+            environment (np.ndarray): The environment of the entity. This is used to determine which asset to use.
+        """
+        # Determine which asset to use
+        # ## Top left corner
+        # if (
+        #     np.where((environment * np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])) == -2)
+        #     == np.array([[1, 1, 2], [1, 2, 1]])
+        # ).all():
+        #     wall_asset = "wall_left"
+        # ## Horizontal Middle
+        # if (
+        #     np.where((environment * np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])) == -2)
+        #     == np.array([[1, 1, 1], [0, 1, 2]])
+        # ).all():
+        #     wall_asset = "wall_mid"
+
+        # Define needed assets
+        self.assets_needed = {
+            "idle": ["wall_mid"],
+        }
+
+        # Init parent class
+        Entity.__init__(self, log_initialization=False)
+        AnimatedEntity.__init__(self)
+
+        # Set attributes
+        ## Get image size
+        image = self.animations["idle"][0]
+        self.x = x * image.get_width()
+        self.y = y * image.get_height()
+
+        # Set animation
+        self.set_animation(
+            "idle",
         )
 
     def update(self, *args, **kwargs) -> List[Event]:
