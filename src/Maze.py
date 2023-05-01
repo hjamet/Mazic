@@ -1,12 +1,14 @@
 from Logger import Logger
 import numpy as np
+from EntityManager import AnimatedEntity, Entity, Event
+from typing import List
 
 
 class Maze:
     def __init__(
         self,
-        length: int = 100,
-        width: int = 100,
+        length: int = 50,
+        width: int = 50,
         nbr_player: int = 1,
         min_room_size: int = 1,
         max_room_size: int = 100,
@@ -33,6 +35,9 @@ class Maze:
 
         # Generate the maze
         self.maze_array = self.generate()
+
+        # Create the entities
+        self.structure_entities = self.__create_entities()
 
     def generate(
         self,
@@ -140,6 +145,55 @@ class Maze:
         maze_array[:, -1] = -2
 
         return maze_array
+
+    def __create_entities(self) -> List[Entity]:
+        """Create the structure entities of the maze.
+
+        Returns:
+            List[Entity]: The entities.
+
+        """
+        structure_entities = []
+
+        # Create the floors
+        for i in range(self.length + 2):
+            for j in range(self.width + 2):
+                if self.maze_array[i, j] == 1:
+                    structure_entities.append(
+                        {"entity": Floor, "kwargs": {"x": j, "y": i}}
+                    )
+
+        return structure_entities
+
+
+class Floor(AnimatedEntity, Entity):
+    def __init__(self, x: int, y: int):
+        # Define needed assets
+        self.assets_needed = {
+            "idle": [np.random.choice([f"floor_{i}" for i in range(1, 9)])],
+        }
+
+        # Init parent class
+        Entity.__init__(self)
+        AnimatedEntity.__init__(self)
+
+        # Set attributes
+        ## Get image size
+        image = self.animations["idle"][0]
+        self.x = x * image.get_width()
+        self.y = y * image.get_height()
+
+        # Set animation
+        self.set_animation("idle")
+
+    def update(self, *args, **kwargs) -> List[Event]:
+        """Update the entity. (Do nothing)
+
+        Returns:
+            List[Event]: The events.
+
+        """
+        return []
 
 
 # ---------------------------------------------------------------------------- #

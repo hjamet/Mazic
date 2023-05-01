@@ -122,6 +122,20 @@ class Entity:
         # Instantiates Logger
         self.logger = Logger(f"{self.__class__.__name__}_{self.id}")
 
+    def update(self, events: list) -> list:
+        """Default update method. To be overridden by child classes.
+        This should be called every frame to update the entity state.
+
+        Args:
+            events (list): The events to be processed by the entity.
+
+        Returns:
+            list: The new events to be processed by the EntityManager.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must have an update method."
+        )
+
     def __call__(self, events: list) -> None:
         """Update the entity.
 
