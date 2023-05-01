@@ -203,7 +203,12 @@ class Floor(AnimatedEntity, Entity):
     def __init__(self, x: int, y: int):
         # Define needed assets
         self.assets_needed = {
-            "idle": [np.random.choice([f"floor_{i}" for i in range(1, 9)])],
+            "idle": [
+                np.random.choice(
+                    [f"floor_{i}" for i in range(1, 9)],
+                    p=[0.95] + [0.05 / 7 for i in range(7)],
+                )
+            ],
         }
 
         # Init parent class
