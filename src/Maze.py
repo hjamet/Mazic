@@ -7,11 +7,11 @@ from typing import List
 class Maze:
     def __init__(
         self,
-        length: int = 50,
-        width: int = 50,
+        length: int = 40,
+        width: int = 40,
         nbr_player: int = 1,
         min_room_size: int = 1,
-        max_room_size: int = 100,
+        max_room_size: int = 40,
     ) -> None:
         """A class to generate a maze procedurally.
 
@@ -174,7 +174,7 @@ class Floor(AnimatedEntity, Entity):
         }
 
         # Init parent class
-        Entity.__init__(self)
+        Entity.__init__(self, log_initialization=False)
         AnimatedEntity.__init__(self)
 
         # Set attributes
@@ -184,7 +184,11 @@ class Floor(AnimatedEntity, Entity):
         self.y = y * image.get_height()
 
         # Set animation
-        self.set_animation("idle")
+        self.set_animation(
+            "idle",
+            reverse=np.random.choice([True, False]),
+            rotation=np.random.choice([0, 90, 180, 270]),
+        )
 
     def update(self, *args, **kwargs) -> List[Event]:
         """Update the entity. (Do nothing)
