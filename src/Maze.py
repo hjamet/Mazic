@@ -7,11 +7,11 @@ from typing import List, Dict
 class Maze:
     def __init__(
         self,
-        length: int = 40,
-        width: int = 40,
+        length: int = 20,
+        width: int = 20,
         nbr_player: int = 1,
         min_room_size: int = 1,
-        max_room_size: int = 40,
+        max_room_size: int = 5,
     ) -> None:
         """A class to generate a maze procedurally.
 
@@ -169,6 +169,7 @@ class Maze:
                     )
 
         # Determine walls type
+        wall_to_create = []
         for i in range(1, self.length + 4):
             for j in range(1, self.width + 4):
                 environment = self.maze_array[i : i + 3, j - 1 : j + 2]
@@ -180,56 +181,46 @@ class Maze:
                 if self.__matrix_mask(
                     environment, np.array([[-2, -2, -2], [0, 0, 0], [0, 0, 0]])
                 ):
-                    wall_assets = ["wall_mid"]
-                    hitbox = True
-                    camera_lvl = 0
+                    wall_to_create.append([i, j, ["wall_mid"], True, 0])
 
                 ## Vertical right
                 elif self.__matrix_mask(
                     environment, np.array([[0, -2, 0], [0, -2, 0], [0, 0, 0]])
                 ):
-                    wall_assets = ["wall_outer_mid_left"]
-                    hitbox = True
-                    camera_lvl = 0
+                    wall_to_create.append([i, j, ["wall_outer_mid_left"], True, 0])
 
                 ## Vertical left
                 elif self.__matrix_mask(
                     environment, np.array([[0, -2, 0], [0, -2, 0], [0, 0, 0]])
                 ):
-                    wall_assets = ["wall_outer_mid_right"]
-                    hitbox = True
-                    camera_lvl = 0
+                    wall_to_create.append([i, j, ["wall_outer_mid_right"], True, 0])
 
                 ## Top left
                 elif self.__matrix_mask(
                     environment, np.array([[0, 0, 0], [0, -2, -2], [0, -2, 0]])
                 ):
-                    wall_assets = ["wall_outer_top_left"]
-                    hitbox = False
-                    camera_lvl = 1
+                    wall_to_create.append([i, j, ["wall_outer_top_left"], False, 1])
 
                 ## Top Middle
                 elif self.__matrix_mask(
                     environment, np.array([[0, 0, 0], [-2, -2, -2], [0, 0, 0]])
                 ):
-                    wall_assets = ["wall_top_mid"]
-                    hitbox = False
-                    camera_lvl = 1
+                    wall_to_create.append([i, j, ["wall_top_mid"], False, 1])
 
-                # Create the wall
-                if wall_assets is not None:
-                    structure_entities.append(
-                        {
-                            "entity": Wall,
-                            "kwargs": {
-                                "x": j,
-                                "y": i,
-                                "assets": wall_assets,
-                                "hitbox": hitbox,
-                                "camera_lvl": camera_lvl,
-                            },
-                        }
-                    )
+        # Create the wall
+        for i, j, wall_assets, hitbox, camera_lvl in wall_to_create:
+            structure_entities.append(
+                {
+                    "entity": Wall,
+                    "kwargs": {
+                        "x": j,
+                        "y": i,
+                        "assets": wall_assets,
+                        "hitbox": hitbox,
+                        "camera_lvl": camera_lvl,
+                    },
+                }
+            )
 
         return structure_entities
 
