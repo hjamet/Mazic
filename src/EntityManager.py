@@ -22,7 +22,18 @@ class EntityManager:
         """
         # Create entity instance
         entity_instance = entity(**kwargs)
-        self.entities.append(entity_instance)
+
+        # Add entity to the list of entities
+        ## Add AnimatedEntity in order of their camera_lvl
+        entity_index = 0
+        if isinstance(entity_instance, AnimatedEntity):
+            while entity_index < len(self.entities) and (
+                self.entities[entity_index].camera_lvl < entity_instance.camera_lvl
+                or not isinstance(self.entities[entity_index], AnimatedEntity)
+            ):
+                entity_index += 1
+
+        self.entities.insert(entity_index, entity_instance)
         return entity_instance
 
     def get_free_id(self):
@@ -150,10 +161,19 @@ class Entity:
 class AnimatedEntity(pygame.sprite.Sprite):
     asset_manager = asset_manager
 
-    def __init__(self) -> None:
+    def __init__(self, camera_lvl: int = 0, hitbox: bool = False) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
+
+        Args:
+            camera_lvl (int, optional): The camera level. Bigger number means the entity will be displayed on top of the others. Defaults to 0.
+            hitbox (bool, optional): Whether the entity has a hitbox. Defaults to False.
+
+        Raises:
+            NotImplementedError: If the child class does not have an assets_needed attribute.
         """
+        # Save attributes
+        self.camera_lvl = camera_lvl
 
         # Check if child class has assets_needed
         if not hasattr(self, "assets_needed"):
@@ -168,7 +188,9 @@ class AnimatedEntity(pygame.sprite.Sprite):
         }
 
         # Set hitbox
-        self.hitbox = self.animations["idle"][0].get_image().get_rect()
+        self.hitbox = None
+        if hitbox:
+            self.hitbox = self.animations["idle"][0].get_image().get_rect()
 
         # Set current animation
         self.current_animation_type = "idle"
@@ -210,9 +232,10 @@ class AnimatedEntity(pygame.sprite.Sprite):
         return current_asset
 
     def update_hitbox(self):
-        """Updates the hitbox."""
-        self.hitbox.x = self.x
-        self.hitbox.y = self.y
+        """Updates the hitbox if the entity has one."""
+        if self.hitbox is not None:
+            self.hitbox.x = self.x
+            self.hitbox.y = self.y
 
     def set_animation(
         self,
