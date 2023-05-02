@@ -1,7 +1,7 @@
 from Logger import Logger
 import numpy as np
 from EntityManager import AnimatedEntity, Entity, Event
-from typing import List
+from typing import List, Dict
 
 
 class Maze:
@@ -178,9 +178,9 @@ class Maze:
                             "kwargs": {
                                 "x": j,
                                 "y": i,
-                                "environment": self.maze_array[
-                                    i - 1 : i + 2, j - 1 : j + 2
-                                ],
+                                "assets": ["wall_mid"],
+                                "hitbox": True,
+                                "camera_lvl": 0,
                             },
                         }
                     )
@@ -244,14 +244,18 @@ class Wall(AnimatedEntity, Entity):
         self,
         x: int,
         y: int,
-        environment: np.ndarray,
+        assets: Dict[str, List[str]] = {},
+        hitbox: bool = False,
+        camera_lvl: int = 0,
     ):
         """Create a wall entity.
 
         Args:
             x (int): The x position of the entity.
             y (int): The y position of the entity.
-            environment (np.ndarray): The environment of the entity. This is used to determine which asset to use.
+            assets (List[str]): The assets of the entity.
+            hitbox (bool): Whether the entity has a hitbox.
+            camera_lvl (int): The camera level of the entity. The higher the level, the more in the foreground the entity is.
         """
         # Determine which asset to use
         # ## Top left corner
@@ -268,13 +272,11 @@ class Wall(AnimatedEntity, Entity):
         #     wall_asset = "wall_mid"
 
         # Define needed assets
-        self.assets_needed = {
-            "idle": ["wall_mid"],
-        }
+        self.assets_needed = {"idle": assets}
 
         # Init parent class
         Entity.__init__(self, log_initialization=False)
-        AnimatedEntity.__init__(self)
+        AnimatedEntity.__init__(self, camera_lvl=camera_lvl, hitbox=hitbox)
 
         # Set animation
         self.set_animation("idle", size=2)
