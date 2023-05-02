@@ -15,12 +15,6 @@ class AssetManager:
         # Set attributes
         self.config = Config()
 
-        # Load assets
-        for file in os.listdir("assets/frames"):
-            self.raw_asset[file.split(".")[0]] = pygame.image.load(
-                os.path.join("assets/frames", file)
-            )
-
     def get_image(self, asset) -> pygame.Surface:
         """Load an asset and apply transformations.
 
@@ -35,7 +29,14 @@ class AssetManager:
             return self.transformed_asset[asset.__hash__()]
 
         # Load asset
-        asset_surface = self.raw_asset[asset.asset_name]
+        ## Get asset if it is already loaded, otherwise load it
+        if asset.asset_name in self.raw_asset:
+            asset_surface = self.raw_asset[asset.asset_name]
+        else:
+            asset_surface = pygame.image.load(
+                os.path.join("assets/frames", asset.asset_name + ".png")
+            ).convert_alpha()
+            self.raw_asset[asset.asset_name] = asset_surface
 
         # Apply transformations
         ## Apply rotation
@@ -85,10 +86,20 @@ class AssetManager:
         Returns:
             tuple: The size of the asset.
         """
-        raw_image_size = self.raw_asset[asset.asset_name].get_size()
+        # Get asset if it is already loaded, otherwise load it
+        if asset.asset_name in self.raw_asset:
+            raw_asset_surface = self.raw_asset[asset.asset_name]
+        else:
+            raw_asset_surface = pygame.image.load(
+                os.path.join("assets/frames", asset.asset_name + ".png")
+            ).convert_alpha()
+            self.raw_asset[asset.asset_name] = raw_asset_surface
+
+        raw_asset_size = raw_asset_surface.get_size()
+
         return (
-            int(raw_image_size[0] * asset.scale_factor),
-            int(raw_image_size[1] * asset.scale_factor),
+            int(raw_asset_size[0] * asset.scale_factor),
+            int(raw_asset_size[1] * asset.scale_factor),
         )
 
 

@@ -2,6 +2,9 @@ import time
 
 import pygame
 
+# Instantiate pygame
+pygame.init()
+
 import EntityManager
 from Camera import Camera
 from Config import Config
@@ -21,8 +24,7 @@ class Mazic:
         # Instantiate Logger
         self.logger = Logger(self.__class__.__name__)
 
-        # Instantiate pygame
-        pygame.init()
+        # Set start time
         self.start_time = time.time()
 
         # Create the display
