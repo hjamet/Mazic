@@ -171,14 +171,14 @@ class Maze:
         # Determine walls type
         for i in range(1, self.length + 4):
             for j in range(1, self.width + 4):
-                environment = self.maze_array[i - 1 : i + 2, j - 1 : j + 2]
+                environment = self.maze_array[i : i + 3, j - 1 : j + 2]
                 wall_assets = None
                 hitbox = None
                 camera_lvl = None
 
                 ## Horizontal Middle
                 if self.__matrix_mask(
-                    environment, np.array([[0, 0, 0], [-2, -2, -2], [0, 0, 0]])
+                    environment, np.array([[-2, -2, -2], [0, 0, 0], [0, 0, 0]])
                 ):
                     wall_assets = ["wall_mid"]
                     hitbox = True
@@ -186,15 +186,31 @@ class Maze:
 
                 ## Vertical right
                 elif self.__matrix_mask(
-                    environment, np.array([[0, -2, 0], [0, -2, 0], [0, -2, 0]])
+                    environment, np.array([[0, -2, 0], [0, -2, 0], [0, 0, 0]])
                 ):
                     wall_assets = ["wall_outer_mid_left"]
                     hitbox = True
                     camera_lvl = 0
 
+                ## Vertical left
+                elif self.__matrix_mask(
+                    environment, np.array([[0, -2, 0], [0, -2, 0], [0, 0, 0]])
+                ):
+                    wall_assets = ["wall_outer_mid_right"]
+                    hitbox = True
+                    camera_lvl = 0
+
+                ## Top left
+                elif self.__matrix_mask(
+                    environment, np.array([[0, 0, 0], [0, -2, -2], [0, -2, 0]])
+                ):
+                    wall_assets = ["wall_outer_top_left"]
+                    hitbox = False
+                    camera_lvl = 1
+
                 ## Top Middle
                 elif self.__matrix_mask(
-                    environment, np.array([[0, 0, 0], [0, 0, 0], [-2, -2, -2]])
+                    environment, np.array([[0, 0, 0], [-2, -2, -2], [0, 0, 0]])
                 ):
                     wall_assets = ["wall_top_mid"]
                     hitbox = False
