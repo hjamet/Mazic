@@ -168,19 +168,49 @@ class Maze:
                         {"entity": Floor, "kwargs": {"x": j, "y": i}}
                     )
 
-        # Create the walls
+        # Determine walls type
         for i in range(1, self.length + 4):
             for j in range(1, self.width + 4):
-                if self.maze_array[i, j] == -2:
+                environment = self.maze_array[i - 1 : i + 2, j - 1 : j + 2]
+                wall_assets = None
+                hitbox = None
+                camera_lvl = None
+
+                ## Horizontal Middle
+                if self.__matrix_mask(
+                    environment, np.array([[0, 0, 0], [-2, -2, -2], [0, 0, 0]])
+                ):
+                    wall_assets = ["wall_mid"]
+                    hitbox = True
+                    camera_lvl = 0
+
+                ## Vertical right
+                elif self.__matrix_mask(
+                    environment, np.array([[0, -2, 0], [0, -2, 0], [0, -2, 0]])
+                ):
+                    wall_assets = ["wall_outer_mid_left"]
+                    hitbox = True
+                    camera_lvl = 0
+
+                ## Top Middle
+                elif self.__matrix_mask(
+                    environment, np.array([[0, 0, 0], [0, 0, 0], [-2, -2, -2]])
+                ):
+                    wall_assets = ["wall_top_mid"]
+                    hitbox = False
+                    camera_lvl = 1
+
+                # Create the wall
+                if wall_assets is not None:
                     structure_entities.append(
                         {
                             "entity": Wall,
                             "kwargs": {
                                 "x": j,
                                 "y": i,
-                                "assets": ["wall_mid"],
-                                "hitbox": True,
-                                "camera_lvl": 0,
+                                "assets": wall_assets,
+                                "hitbox": hitbox,
+                                "camera_lvl": camera_lvl,
                             },
                         }
                     )
@@ -197,6 +227,20 @@ class Maze:
             List[Entity]: The entities.
         """
         return [entity for entity in self.entities if isinstance(entity, type)]
+
+    def __matrix_mask(self, array: np.ndarray, mask: np.ndarray) -> bool:
+        """Check if a matrix is contained in another one.
+
+        Args:
+            array (np.ndarray): The array to check.
+            mask (np.ndarray): The mask to check.
+
+        Returns:
+            bool: True if the array is contained in the mask, False otherwise.
+        """
+        return np.all(
+            np.logical_or(mask == 0, np.logical_and(array == mask, mask != 0))
+        )
 
 
 class Floor(AnimatedEntity, Entity):
@@ -257,19 +301,6 @@ class Wall(AnimatedEntity, Entity):
             hitbox (bool): Whether the entity has a hitbox.
             camera_lvl (int): The camera level of the entity. The higher the level, the more in the foreground the entity is.
         """
-        # Determine which asset to use
-        # ## Top left corner
-        # if (
-        #     np.where((environment * np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])) == -2)
-        #     == np.array([[1, 1, 2], [1, 2, 1]])
-        # ).all():
-        #     wall_asset = "wall_left"
-        # ## Horizontal Middle
-        # if (
-        #     np.where((environment * np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])) == -2)
-        #     == np.array([[1, 1, 1], [0, 1, 2]])
-        # ).all():
-        #     wall_asset = "wall_mid"
 
         # Define needed assets
         self.assets_needed = {"idle": assets}
