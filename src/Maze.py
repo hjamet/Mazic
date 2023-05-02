@@ -111,14 +111,18 @@ class Maze:
                     maze_array[i + room_length, j - 1 : j + room_width + 1] = -2
 
                     # Add doors
-                    maze_array[np.random.randint(i, i + room_length), j - 1] = -3
-                    maze_array[i - 1, np.random.randint(j, j + room_width)] = -3
+                    maze_array[
+                        np.random.randint(i, i + room_length), j - 1
+                    ] = 1  # TODO Replace by -3
+                    maze_array[
+                        i - 1, np.random.randint(j, j + room_width)
+                    ] = 1  # TODO Replace by -3
                     maze_array[
                         np.random.randint(i, i + room_length), j + room_width
-                    ] = -3
+                    ] = 1  # TODO Replace by -3
                     maze_array[
                         i + room_length, np.random.randint(j, j + room_width)
-                    ] = -3
+                    ] = 1  # TODO Replace by -3
 
         # Replace last 0 by 1
         maze_array[maze_array == 0] = 1
@@ -180,30 +184,40 @@ class Maze:
                 ## Horizontal Middle
                 if self.__matrix_mask(
                     environment, np.array([[-2, -2, -2], [0, 0, 0], [0, 0, 0]])
+                ) or self.__matrix_mask(
+                    environment, np.array([[1, -2, 1], [0, 1, 0], [0, 0, 0]])
                 ):
                     wall_to_create.append([i, j, ["wall_mid"], True, 0])
 
                 ## Vertical right
-                elif self.__matrix_mask(
-                    environment, np.array([[0, -2, 0], [0, -2, 0], [0, 0, 0]])
+                if self.__matrix_mask(
+                    environment, np.array([[0, -2, 1], [0, -2, 0], [0, 0, 0]])
+                ) or self.__matrix_mask(
+                    environment,
+                    np.array([[0, -2, 0], [0, -2, 1], [0, 0, 0]]),
                 ):
                     wall_to_create.append([i, j, ["wall_outer_mid_left"], True, 0])
 
                 ## Vertical left
-                elif self.__matrix_mask(
-                    environment, np.array([[0, -2, 0], [0, -2, 0], [0, 0, 0]])
+                if self.__matrix_mask(
+                    environment, np.array([[1, -2, 0], [0, -2, 0], [0, 0, 0]])
+                ) or self.__matrix_mask(
+                    environment,
+                    np.array([[0, -2, 0], [1, -2, 0], [0, 0, 0]]),
                 ):
                     wall_to_create.append([i, j, ["wall_outer_mid_right"], True, 0])
 
                 ## Top left
-                elif self.__matrix_mask(
+                if self.__matrix_mask(
                     environment, np.array([[0, 0, 0], [0, -2, -2], [0, -2, 0]])
                 ):
                     wall_to_create.append([i, j, ["wall_outer_top_left"], False, 1])
 
                 ## Top Middle
-                elif self.__matrix_mask(
+                if self.__matrix_mask(
                     environment, np.array([[0, 0, 0], [-2, -2, -2], [0, 0, 0]])
+                ) or self.__matrix_mask(
+                    environment, np.array([[0, 0, 0], [1, -2, 1], [0, 1, 0]])
                 ):
                     wall_to_create.append([i, j, ["wall_top_mid"], False, 1])
 
