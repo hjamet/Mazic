@@ -29,6 +29,10 @@ class Mazic:
 
         # Create the display
         self.screen = pygame.display.set_mode((1200, 1000))
+        # Toggles fullscreen
+        if self.config.fullscreen:
+            pygame.display.toggle_fullscreen()
+
         ## Set window title
         pygame.display.set_caption("Mazic")
         ## Set window icon
@@ -62,9 +66,6 @@ class Mazic:
         self.main_character_id = self.entity_manager.add(
             Character, {"name": "Alice"}
         ).id
-
-        # Spawn other characters
-        self.entity_manager.add(Character, {"name": "Bob"})
 
         # Spawn Camera
         self.camera = self.entity_manager.add(

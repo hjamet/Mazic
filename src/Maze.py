@@ -360,7 +360,7 @@ class Maze:
                         ]
                     ),
                 ):
-                    wall_to_create.append([i, j, ["wall_top_mid"], False, 1])
+                    wall_to_create.append([i, j, ["wall_top_mid"], False, 3])
 
                 ## wall_top_left
                 if (
@@ -398,7 +398,7 @@ class Maze:
                         ),
                     )
                 ):
-                    wall_to_create.append([i, j, ["wall_top_left"], False, 1])
+                    wall_to_create.append([i, j, ["wall_top_left"], False, 3])
 
                 ## wall_outer_front_right
                 if self.__matrix_mask(
@@ -460,7 +460,7 @@ class Maze:
                         ),
                     )
                 ):
-                    wall_to_create.append([i, j, ["wall_outer_top_right"], False, 1])
+                    wall_to_create.append([i, j, ["wall_outer_top_right"], False, 3])
 
         # Create the wall
         for i, j, wall_assets, hitbox, camera_lvl in wall_to_create:

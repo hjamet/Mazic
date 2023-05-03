@@ -49,6 +49,18 @@ class EntityManager:
             entity for entity in self.entities if isinstance(entity, AnimatedEntity)
         ]
 
+    def get_tangible_entities(self):
+        """Returns all entities with a hitbox.
+
+        Returns:
+            list: A list of entities with a hitbox.
+        """
+        return [
+            entity
+            for entity in self.entities
+            if hasattr(entity, "rect") and entity.rect is not None
+        ]
+
     def get_entities(self, id: int, entity_type: object = None):
         """Returns an entity by its id.
 
@@ -161,13 +173,14 @@ class Entity:
 class AnimatedEntity(pygame.sprite.Sprite):
     asset_manager = asset_manager
 
-    def __init__(self, camera_lvl: int = 0, hitbox: bool = False) -> None:
+    def __init__(self, camera_lvl: int = 0, hitbox: bool = False, mask=True) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
 
         Args:
             camera_lvl (int, optional): The camera level. Bigger number means the entity will be displayed on top of the others. Defaults to 0.
             hitbox (bool, optional): Whether the entity has a hitbox. Defaults to False.
+            mask (bool, optional): Whether the entity has a mask (for pixel perfect collision). Defaults to True.
 
         Raises:
             NotImplementedError: If the child class does not have an assets_needed attribute.
@@ -188,9 +201,12 @@ class AnimatedEntity(pygame.sprite.Sprite):
         }
 
         # Set hitbox
-        self.hitbox = None
+        self.rect = None
         if hitbox:
-            self.hitbox = self.animations["idle"][0].get_image().get_rect()
+            self.rect = self.animations["idle"][0].get_image().get_rect()
+        if mask:
+            # Set mask using png transparency
+            self.mask = pygame.mask.from_surface(self.animations["idle"][0].get_image())
 
         # Set current animation
         self.current_animation_type = "idle"
@@ -233,9 +249,9 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
     def update_hitbox(self):
         """Updates the hitbox if the entity has one."""
-        if self.hitbox is not None:
-            self.hitbox.x = self.x
-            self.hitbox.y = self.y
+        if self.rect is not None:
+            self.rect.x = self.x
+            self.rect.y = self.y
 
     def set_animation(
         self,
