@@ -10,7 +10,7 @@ class Maze:
         length: int = 20,
         width: int = 20,
         nbr_player: int = 1,
-        min_room_size: int = 1,
+        min_room_size: int = 2,
         max_room_size: int = 5,
     ) -> None:
         """A class to generate a maze procedurally.
@@ -95,12 +95,12 @@ class Maze:
                     room_length = (
                         np.random.randint(min_room_size, max_length)
                         if max_length > min_room_size
-                        else min_room_size
+                        else 0
                     )
                     room_width = (
                         np.random.randint(min_room_size, max_width)
                         if max_width > min_room_size
-                        else min_room_size
+                        else 0
                     )
                     maze_array[i : i + room_length, j : j + room_width] = 1
 
@@ -111,18 +111,19 @@ class Maze:
                     maze_array[i + room_length, j - 1 : j + room_width + 1] = -2
 
                     # Add doors
-                    maze_array[
-                        np.random.randint(i, i + room_length), j - 1
-                    ] = 1  # TODO Replace by -3
-                    maze_array[
-                        i - 1, np.random.randint(j, j + room_width)
-                    ] = 1  # TODO Replace by -3
-                    maze_array[
-                        np.random.randint(i, i + room_length), j + room_width
-                    ] = 1  # TODO Replace by -3
-                    maze_array[
-                        i + room_length, np.random.randint(j, j + room_width)
-                    ] = 1  # TODO Replace by -3
+                    if room_length > 0 and room_width > 0:
+                        maze_array[
+                            np.random.randint(i, i + room_length), j - 1
+                        ] = 1  # TODO Replace by -3
+                        maze_array[
+                            i - 1, np.random.randint(j, j + room_width)
+                        ] = 1  # TODO Replace by -3
+                        maze_array[
+                            np.random.randint(i, i + room_length), j + room_width
+                        ] = 1  # TODO Replace by -3
+                        maze_array[
+                            i + room_length, np.random.randint(j, j + room_width)
+                        ] = 1  # TODO Replace by -3
 
         # Replace last 0 by 1
         maze_array[maze_array == 0] = 1
@@ -151,7 +152,7 @@ class Maze:
         maze_array[:, -1] = -2
 
         # Add Surrounding Empty Space
-        maze_array = np.pad(maze_array, 2, constant_values=0)
+        maze_array = np.pad(maze_array, 2, constant_values=1)
 
         return maze_array
 
@@ -176,48 +177,36 @@ class Maze:
         wall_to_create = []
         for i in range(1, self.length + 4):
             for j in range(1, self.width + 4):
-                environment = self.maze_array[i : i + 3, j - 1 : j + 2]
+                environment = self.maze_array[i - 1 : i + 3, j - 1 : j + 2]
                 wall_assets = None
                 hitbox = None
                 camera_lvl = None
 
                 ## Horizontal Middle
                 if self.__matrix_mask(
-                    environment, np.array([[-2, -2, -2], [0, 0, 0], [0, 0, 0]])
-                ) or self.__matrix_mask(
-                    environment, np.array([[1, -2, 1], [0, 1, 0], [0, 0, 0]])
+                    environment,
+                    np.array(
+                        [
+                            [np.nan, 1, np.nan],
+                            [np.nan, -2, np.nan],
+                            [np.nan, np.nan, np.nan],
+                            [np.nan, np.nan, np.nan],
+                        ]
+                    ),
                 ):
                     wall_to_create.append([i, j, ["wall_mid"], True, 0])
 
-                ## Vertical right
-                if self.__matrix_mask(
-                    environment, np.array([[0, -2, 1], [0, -2, 0], [0, 0, 0]])
-                ) or self.__matrix_mask(
+                ## Horizontal Top
+                elif self.__matrix_mask(
                     environment,
-                    np.array([[0, -2, 0], [0, -2, 1], [0, 0, 0]]),
-                ):
-                    wall_to_create.append([i, j, ["wall_outer_mid_left"], True, 0])
-
-                ## Vertical left
-                if self.__matrix_mask(
-                    environment, np.array([[1, -2, 0], [0, -2, 0], [0, 0, 0]])
-                ) or self.__matrix_mask(
-                    environment,
-                    np.array([[0, -2, 0], [1, -2, 0], [0, 0, 0]]),
-                ):
-                    wall_to_create.append([i, j, ["wall_outer_mid_right"], True, 0])
-
-                ## Top left
-                if self.__matrix_mask(
-                    environment, np.array([[0, 0, 0], [0, -2, -2], [0, -2, 0]])
-                ):
-                    wall_to_create.append([i, j, ["wall_outer_top_left"], False, 1])
-
-                ## Top Middle
-                if self.__matrix_mask(
-                    environment, np.array([[0, 0, 0], [-2, -2, -2], [0, 0, 0]])
-                ) or self.__matrix_mask(
-                    environment, np.array([[0, 0, 0], [1, -2, 1], [0, 1, 0]])
+                    np.array(
+                        [
+                            [np.nan, np.nan, np.nan],
+                            [np.nan, 1, np.nan],
+                            [np.nan, -2, np.nan],
+                            [np.nan, np.nan, np.nan],
+                        ]
+                    ),
                 ):
                     wall_to_create.append([i, j, ["wall_top_mid"], False, 1])
 
@@ -259,8 +248,11 @@ class Maze:
         Returns:
             bool: True if the array is contained in the mask, False otherwise.
         """
+
         return np.all(
-            np.logical_or(mask == 0, np.logical_and(array == mask, mask != 0))
+            np.logical_or(
+                np.isnan(mask), np.logical_and(array == mask, ~np.isnan(mask))
+            )
         )
 
 

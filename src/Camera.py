@@ -24,12 +24,12 @@ class Camera(Entity):
         self.entity_manager = entity_manager
 
         # Set camera position
-        self.x = 0
-        self.y = 0
+        self.x = 50
+        self.y = 50
 
         # Set camera current configuration
         self.speed = 80  # The higher the speed, the slower the camera
-        self.zoom = 1  # The higher the zoom, the closer the camera
+        self.zoom = 3  # The higher the zoom, the closer the camera
 
         # Indicates the entity to be followed
         self.following_id = following_id
