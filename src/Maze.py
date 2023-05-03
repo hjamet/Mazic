@@ -182,33 +182,19 @@ class Maze:
                 hitbox = None
                 camera_lvl = None
 
-                ## Horizontal Middle
+                ## wall_edge_bottom_left
                 if self.__matrix_mask(
                     environment,
                     np.array(
                         [
-                            [np.nan, 1, np.nan],
-                            [np.nan, -2, np.nan],
                             [np.nan, np.nan, np.nan],
-                            [np.nan, np.nan, np.nan],
-                        ]
-                    ),
-                ):
-                    wall_to_create.append([i, j, ["wall_mid"], True, 0])
-
-                ## Horizontal Top
-                elif self.__matrix_mask(
-                    environment,
-                    np.array(
-                        [
-                            [np.nan, np.nan, np.nan],
-                            [np.nan, 1, np.nan],
-                            [np.nan, -2, np.nan],
+                            [np.nan, -2, 1],
+                            [np.nan, np.nan, -2],
                             [np.nan, np.nan, np.nan],
                         ]
                     ),
                 ):
-                    wall_to_create.append([i, j, ["wall_top_mid"], False, 1])
+                    wall_to_create.append([i, j, ["wall_edge_bottom_left"], True, 1])
 
         # Create the wall
         for i, j, wall_assets, hitbox, camera_lvl in wall_to_create:
