@@ -201,7 +201,7 @@ class Maze:
                     environment,
                     np.array(
                         [
-                            [np.nan, 1, np.nan],
+                            [np.nan, np.nan, np.nan],
                             [np.nan, -2, np.nan],
                             [-2, 1, np.nan],
                             [np.nan, np.nan, np.nan],
@@ -225,9 +225,9 @@ class Maze:
                     environment,
                     np.array(
                         [
-                            [-2, np.nan, np.nan],
+                            [np.nan, np.nan, np.nan],
                             [1, -2, np.nan],
-                            [-2, np.nan, np.nan],
+                            [np.nan, -2, np.nan],
                             [np.nan, np.nan, np.nan],
                         ]
                     ),
