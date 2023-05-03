@@ -203,7 +203,7 @@ class Maze:
                         [
                             [np.nan, 1, np.nan],
                             [np.nan, -2, np.nan],
-                            [np.nan, -2, 1],
+                            [-2, 1, np.nan],
                             [np.nan, np.nan, np.nan],
                         ]
                     ),
@@ -217,7 +217,7 @@ class Maze:
                         [
                             [np.nan, np.nan, np.nan],
                             [-2, 1, np.nan],
-                            [np.nan, np.nan, np.nan],
+                            [-2, np.nan, np.nan],
                             [np.nan, np.nan, np.nan],
                         ]
                     ),
@@ -227,7 +227,7 @@ class Maze:
                         [
                             [-2, np.nan, np.nan],
                             [1, -2, np.nan],
-                            [np.nan, np.nan, np.nan],
+                            [-2, np.nan, np.nan],
                             [np.nan, np.nan, np.nan],
                         ]
                     ),
@@ -241,7 +241,17 @@ class Maze:
                         [
                             [np.nan, 1, np.nan],
                             [np.nan, -2, np.nan],
+                            [np.nan, -2, np.nan],
                             [np.nan, np.nan, np.nan],
+                        ]
+                    ),
+                ) or self.__matrix_mask(
+                    environment,
+                    np.array(
+                        [
+                            [np.nan, -2, np.nan],
+                            [np.nan, -2, np.nan],
+                            [np.nan, 1, np.nan],
                             [np.nan, np.nan, np.nan],
                         ]
                     ),
