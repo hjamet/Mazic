@@ -210,6 +210,20 @@ class Maze:
                 ):
                     wall_to_create.append([i, j, ["wall_edge_left"], True, 0])
 
+                ## wall_edge_mid_left
+                if self.__matrix_mask(
+                    environment,
+                    np.array(
+                        [
+                            [np.nan, np.nan, np.nan],
+                            [-2, 1, np.nan],
+                            [np.nan, np.nan, np.nan],
+                            [np.nan, np.nan, np.nan],
+                        ]
+                    ),
+                ):
+                    wall_to_create.append([i, j, ["wall_edge_mid_left"], True, 1])
+
         # Create the wall
         for i, j, wall_assets, hitbox, camera_lvl in wall_to_create:
             structure_entities.append(
