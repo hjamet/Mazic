@@ -188,8 +188,8 @@ class Maze:
                     np.array(
                         [
                             [np.nan, np.nan, np.nan],
-                            [np.nan, -2, 1],
-                            [np.nan, np.nan, -2],
+                            [-2, 1, np.nan],
+                            [np.nan, -2, np.nan],
                             [np.nan, np.nan, np.nan],
                         ]
                     ),
