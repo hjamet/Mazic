@@ -175,8 +175,8 @@ class Maze:
 
         # Determine walls type
         wall_to_create = []
-        for i in range(1, self.length + 4):
-            for j in range(1, self.width + 4):
+        for i in range(1, self.length + 6):
+            for j in range(1, self.width + 6):
                 environment = self.maze_array[i - 1 : i + 3, j - 1 : j + 2]
                 wall_assets = None
                 hitbox = None
@@ -191,6 +191,16 @@ class Maze:
                             [-2, 1, np.nan],
                             [np.nan, -2, np.nan],
                             [np.nan, np.nan, np.nan],
+                        ]
+                    ),
+                ) or self.__matrix_mask(
+                    environment,
+                    np.array(
+                        [
+                            [np.nan, np.nan, np.nan],
+                            [-2, -2, np.nan],
+                            [1, -2, np.nan],
+                            [np.nan, 1, np.nan],
                         ]
                     ),
                 ):
@@ -381,6 +391,30 @@ class Maze:
                     )
                 ):
                     wall_to_create.append([i, j, ["wall_top_left"], False, 1])
+
+                ## wall_outer_front_right
+                if self.__matrix_mask(
+                    environment,
+                    np.array(
+                        [
+                            [1, -2, np.nan],
+                            [-2, -2, np.nan],
+                            [np.nan, np.nan, np.nan],
+                            [np.nan, np.nan, np.nan],
+                        ]
+                    ),
+                ) or self.__matrix_mask(
+                    environment,
+                    np.array(
+                        [
+                            [-2, np.nan, np.nan],
+                            [-2, 1, np.nan],
+                            [1, 1, np.nan],
+                            [np.nan, np.nan, np.nan],
+                        ]
+                    ),
+                ):
+                    wall_to_create.append([i, j, ["wall_outer_front_right"], True, 1])
 
         # Create the wall
         for i, j, wall_assets, hitbox, camera_lvl in wall_to_create:
