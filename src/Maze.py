@@ -283,40 +283,26 @@ class Maze:
                     wall_to_create.append([i, j, ["wall_mid"], True, 0])
 
                 ## wall_top_mid
-                if (
-                    self.__matrix_mask(
-                        environment,
-                        np.array(
-                            [
-                                [np.nan, np.nan, np.nan],
-                                [np.nan, 1, np.nan],
-                                [-2, -2, np.nan],
-                                [np.nan, -2, np.nan],
-                            ]
-                        ),
-                    )
-                    or self.__matrix_mask(
-                        environment,
-                        np.array(
-                            [
-                                [np.nan, np.nan, np.nan],
-                                [np.nan, -2, np.nan],
-                                [-2, -2, np.nan],
-                                [np.nan, 1, np.nan],
-                            ]
-                        ),
-                    )
-                    or self.__matrix_mask(
-                        environment,
-                        np.array(
-                            [
-                                [np.nan, np.nan, np.nan],
-                                [np.nan, 1, np.nan],
-                                [-2, -2, np.nan],
-                                [np.nan, 1, np.nan],
-                            ]
-                        ),
-                    )
+                if self.__matrix_mask(
+                    environment,
+                    np.array(
+                        [
+                            [np.nan, np.nan, np.nan],
+                            [np.nan, 1, np.nan],
+                            [-2, -2, np.nan],
+                            [np.nan, -2, np.nan],
+                        ]
+                    ),
+                ) or self.__matrix_mask(
+                    environment,
+                    np.array(
+                        [
+                            [np.nan, np.nan, np.nan],
+                            [np.nan, 1, np.nan],
+                            [-2, -2, np.nan],
+                            [np.nan, 1, np.nan],
+                        ]
+                    ),
                 ):
                     wall_to_create.append([i, j, ["wall_top_mid"], False, 1])
 
@@ -328,7 +314,7 @@ class Maze:
                             [
                                 [np.nan, np.nan, np.nan],
                                 [np.nan, 1, np.nan],
-                                [1, -2, np.nan],
+                                [np.nan, -2, np.nan],
                                 [np.nan, -2, np.nan],
                             ]
                         ),
@@ -339,7 +325,7 @@ class Maze:
                             [
                                 [np.nan, np.nan, np.nan],
                                 [np.nan, -2, np.nan],
-                                [1, -2, np.nan],
+                                [np.nan, -2, np.nan],
                                 [np.nan, 1, np.nan],
                             ]
                         ),
@@ -350,7 +336,7 @@ class Maze:
                             [
                                 [np.nan, np.nan, np.nan],
                                 [np.nan, 1, np.nan],
-                                [1, -2, np.nan],
+                                [np.nan, -2, np.nan],
                                 [np.nan, 1, np.nan],
                             ]
                         ),
