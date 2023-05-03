@@ -251,7 +251,7 @@ class Maze:
                         np.array(
                             [
                                 [np.nan, 1, np.nan],
-                                [np.nan, -2, np.nan],
+                                [-2, -2, np.nan],
                                 [np.nan, -2, np.nan],
                                 [np.nan, np.nan, np.nan],
                             ]
@@ -262,7 +262,7 @@ class Maze:
                         np.array(
                             [
                                 [np.nan, -2, np.nan],
-                                [np.nan, -2, np.nan],
+                                [-2, -2, np.nan],
                                 [np.nan, 1, np.nan],
                                 [np.nan, np.nan, np.nan],
                             ]
@@ -273,7 +273,7 @@ class Maze:
                         np.array(
                             [
                                 [np.nan, 1, np.nan],
-                                [np.nan, -2, np.nan],
+                                [-2, -2, np.nan],
                                 [np.nan, 1, np.nan],
                                 [np.nan, np.nan, np.nan],
                             ]
@@ -281,6 +281,44 @@ class Maze:
                     )
                 ):
                     wall_to_create.append([i, j, ["wall_mid"], True, 0])
+
+                ## wall_left
+                if (
+                    self.__matrix_mask(
+                        environment,
+                        np.array(
+                            [
+                                [np.nan, 1, np.nan],
+                                [1, -2, np.nan],
+                                [np.nan, -2, np.nan],
+                                [np.nan, np.nan, np.nan],
+                            ]
+                        ),
+                    )
+                    or self.__matrix_mask(
+                        environment,
+                        np.array(
+                            [
+                                [np.nan, -2, np.nan],
+                                [1, -2, np.nan],
+                                [np.nan, 1, np.nan],
+                                [np.nan, np.nan, np.nan],
+                            ]
+                        ),
+                    )
+                    or self.__matrix_mask(
+                        environment,
+                        np.array(
+                            [
+                                [np.nan, 1, np.nan],
+                                [1, -2, np.nan],
+                                [np.nan, 1, np.nan],
+                                [np.nan, np.nan, np.nan],
+                            ]
+                        ),
+                    )
+                ):
+                    wall_to_create.append([i, j, ["wall_left"], True, 0])
 
                 ## wall_top_mid
                 if self.__matrix_mask(
