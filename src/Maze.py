@@ -207,6 +207,16 @@ class Maze:
                             [np.nan, np.nan, np.nan],
                         ]
                     ),
+                ) or self.__matrix_mask(
+                    environment,
+                    np.array(
+                        [
+                            [np.nan, 1, np.nan],
+                            [np.nan, -2, np.nan],
+                            [1, -2, np.nan],
+                            [np.nan, np.nan, np.nan],
+                        ]
+                    ),
                 ):
                     wall_to_create.append([i, j, ["wall_edge_left"], True, 0])
 
@@ -280,7 +290,7 @@ class Maze:
                             [
                                 [np.nan, np.nan, np.nan],
                                 [np.nan, 1, np.nan],
-                                [np.nan, -2, np.nan],
+                                [-2, -2, np.nan],
                                 [np.nan, -2, np.nan],
                             ]
                         ),
@@ -291,7 +301,7 @@ class Maze:
                             [
                                 [np.nan, np.nan, np.nan],
                                 [np.nan, -2, np.nan],
-                                [np.nan, -2, np.nan],
+                                [-2, -2, np.nan],
                                 [np.nan, 1, np.nan],
                             ]
                         ),
@@ -302,13 +312,51 @@ class Maze:
                             [
                                 [np.nan, np.nan, np.nan],
                                 [np.nan, 1, np.nan],
-                                [np.nan, -2, np.nan],
+                                [-2, -2, np.nan],
                                 [np.nan, 1, np.nan],
                             ]
                         ),
                     )
                 ):
                     wall_to_create.append([i, j, ["wall_top_mid"], False, 1])
+
+                ## wall_top_left
+                if (
+                    self.__matrix_mask(
+                        environment,
+                        np.array(
+                            [
+                                [np.nan, np.nan, np.nan],
+                                [np.nan, 1, np.nan],
+                                [1, -2, np.nan],
+                                [np.nan, -2, np.nan],
+                            ]
+                        ),
+                    )
+                    or self.__matrix_mask(
+                        environment,
+                        np.array(
+                            [
+                                [np.nan, np.nan, np.nan],
+                                [np.nan, -2, np.nan],
+                                [1, -2, np.nan],
+                                [np.nan, 1, np.nan],
+                            ]
+                        ),
+                    )
+                    or self.__matrix_mask(
+                        environment,
+                        np.array(
+                            [
+                                [np.nan, np.nan, np.nan],
+                                [np.nan, 1, np.nan],
+                                [1, -2, np.nan],
+                                [np.nan, 1, np.nan],
+                            ]
+                        ),
+                    )
+                ):
+                    wall_to_create.append([i, j, ["wall_top_left"], False, 1])
 
         # Create the wall
         for i, j, wall_assets, hitbox, camera_lvl in wall_to_create:
