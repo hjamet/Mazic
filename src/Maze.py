@@ -409,8 +409,6 @@ class Floor(AnimatedEntity, Entity):
         # Set animation
         self.set_animation(
             "idle",
-            reverse=np.random.choice([True, False]),
-            rotation=np.random.choice([0, 90, 180, 270]),
             size=2,
         )
 
