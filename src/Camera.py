@@ -1,7 +1,7 @@
 from typing import Any
 
 from EntityManager import Entity, EntityManager
-from AssetManager import asset_manager, Asset
+import pygame
 
 
 class Camera(Entity):
@@ -112,6 +112,7 @@ class Camera(Entity):
                 )
             # Othewise, update the hitbox position and display it
             else:
+                ## Update hitbox position
                 animated_entity.rect.x = int(
                     (animated_entity.x * self.zoom - self.x * self.zoom)
                     + self.game.screen.get_width() / 2
@@ -122,4 +123,22 @@ class Camera(Entity):
                     + self.game.screen.get_height() / 2
                     - image.get_height() / 2
                 )
+
+                ## Update hitbox size
+                animated_entity.rect.width = int(image.get_width())
+                animated_entity.rect.height = int(image.get_height())
+
                 self.game.screen.blit(image, animated_entity.rect)
+
+                # Color the hitbox in red
+                pygame.draw.rect(
+                    self.game.screen,
+                    (255, 0, 0),
+                    (
+                        animated_entity.rect.x,
+                        animated_entity.rect.y,
+                        animated_entity.rect.width,
+                        animated_entity.rect.height,
+                    ),
+                    1,
+                )

@@ -169,7 +169,9 @@ class Entity:
 class AnimatedEntity(pygame.sprite.Sprite):
     asset_manager = asset_manager
 
-    def __init__(self, camera_lvl: int = 0, hitbox: bool = False) -> None:
+    def __init__(
+        self, camera_lvl: int = 0, hitbox: bool = False, mask: bool = False
+    ) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
 
@@ -198,15 +200,12 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
         # Set hitbox
         self.rect = None
-        self.image = None
-        # self.mask = None
+        self.mask = None
         if hitbox:
-            # Set hitbox
-            self.image = self.animations["idle"][0].get_image()
-            self.rect = self.image.get_rect()
+            self.rect = self.animations["idle"][0].get_image().get_rect()
 
-            # # Set mask using png transparency
-            # self.mask = pygame.mask.from_surface(self.animations["idle"][0].get_image())
+        if hitbox and mask:
+            self.mask = pygame.mask.from_surface(self.animations["idle"][0].get_image())
 
         # Set current animation
         self.current_animation_type = "idle"

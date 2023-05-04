@@ -39,7 +39,7 @@ class Character(Entity, AnimatedEntity):
 
         # Call parent constructors
         Entity.__init__(self)
-        AnimatedEntity.__init__(self, camera_lvl=2, hitbox=True)
+        AnimatedEntity.__init__(self, camera_lvl=2, hitbox=True, mask=True)
 
         # Set attributes
         self.name = name
