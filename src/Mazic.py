@@ -10,7 +10,6 @@ from Camera import Camera
 from Config import Config
 from Entity.Character import Character
 from Logger import Logger
-from Maze import Maze
 
 
 class Mazic:
@@ -46,7 +45,6 @@ class Mazic:
         # Spawn initial entities
         self.camera = None  # Will be set in spawn_initial_entities
         self.main_character_id = None  # Will be set in spawn_initial_entities
-        self.maze = None  # Will be set in spawn_initial_entities
         self.spawn_initial_entities()
 
         # Store external events state
@@ -55,17 +53,13 @@ class Mazic:
     def spawn_initial_entities(self) -> None:
         """Spawns the initial entities."""
 
-        # Spawn maze
-        self.maze = Maze()
-        self.maze.structure_entities = [
-            self.entity_manager.add(**structure_entity)
-            for structure_entity in self.maze.structure_entities
-        ]
-
         # Spawn main character
         self.main_character_id = self.entity_manager.add(
             Character, {"name": "Alice"}
         ).id
+
+        # Spawn Another character
+        self.entity_manager.add(Character, {"name": "Bob", "x": 100, "y": 100})
 
         # Spawn Camera
         self.camera = self.entity_manager.add(

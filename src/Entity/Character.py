@@ -28,8 +28,14 @@ class Character(Entity, AnimatedEntity):
         "hit": 0.1,
     }
 
-    def __init__(self, name: str) -> None:
-        """A class for the players character."""
+    def __init__(self, name: str, x: int = 0, y: int = 0) -> None:
+        """A class for the players character.
+
+        Args:
+            name (str): The name of the character.
+            x (int): The x position of the character. Defaults to 0.
+            y (int): The y position of the character. Defaults to 0.
+        """
 
         # Call parent constructors
         Entity.__init__(self)
@@ -37,6 +43,8 @@ class Character(Entity, AnimatedEntity):
 
         # Set attributes
         self.name = name
+        self.x = x
+        self.y = y
 
         # Set default attributes
         self.speed = 2
