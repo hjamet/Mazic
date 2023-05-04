@@ -1,6 +1,7 @@
 import pygame
 from Logger import Logger
 from AssetManager import asset_manager, Asset
+from typing import List, Tuple
 
 
 class EntityManager:
@@ -271,6 +272,39 @@ class AnimatedEntity(pygame.sprite.Sprite):
             self.current_animation_index = 0
             self.current_animation_type = animation
         return self
+
+    def get_collisions(self) -> List[Tuple]:
+        """Get the list of entities the character is colliding with. The list is empty if the entity has no hitbox.
+
+        Returns:
+            List[Tuple]: The list of entities the character is colliding with.
+        """
+        # Check if entity has hitbox
+        if self.rect is None:
+            return []
+
+        # Get entities
+        entities = self.entity_manager.get_tangible_entities()
+        ## Remove self
+        entities.remove(self)
+
+        # Get collision
+        collisions = pygame.sprite.spritecollide(
+            self, entities, False, pygame.sprite.collide_rect
+        )
+
+        # Get collision direction
+        collisions_directions = []
+        for collision in collisions:
+            collisions_directions.append(
+                (
+                    collision,
+                    collision.x - self.x,
+                    collision.y - self.y,
+                )
+            )
+
+        return collisions_directions
 
 
 class Event:

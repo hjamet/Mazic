@@ -86,8 +86,9 @@ class Mazic:
             # Update entities
             self.entity_manager(external_events=external_events)
 
-            # Update display
+            # Update display (this will also update hitboxes and masks)
             self.camera.update()
+
             pygame.display.flip()
 
     def events(self) -> None:
