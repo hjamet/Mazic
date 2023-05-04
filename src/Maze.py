@@ -7,8 +7,8 @@ from typing import List, Dict
 class Maze:
     def __init__(
         self,
-        length: int = 25,
-        width: int = 25,
+        length: int = 50,
+        width: int = 50,
         nbr_player: int = 1,
         min_room_size: int = 1,
         max_room_size: int = 5,
@@ -360,7 +360,7 @@ class Maze:
                         ]
                     ),
                 ):
-                    wall_to_create.append([i, j, ["wall_top_mid"], False, 3])
+                    wall_to_create.append([i, j, ["wall_top_mid"], True, 3])
 
                 ## wall_top_left
                 if (
@@ -398,7 +398,7 @@ class Maze:
                         ),
                     )
                 ):
-                    wall_to_create.append([i, j, ["wall_top_left"], False, 3])
+                    wall_to_create.append([i, j, ["wall_top_left"], True, 3])
 
                 ## wall_outer_front_right
                 if self.__matrix_mask(
@@ -460,7 +460,7 @@ class Maze:
                         ),
                     )
                 ):
-                    wall_to_create.append([i, j, ["wall_outer_top_right"], False, 3])
+                    wall_to_create.append([i, j, ["wall_outer_top_right"], True, 3])
 
         # Create the wall
         for i, j, wall_assets, hitbox, camera_lvl in wall_to_create:

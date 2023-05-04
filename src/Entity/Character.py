@@ -109,7 +109,7 @@ class Character(Entity, AnimatedEntity):
 
         # Get collision
         collision = pygame.sprite.spritecollide(
-            self, entities, False, pygame.sprite.collide_rect
+            self, entities, False, pygame.sprite.collide_mask
         )
 
         # Get collision direction

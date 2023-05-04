@@ -93,18 +93,33 @@ class Camera(Entity):
                 scale=self.zoom,
             )
 
-            self.game.screen.blit(
-                image,
-                (
-                    int(
-                        (animated_entity.x * self.zoom - self.x * self.zoom)
-                        + self.game.screen.get_width() / 2
-                        - image.get_width() / 2
+            # If the entity has no hitbox, just display the image
+            if animated_entity.rect is None:
+                self.game.screen.blit(
+                    image,
+                    (
+                        int(
+                            (animated_entity.x * self.zoom - self.x * self.zoom)
+                            + self.game.screen.get_width() / 2
+                            - image.get_width() / 2
+                        ),
+                        int(
+                            (animated_entity.y * self.zoom - self.y * self.zoom)
+                            + self.game.screen.get_height() / 2
+                            - image.get_height() / 2
+                        ),
                     ),
-                    int(
-                        (animated_entity.y * self.zoom - self.y * self.zoom)
-                        + self.game.screen.get_height() / 2
-                        - image.get_height() / 2
-                    ),
-                ),
-            )
+                )
+            # Othewise, update the hitbox position and display it
+            else:
+                animated_entity.rect.x = int(
+                    (animated_entity.x * self.zoom - self.x * self.zoom)
+                    + self.game.screen.get_width() / 2
+                    - image.get_width() / 2
+                )
+                animated_entity.rect.y = int(
+                    (animated_entity.y * self.zoom - self.y * self.zoom)
+                    + self.game.screen.get_height() / 2
+                    - image.get_height() / 2
+                )
+                self.game.screen.blit(image, animated_entity.rect)

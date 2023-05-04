@@ -165,15 +165,11 @@ class Entity:
         new_events = self.update(entity_events)
         self.entity_manager.next_events.extend(new_events)
 
-        # If child class is AnimatedEntity, update the hitbox
-        if isinstance(self, AnimatedEntity):
-            self.update_hitbox()
-
 
 class AnimatedEntity(pygame.sprite.Sprite):
     asset_manager = asset_manager
 
-    def __init__(self, camera_lvl: int = 0, hitbox: bool = False, mask=True) -> None:
+    def __init__(self, camera_lvl: int = 0, hitbox: bool = False) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
 
@@ -202,11 +198,15 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
         # Set hitbox
         self.rect = None
+        self.image = None
+        # self.mask = None
         if hitbox:
-            self.rect = self.animations["idle"][0].get_image().get_rect()
-        if mask:
-            # Set mask using png transparency
-            self.mask = pygame.mask.from_surface(self.animations["idle"][0].get_image())
+            # Set hitbox
+            self.image = self.animations["idle"][0].get_image()
+            self.rect = self.image.get_rect()
+
+            # # Set mask using png transparency
+            # self.mask = pygame.mask.from_surface(self.animations["idle"][0].get_image())
 
         # Set current animation
         self.current_animation_type = "idle"
@@ -246,12 +246,6 @@ class AnimatedEntity(pygame.sprite.Sprite):
         current_asset = current_asset.reverse(self.reverse)
 
         return current_asset
-
-    def update_hitbox(self):
-        """Updates the hitbox if the entity has one."""
-        if self.rect is not None:
-            self.rect.x = self.x
-            self.rect.y = self.y
 
     def set_animation(
         self,
