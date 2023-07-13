@@ -1,4 +1,5 @@
 import numpy as np
+import pygame
 
 from EntityManager import Entity, AnimatedEntity
 
@@ -51,9 +52,11 @@ class Projectile(Entity, AnimatedEntity):
 
         # Set default attributes
         self.speed = 2
+        self.scope_time = 1000  # The time the projectile will exist for in ms
 
-        # Set direction
-        self.direction = (
+        # Set private attributes
+        self.launch_time = pygame.time.get_ticks()
+        self.__direction = (
             (
                 (self.target_x - self.x)
                 / (abs(self.target_x - self.x) + abs(self.target_y - self.y))
@@ -86,7 +89,11 @@ class Projectile(Entity, AnimatedEntity):
             list : The events the entity generated.
         """
         # Move the projectile
-        self.x += self.direction[0]
-        self.y += self.direction[1]
+        self.x += self.__direction[0]
+        self.y += self.__direction[1]
+
+        # Check if the projectile is out of scope
+        if pygame.time.get_ticks() - self.launch_time > self.scope_time:
+            self.entity_manager.remove(self)
 
         return []
