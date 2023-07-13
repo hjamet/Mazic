@@ -2,6 +2,19 @@ from EntityManager import Entity, AnimatedEntity
 
 
 class Character(Entity, AnimatedEntity):
+    """The main character of the game.
+
+    Args:
+        Entity (Entity): A class giving the character the ability to process events.
+        AnimatedEntity (AnimatedEntity): A class giving the character the ability to be animated and displayed.
+
+    Raises:
+        ValueError: If the character name is not valid.
+
+    Returns:
+        Character: A character instance.
+    """
+
     assets_needed = {
         "idle": [
             "wizzard_m_idle_anim_f0",
@@ -45,7 +58,7 @@ class Character(Entity, AnimatedEntity):
         self.y = y
 
         # Set default attributes
-        self.speed = 2
+        self.speed = 1
 
     def update(self, event_list: list) -> None:
         """Update the entity.
