@@ -168,10 +168,13 @@ class Entity:
 
 
 class AnimatedEntity(pygame.sprite.Sprite):
+    """A class for the visible objects in the game.
+    Manages the display and animations. Also eventually has a hitbox and a mask."""
+
     asset_manager = asset_manager
 
     def __init__(
-        self, camera_lvl: int = 0, hitbox: bool = False, mask: bool = False
+        self, camera_lvl: int = 0, has_hitbox: bool = False, has_mask: bool = False
     ) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
@@ -186,6 +189,8 @@ class AnimatedEntity(pygame.sprite.Sprite):
         """
         # Save attributes
         self.camera_lvl = camera_lvl
+        self.has_hitbox = has_hitbox
+        self.has_mask = has_mask
 
         # Check if child class has assets_needed
         if not hasattr(self, "assets_needed"):
@@ -202,11 +207,14 @@ class AnimatedEntity(pygame.sprite.Sprite):
         # Set hitbox
         self.rect = None
         self.mask = None
-        if hitbox:
+        if has_hitbox and not has_mask:
+            # Create simple rectangle hitbox
             self.rect = self.animations["idle"][0].get_image().get_rect()
 
-        if hitbox and mask:
+        if has_hitbox and has_mask:
+            # Create a pixel perfect hitbox
             self.mask = pygame.mask.from_surface(self.animations["idle"][0].get_image())
+            self.rect = self.mask.get_rect()
 
         # Set current animation
         self.current_animation_type = "idle"
@@ -280,7 +288,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
             List[Tuple]: The list of entities the character is colliding with.
         """
         # Check if entity has hitbox
-        if self.rect is None:
+        if self.has_hitbox is False:
             return []
 
         # Get entities
@@ -288,10 +296,13 @@ class AnimatedEntity(pygame.sprite.Sprite):
         ## Remove self
         entities.remove(self)
 
-        # Get collision
+        # Get collisions
         collisions = pygame.sprite.spritecollide(
-            self, entities, False, pygame.sprite.collide_rect
+            self, entities, False, pygame.sprite.collide_mask
         )
+
+        if len(collisions) != 0:
+            print("Collision !")
 
         # Get collision direction
         collisions_directions = []

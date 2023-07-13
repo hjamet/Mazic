@@ -72,6 +72,10 @@ class Mazic:
         )
 
     def run(self) -> None:
+        """Runs the game loop.
+
+        This method will start an infinite loop constantly updating the game state, looking for events and updating the display.
+        """
         # Game loop
         while self.running:
             self.clock.tick(self.config.fps)

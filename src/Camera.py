@@ -112,6 +112,13 @@ class Camera(Entity):
                 )
             # Othewise, update the hitbox position and display it
             else:
+                # Update hitbox shape
+                if animated_entity.has_mask:
+                    animated_entity.mask = pygame.mask.from_surface(image)
+                    animated_entity.rect = animated_entity.mask.get_rect()
+                else:
+                    animated_entity.rect = image.get_rect()
+
                 ## Update hitbox position
                 animated_entity.rect.x = int(
                     (animated_entity.x * self.zoom - self.x * self.zoom)
@@ -130,15 +137,13 @@ class Camera(Entity):
 
                 self.game.screen.blit(image, animated_entity.rect)
 
-                # Color the hitbox in red
-                pygame.draw.rect(
-                    self.game.screen,
-                    (255, 0, 0),
-                    (
-                        animated_entity.rect.x,
-                        animated_entity.rect.y,
-                        animated_entity.rect.width,
-                        animated_entity.rect.height,
-                    ),
-                    1,
+                # Créer une surface à partir du masque de collision
+                mask_surface = animated_entity.mask.to_surface()
+
+                # Colorer les pixels de la hitbox en rouge
+                mask_surface.fill(
+                    (255, 0, 0, 100), special_flags=pygame.BLEND_RGBA_MULT
                 )
+
+                # Dessiner la hitbox sur l'écran
+                self.game.screen.blit(mask_surface, animated_entity.rect)
