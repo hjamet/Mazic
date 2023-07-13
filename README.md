@@ -9,6 +9,11 @@ Mazic is a PvP game in which you play a mage trapped in a labyrinth haunted by a
 You can alternatively create a virtual environment, install the dependencies and run the src/main.py file from the root of the repository.
 Or you can run the Makefile with the following command :
 
+```
+> make install
+```
+
+
 ### You just want to play the Game...
 
 Just go to the release tab and download last game version ! 💃
