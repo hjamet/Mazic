@@ -29,8 +29,8 @@ class EntityManager:
         entity_index = 0
         if isinstance(entity_instance, AnimatedEntity):
             while entity_index < len(self.entities) and (
-                self.entities[entity_index].camera_lvl < entity_instance.camera_lvl
-                or not isinstance(self.entities[entity_index], AnimatedEntity)
+                not isinstance(self.entities[entity_index], AnimatedEntity)
+                or self.entities[entity_index].camera_lvl < entity_instance.camera_lvl
             ):
                 entity_index += 1
 

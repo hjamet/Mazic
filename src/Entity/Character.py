@@ -1,4 +1,6 @@
+import pygame
 from EntityManager import Entity, AnimatedEntity
+from Entity.Projectile import Projectile
 
 
 class Character(Entity, AnimatedEntity):
@@ -60,6 +62,9 @@ class Character(Entity, AnimatedEntity):
         # Set default attributes
         self.speed = 1
 
+        # Set internal attributes
+        self.__last_move = pygame.time.get_ticks()  # The last time the character moved
+
     def update(self, event_list: list) -> None:
         """Update the entity.
 
@@ -69,11 +74,27 @@ class Character(Entity, AnimatedEntity):
         Returns:
             list : The events the entity generated.
         """
+        # Check for events
         animation = {"animation": "idle", "reverse": None}
         for event in event_list:
             # Move character
             if event.type == "move":
                 animation = self.__move(**event.data)
+
+        # Check for auto attack
+        if (
+            pygame.time.get_ticks() - self.__last_move > 1000
+        ):  # TODO: Make this a variable
+            self.entity_manager.add(
+                Projectile,
+                {
+                    "x": self.x,
+                    "y": self.y,
+                    "target_x": self.x + 100,
+                    "target_y": self.y + 100,
+                },
+            )
+            self.__last_move = pygame.time.get_ticks()
 
         # Update animation
         self.set_animation(**animation)
@@ -87,6 +108,9 @@ class Character(Entity, AnimatedEntity):
             direction (str): The direction to move the character.
         """
         reverse = None
+
+        # Set the last move time
+        self.__last_move = pygame.time.get_ticks()
 
         # Check for collisions
         collisions = self.get_collisions()
