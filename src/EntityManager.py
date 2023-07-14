@@ -11,7 +11,7 @@ class EntityManager:
         self.next_events = []  # List of events newly created by the entities
         self.logger = Logger(self.__class__.__name__)
 
-    def add(self, entity: object, kwargs: dict = {}) -> None:
+    def add(self, entity: object, kwargs: dict = {}) -> object:
         """Adds an entity to the game.
 
         Args:
@@ -19,7 +19,7 @@ class EntityManager:
             kwargs (dict, optional): The entity attributes. Defaults to {}.
 
         Returns:
-            int: The entity id.
+            Entity: The entity instance.
         """
         # Create entity instance
         entity_instance = entity(**kwargs)

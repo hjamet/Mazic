@@ -20,6 +20,15 @@ class Health:
         self.hp = max_hp
         self._is_dead = False
 
+        # Health bar
+        self.health_bar = self.entity_manager.add(
+            HealthBar,
+            {
+                "current_hp": self.hp,
+                "max_hp": self.max_hp,
+            },
+        )
+
     def take_damage(self, damage: int) -> None:
         """Take damage.
 
@@ -63,4 +72,10 @@ class HealthBar(Entity, AnimatedEntity):
             current_hp (int): The current number of hp the entity has.
             max_hp (int): The maximum number of hp the entity can have.
         """
-        raise NotImplementedError
+        # Call parent constructors
+        Entity.__init__(self)
+        AnimatedEntity.__init__(self, camera_lvl=3)
+
+        # Set attributes
+        self.hp = current_hp
+        self.max_hp = max_hp

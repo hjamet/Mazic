@@ -60,7 +60,7 @@ class Character(Entity, AnimatedEntity):
         self.y = y
 
         # Set default attributes
-        self.speed = 1
+        self.speed = 2
 
         # Set internal attributes
         self.__last_move = pygame.time.get_ticks()  # The last time the character moved
