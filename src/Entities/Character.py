@@ -1,9 +1,10 @@
 import pygame
 from EntityManager import Entity, AnimatedEntity
 from Entities.Projectile import Projectile
+from EntityPlugins.Health import Health
 
 
-class Character(Entity, AnimatedEntity):
+class Character(Entity, AnimatedEntity, Health):
     """The main character of the game.
 
     Args:
@@ -53,6 +54,7 @@ class Character(Entity, AnimatedEntity):
         # Call parent constructors
         Entity.__init__(self)
         AnimatedEntity.__init__(self, camera_lvl=2, has_hitbox=True, has_mask=True)
+        Health.__init__(self, max_hp=100)
 
         # Set attributes
         self.name = name

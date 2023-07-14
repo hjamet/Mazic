@@ -59,11 +59,7 @@ class HealthBar(Entity, AnimatedEntity):
         AnimatedEntity (AnimatedEntity): A class giving the character the ability to be displayed.
     """
 
-    assets_needed = {
-        "idle": [
-            pygame.surface.Surface((100, 10)),
-        ]
-    }
+    assets_needed = {"idle": []}  # This is a placeholder
 
     def __init__(self, current_hp: int, max_hp: int):
         """A class to display a health bar.
@@ -79,3 +75,16 @@ class HealthBar(Entity, AnimatedEntity):
         # Set attributes
         self.hp = current_hp
         self.max_hp = max_hp
+
+        # Create health bar animation
+        animation = pygame.Surface((5, 50))
+        animation.fill((255, 0, 0))
+        pygame.draw.rect(animation, (0, 255, 0), (0, 0, 5, 35))
+        self.create_animation(
+            "idle",
+            [animation],
+        )
+
+    def update(self, event_list: list) -> None:
+        """Update the health bar."""
+        pass

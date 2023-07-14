@@ -146,9 +146,7 @@ class Entity:
         Returns:
             list: The new events to be processed by the EntityManager.
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must have an update method."
-        )
+        pass
 
     def __call__(self, events: list) -> None:
         """Update the entity.
@@ -164,6 +162,8 @@ class Entity:
 
         # Process events and get new ones
         new_events = self.update(entity_events)
+        if new_events is None:
+            new_events = []
         self.entity_manager.next_events.extend(new_events)
 
 
@@ -238,12 +238,19 @@ class AnimatedEntity(pygame.sprite.Sprite):
     def get_current_animation(self):
         """Returns the current animation."""
         # Check if entity is visible
-        if self._is_visible is False:
+        if (
+            self._is_visible is False
+            or self.animations[self.current_animation_type] == []
+        ):
             return None
 
         current_asset = self.animations[self.current_animation_type][
             int(self.current_animation_index)
         ]
+
+        # Check if there is an image to display
+        if current_asset is None:
+            return None
 
         # Update current frame
         animation_speed = (
@@ -266,6 +273,21 @@ class AnimatedEntity(pygame.sprite.Sprite):
         current_asset = current_asset.reverse(self.reverse)
 
         return current_asset
+
+    def create_animation(self, animation: str, assets: list):
+        """Create an animation by adding it to the animations dictionary
+        NOTE : This method can replace an already existing animation
+
+        Args:
+            animation (str): The name of the animation
+            assets (list): The list of assets to use for the animation. Can be either strings or surfaces.
+        """
+        self.animations[animation] = [
+            Asset(asset_name=asset_name)
+            if isinstance(asset_name, str)
+            else Asset(asset_surface=asset_name)
+            for asset_name in assets
+        ]
 
     def set_animation(
         self,
