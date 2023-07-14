@@ -59,6 +59,9 @@ class Camera(Entity):
         for animated_entity in self.entity_manager.get_animated_entities():
             # Get the current animation
             asset = animated_entity.get_current_animation()
+            ## Check if the entity has an animation
+            if asset is None:
+                continue
 
             # Get the asset size
             asset_size = asset.get_size()

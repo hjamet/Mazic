@@ -1,6 +1,6 @@
 import pygame
 from EntityManager import Entity, AnimatedEntity
-from Entity.Projectile import Projectile
+from Entities.Projectile import Projectile
 
 
 class Character(Entity, AnimatedEntity):

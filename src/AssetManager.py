@@ -33,9 +33,17 @@ class AssetManager:
         if asset.asset_name in self.raw_asset:
             asset_surface = self.raw_asset[asset.asset_name]
         else:
-            asset_surface = pygame.image.load(
-                os.path.join("assets/frames", asset.asset_name + ".png")
-            ).convert_alpha()
+            # Load asset based on asset name or asset surface
+            if asset.asset_name is not None:
+                asset_surface = pygame.image.load(
+                    os.path.join("assets/frames", asset.asset_name + ".png")
+                ).convert_alpha()
+            elif asset.asset_surface is not None:
+                asset_surface = asset.asset_surface
+            else:
+                raise ValueError(
+                    "Either asset_name or asset_surface must be set when creating an asset."
+                )
             self.raw_asset[asset.asset_name] = asset_surface
 
         # Apply transformations
@@ -109,14 +117,26 @@ asset_manager = AssetManager()
 class Asset:
     asset_manager = asset_manager
 
-    def __init__(self, asset_name: str):
+    def __init__(self, asset_name: str = None, asset_surface: pygame.Surface = None):
         """A class to manage an asset. It is optimised to load images and apply common transformations very quickly.
 
         Args:
-            asset_name (str): The name of the asseet to load.
+            asset_name (str): The name of the asseet to load. Defaults to None. MUST BE SET IF ASSET NAME IS NOT SET.
+            asset_surface (pygame.Surface): The surface of the asset to load. Defaults to None. MUST BE SET IF ASSET NAME IS NOT SET.
         """
         # Set attributes
         self.asset_name = asset_name
+        self.asset_surface = asset_surface
+
+        # Check if arguments are valid
+        if self.asset_name is None and self.asset_surface is None:
+            raise ValueError(
+                "Either asset_name or asset_surface must be set when creating an asset."
+            )
+        elif self.asset_name is not None and self.asset_surface is not None:
+            raise ValueError(
+                "Only one of asset_name or asset_surface must be set when creating an asset."
+            )
 
         # Asset Transformations
         self.rotation_factor = 0
