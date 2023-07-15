@@ -11,7 +11,7 @@ class EntityManager:
         self.next_events = []  # List of events newly created by the entities
         self.logger = Logger(self.__class__.__name__)
 
-    def add(self, entity: object, kwargs: dict = {}) -> None:
+    def add(self, entity: object, kwargs: dict = {}) -> object:
         """Adds an entity to the game.
 
         Args:
@@ -19,7 +19,7 @@ class EntityManager:
             kwargs (dict, optional): The entity attributes. Defaults to {}.
 
         Returns:
-            int: The entity id.
+            Entity: The entity instance.
         """
         # Create entity instance
         entity_instance = entity(**kwargs)
@@ -200,6 +200,9 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.has_hitbox = has_hitbox
         self.has_mask = has_mask
 
+        # Set private attributes
+        self._is_visible = True
+
         # Check if child class has assets_needed
         if not hasattr(self, "assets_needed"):
             raise NotImplementedError(
@@ -208,7 +211,12 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
         # Load animations
         self.animations = {
-            animation_type: [Asset(asset_name) for asset_name in assets_name]
+            animation_type: [
+                Asset(asset_name=asset_name)
+                if isinstance(asset_name, str)
+                else Asset(asset_surface=asset_name)
+                for asset_name in assets_name
+            ]
             for animation_type, assets_name in self.assets_needed.items()
         }
 
@@ -237,6 +245,10 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
     def get_current_animation(self):
         """Returns the current animation."""
+        # Check if entity is visible
+        if self._is_visible is False:
+            return None
+
         current_asset = self.animations[self.current_animation_type][
             int(self.current_animation_index)
         ]

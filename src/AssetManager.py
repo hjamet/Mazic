@@ -30,13 +30,21 @@ class AssetManager:
 
         # Load asset
         ## Get asset if it is already loaded, otherwise load it
-        if asset.asset_name in self.raw_asset:
+        if asset.asset_name is not None and asset.asset_name in self.raw_asset:
             asset_surface = self.raw_asset[asset.asset_name]
         else:
-            asset_surface = pygame.image.load(
-                os.path.join("assets/frames", asset.asset_name + ".png")
-            ).convert_alpha()
-            self.raw_asset[asset.asset_name] = asset_surface
+            # Load asset based on asset name or asset surface
+            if asset.asset_name is not None:
+                asset_surface = pygame.image.load(
+                    os.path.join("assets/frames", asset.asset_name + ".png")
+                ).convert_alpha()
+                self.raw_asset[asset.asset_name] = asset_surface
+            elif asset.asset_surface is not None:
+                asset_surface = asset.asset_surface
+            else:
+                raise ValueError(
+                    "Either asset_name or asset_surface must be set when creating an asset."
+                )
 
         # Apply transformations
         ## Apply rotation
@@ -64,8 +72,9 @@ class AssetManager:
             else asset_surface
         )
 
-        # Save asset
-        self.transformed_asset[asset.__hash__()] = asset_surface
+        # Save asset (only if it is based on an image)
+        if asset.asset_name is not None:
+            self.transformed_asset[asset.__hash__()] = asset_surface
 
         # Check if memory is full
         if len(self.transformed_asset) > self.config.max_hashed_assets:
@@ -87,13 +96,15 @@ class AssetManager:
             tuple: The size of the asset.
         """
         # Get asset if it is already loaded, otherwise load it
-        if asset.asset_name in self.raw_asset:
+        if asset.asset_name is not None and asset.asset_name in self.raw_asset:
             raw_asset_surface = self.raw_asset[asset.asset_name]
-        else:
+        elif asset.asset_name is not None:
             raw_asset_surface = pygame.image.load(
                 os.path.join("assets/frames", asset.asset_name + ".png")
             ).convert_alpha()
             self.raw_asset[asset.asset_name] = raw_asset_surface
+        elif asset.asset_surface is not None:
+            raw_asset_surface = asset.asset_surface
 
         raw_asset_size = raw_asset_surface.get_size()
 
@@ -109,14 +120,26 @@ asset_manager = AssetManager()
 class Asset:
     asset_manager = asset_manager
 
-    def __init__(self, asset_name: str):
+    def __init__(self, asset_name: str = None, asset_surface: pygame.Surface = None):
         """A class to manage an asset. It is optimised to load images and apply common transformations very quickly.
 
         Args:
-            asset_name (str): The name of the asseet to load.
+            asset_name (str): The name of the asseet to load. Defaults to None. MUST BE SET IF ASSET NAME IS NOT SET.
+            asset_surface (pygame.Surface): The surface of the asset to load. Defaults to None. MUST BE SET IF ASSET NAME IS NOT SET.
         """
         # Set attributes
         self.asset_name = asset_name
+        self.asset_surface = asset_surface
+
+        # Check if arguments are valid
+        if self.asset_name is None and self.asset_surface is None:
+            raise ValueError(
+                "Either asset_name or asset_surface must be set when creating an asset."
+            )
+        elif self.asset_name is not None and self.asset_surface is not None:
+            raise ValueError(
+                "Only one of asset_name or asset_surface must be set when creating an asset."
+            )
 
         # Asset Transformations
         self.rotation_factor = 0
@@ -160,7 +183,8 @@ class Asset:
         return self
 
     def __hash__(self) -> str:
-        """Hash the asset.
+        """Hash the asset. This is used to store the asset in a dictionary.
+        ONLY WORKS IF THE ASSET IS BASED ON AN IMAGE !
 
         Returns:
             str: The hash of the asset.

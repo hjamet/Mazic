@@ -8,7 +8,7 @@ pygame.init()
 import EntityManager
 from Camera import Camera
 from Config import Config
-from Entity.Character import Character
+from Entities.Character import Character
 from Logger import Logger
 
 
@@ -60,7 +60,7 @@ class Mazic:
 
         # Spawn Another character
         self.entity_manager.add(Character, {"name": "Bob", "x": 100, "y": 100})
-        from Entity.Projectile import Projectile
+        from Entities.Projectile import Projectile
 
         self.entity_manager.add(
             Projectile, {"x": 0, "y": 0, "target_x": 100, "target_y": 100}
