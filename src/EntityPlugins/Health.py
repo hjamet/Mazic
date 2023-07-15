@@ -24,6 +24,7 @@ class Health:
         self.health_bar = self.entity_manager.add(
             HealthBar,
             {
+                "entity": self,
                 "current_hp": self.hp,
                 "max_hp": self.max_hp,
             },
@@ -61,10 +62,11 @@ class HealthBar(Entity, AnimatedEntity):
 
     assets_needed = {"idle": []}  # This is a placeholder
 
-    def __init__(self, current_hp: int, max_hp: int):
+    def __init__(self, entity: AnimatedEntity, current_hp: int, max_hp: int):
         """A class to display a health bar.
 
         Args:
+            entity (AnimatedEntity): The entity to display the health bar on.
             current_hp (int): The current number of hp the entity has.
             max_hp (int): The maximum number of hp the entity can have.
         """
@@ -73,6 +75,7 @@ class HealthBar(Entity, AnimatedEntity):
         AnimatedEntity.__init__(self, camera_lvl=3)
 
         # Set attributes
+        self.entity = entity
         self.hp = current_hp
         self.max_hp = max_hp
 
@@ -87,4 +90,6 @@ class HealthBar(Entity, AnimatedEntity):
 
     def update(self, event_list: list) -> None:
         """Update the health bar."""
-        pass
+        # Update position
+        self.x = self.entity.x
+        self.y = self.entity.y - 15
