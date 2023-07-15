@@ -60,11 +60,6 @@ class Mazic:
 
         # Spawn Another character
         self.entity_manager.add(Character, {"name": "Bob", "x": 100, "y": 100})
-        from Entities.Projectile import Projectile
-
-        self.entity_manager.add(
-            Projectile, {"x": 0, "y": 0, "target_x": 100, "target_y": 100}
-        )
 
         # Spawn Camera
         self.camera = self.entity_manager.add(

@@ -1,7 +1,8 @@
 import numpy as np
 import pygame
 
-from EntityManager import Entity, AnimatedEntity
+from EntityManager import Entity, AnimatedEntity, Event
+from EntityPlugins.Health import Health
 
 
 class Projectile(Entity, AnimatedEntity):
@@ -29,7 +30,15 @@ class Projectile(Entity, AnimatedEntity):
         "idle": 0.25,
     }
 
-    def __init__(self, x: int, y: int, target_x: int, target_y: int) -> None:
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        target_x: int,
+        target_y: int,
+        team: int = None,
+        launcher_id: int = None,
+    ) -> None:
         """A class for the players character.
 
         Args:
@@ -38,6 +47,8 @@ class Projectile(Entity, AnimatedEntity):
             y (int): The y position of the launch point.
             target_x (int): The x position of the target.
             target_y (int): The y position of the target.
+            team (int): The team of the projectile. Defaults to None (hurt all).
+            launcher_id (int): The id of the launcher. Defaults to None. (also hurt the launcher)
         """
 
         # Call parent constructors
@@ -49,9 +60,12 @@ class Projectile(Entity, AnimatedEntity):
         self.y = y
         self.target_x = target_x
         self.target_y = target_y
+        self.team = team
+        self.launcher_id = launcher_id
 
         # Set default attributes
         self.speed = 2
+        self.damage = 10  # The damage the projectile will do
         self.scope_time = 1000  # The time the projectile will exist for in ms
 
         # Set private attributes
@@ -96,4 +110,29 @@ class Projectile(Entity, AnimatedEntity):
         if pygame.time.get_ticks() - self.launch_time > self.scope_time:
             self.entity_manager.remove(self)
 
-        return []
+        # Check for collisions
+        collisions = self.get_collisions()
+        ## Remove Projectiles
+        collisions = [
+            collision[0]
+            for collision in collisions
+            if not isinstance(collision[0], Projectile)
+        ]
+        # Apply damage
+        returned_events = []
+        for collision in collisions:
+            if (
+                self.team is None or collision.team != self.team
+            ) and collision.id != self.launcher_id:
+                if isinstance(collision, Health):
+                    self.logger.debug(f"Projectile {self.id} hit {collision.id}")
+                    returned_events.append(
+                        Event(
+                            targets=[collision.id],
+                            type="damage",
+                            data={"damage": self.damage},
+                        )
+                    )
+                self.entity_manager.remove(self)
+
+        return returned_events

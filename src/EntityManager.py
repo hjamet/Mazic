@@ -43,7 +43,10 @@ class EntityManager:
         Args:
             entity (object): The entity to remove.
         """
-        self.entities.remove(entity)
+        if entity in self.entities:
+            self.entities.remove(entity)
+        else:
+            self.logger.warning(f"Entity {entity} not found.")
 
     def get_free_id(self):
         return max(self.entities, key=lambda x: x.id).id + 1 if self.entities else 0
@@ -336,15 +339,13 @@ class AnimatedEntity(pygame.sprite.Sprite):
         # Get entities
         entities = self.entity_manager.get_tangible_entities()
         ## Remove self
-        entities.remove(self)
+        if self in entities:
+            entities.remove(self)
 
         # Get collisions
         collisions = pygame.sprite.spritecollide(
             self, entities, False, pygame.sprite.collide_mask
         )
-
-        if len(collisions) != 0:
-            print("Collision !")
 
         # Get collision direction
         collisions_directions = []

@@ -25,12 +25,10 @@ class Health:
             HealthBar,
             {
                 "entity": self,
-                "current_hp": self.hp,
-                "max_hp": self.max_hp,
             },
         )
 
-    def take_damage(self, damage: int) -> None:
+    def damage(self, damage: int) -> None:
         """Take damage.
 
         Args:
@@ -62,13 +60,11 @@ class HealthBar(Entity, AnimatedEntity):
 
     assets_needed = {"idle": []}  # This is a placeholder
 
-    def __init__(self, entity: AnimatedEntity, current_hp: int, max_hp: int):
+    def __init__(self, entity: AnimatedEntity):
         """A class to display a health bar.
 
         Args:
             entity (AnimatedEntity): The entity to display the health bar on.
-            current_hp (int): The current number of hp the entity has.
-            max_hp (int): The maximum number of hp the entity can have.
         """
         # Call parent constructors
         Entity.__init__(self)
@@ -76,18 +72,16 @@ class HealthBar(Entity, AnimatedEntity):
 
         # Set attributes
         self.entity = entity
-        self.real_hp = current_hp
-        self.real_max_hp = max_hp
 
         # Set Private attributes
-        self.current_hp = current_hp
-        self.max_hp = max_hp
+        self.current_hp = self.entity.hp
+        self.max_hp = self.entity.max_hp
 
         # Create health bar animation
         animation = pygame.Surface((5, 50))
         animation.fill((255, 0, 0))
         pygame.draw.rect(
-            animation, (0, 255, 0), (0, 0, 5, 50 * self.real_hp / self.real_max_hp)
+            animation, (0, 255, 0), (0, 0, 5, 50 * self.entity.hp / self.entity.max_hp)
         )
         self.create_animation(
             "idle",
@@ -101,7 +95,7 @@ class HealthBar(Entity, AnimatedEntity):
         self.y = self.entity.y - 15
 
         # Update health bar
-        if self.current_hp != self.real_hp or self.max_hp != self.real_max_hp:
+        if self.current_hp != self.entity.hp or self.max_hp != self.entity.max_hp:
             self.create_animation(
                 "idle",
                 [self.__create_health_bar()],
@@ -118,6 +112,6 @@ class HealthBar(Entity, AnimatedEntity):
         pygame.draw.rect(
             surface,
             (0, 255, 0),
-            (0, 0, 5, 50 * self.real_hp / self.real_max_hp),
+            (0, 0, 5, 50 * self.entity.hp / self.entity.max_hp),
         )
         return surface

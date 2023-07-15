@@ -42,13 +42,21 @@ class Character(Entity, AnimatedEntity, Health):
         "hit": 0.1,
     }
 
-    def __init__(self, name: str, x: int = 0, y: int = 0) -> None:
+    def __init__(
+        self,
+        name: str,
+        x: int = 0,
+        y: int = 0,
+        launcher_id: int = None,
+        team: int = None,
+    ) -> None:
         """A class for the players character.
 
         Args:
             name (str): The name of the character.
             x (int): The x position of the character. Defaults to 0.
             y (int): The y position of the character. Defaults to 0.
+            team (int): The team of the character. Defaults to None (hurt all).
         """
 
         # Call parent constructors
@@ -60,6 +68,7 @@ class Character(Entity, AnimatedEntity, Health):
         self.name = name
         self.x = x
         self.y = y
+        self.team = team
 
         # Set default attributes
         self.speed = 2
@@ -82,6 +91,11 @@ class Character(Entity, AnimatedEntity, Health):
             # Move character
             if event.type == "move":
                 animation = self.__move(**event.data)
+            elif event.type == "damage":
+                self.logger.debug(
+                    f"Character {self.id} took {event.data['damage']} damage"
+                )
+                self.damage(event.data["damage"])
 
         # Check for auto attack
         if (
@@ -94,6 +108,8 @@ class Character(Entity, AnimatedEntity, Health):
                     "y": self.y,
                     "target_x": self.x + 100,
                     "target_y": self.y + 100,
+                    "team": self.team,
+                    "launcher_id": self.id,
                 },
             )
             self.__last_move = pygame.time.get_ticks()
