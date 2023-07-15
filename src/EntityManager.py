@@ -37,6 +37,14 @@ class EntityManager:
         self.entities.insert(entity_index, entity_instance)
         return entity_instance
 
+    def remove(self, entity: object) -> None:
+        """Removes an entity from the game.
+
+        Args:
+            entity (object): The entity to remove.
+        """
+        self.entities.remove(entity)
+
     def get_free_id(self):
         return max(self.entities, key=lambda x: x.id).id + 1 if self.entities else 0
 
