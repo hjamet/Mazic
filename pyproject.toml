@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "mazic"
+version = "0.1.0"
+description = "Mazic is a PvP game in which you play a mage trapped in a labyrinth haunted by a multitude of bloodthirsty monsters. Your objective? Unlock new abilities and increase your power to become the ultimate wizard!"
+authors = ["Henri Jamet <henri.jamet.ch@gmail.com>"]
+license = "Apache License"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.9.7"
+pygame = "^2.5.2"
+numpy = "^1.26.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
