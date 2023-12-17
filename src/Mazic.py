@@ -91,7 +91,7 @@ class Mazic:
 
             # Log FPS every 1 second
             if (time.time() - self.start_time) % 1 < 2 / (self.config.fps):
-                self.logger.debug(f"FPS: {self.clock.get_fps()}")
+                print(f"FPS: {self.clock.get_fps()}")
 
             # Capture events
             external_events = self.events()
