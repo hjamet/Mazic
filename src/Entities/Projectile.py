@@ -64,7 +64,7 @@ class Projectile(Entity, AnimatedEntity, Ability):
         self.target_y = target_y
         self.team = team
         self.launcher_id = launcher_id
-        self.cooldown = 1000
+        self.cooldown = 10
 
         # Set default attributes
         self.speed = 2
@@ -87,14 +87,11 @@ class Projectile(Entity, AnimatedEntity, Ability):
         )
 
         # Set default animation
-        reverse = False if self.target_x > self.x else True
-        rotation = -np.degrees(
-            np.arctan(abs(self.target_y - self.y) / abs(self.target_x - self.x))
+        rotation = np.degrees(
+            np.arctan2(self.y - self.target_y, self.target_x - self.x)
         )
         # Calculate the rotation
-        self.set_animation(
-            animation="idle", reverse=reverse, rotation=rotation, size=0.5
-        )
+        self.set_animation(animation="idle", reverse=False, rotation=rotation, size=0.5)
 
     def update(self, event_list: list) -> None:
         """Move the projectile.

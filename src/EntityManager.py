@@ -339,13 +339,16 @@ class AnimatedEntity(pygame.sprite.Sprite):
         size: float = 1,
         rotation: int = 0,
     ):
-        """Change l'animation actuelle de l'entité
+        """Changes the current animation of the entity
 
         Args:
-            animation_type (str): Le type d'animation à utiliser
+            animation (str): The name of the animation to use.
+            reverse (bool, optional): Whether the animation should be reversed. Defaults to False.
+            size (float, optional): The size of the animation. Defaults to 1.
+            rotation (int, optional): The rotation of the animation. Defaults to 0.
 
         Returns:
-            self: L'instance elle-même.
+            self: The instance itself.
         """
         # Set current state
         self.reverse = reverse if reverse is not None else self.reverse
