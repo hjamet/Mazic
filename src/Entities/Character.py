@@ -113,8 +113,8 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             kwargs={
                 "x": self.x,
                 "y": self.y,
-                "target_x": self.x + 1000 * (x_click - 0.5),
-                "target_y": self.y + 1000 * (y_click - 0.5),
+                "target_x": x_click + self.x,
+                "target_y": y_click + self.y,
                 "team": self.team,
                 "launcher_id": self.id,
             },
