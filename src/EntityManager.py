@@ -125,7 +125,7 @@ class EntityManager:
         # Add external events to the events list
         self.events += external_events
 
-        for entity in self.entities:
+        for entity in self.entities.copy():
             entity(self.events)
 
         self.update_events()
