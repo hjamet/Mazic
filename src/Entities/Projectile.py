@@ -3,9 +3,10 @@ import pygame
 
 from EntityManager import Entity, AnimatedEntity, Event
 from EntityPlugins.Health import Health
+from EntityPlugins.AbilityManager import Ability
 
 
-class Projectile(Entity, AnimatedEntity):
+class Projectile(Entity, AnimatedEntity, Ability):
     """A basic fireball projectile.
 
     Args:
@@ -54,6 +55,7 @@ class Projectile(Entity, AnimatedEntity):
         # Call parent constructors
         Entity.__init__(self)
         AnimatedEntity.__init__(self, camera_lvl=2, has_hitbox=True, has_mask=True)
+        Ability.__init__(self, name="fireball", cooldown=1000)
 
         # Set attributes
         self.x = x
@@ -62,6 +64,7 @@ class Projectile(Entity, AnimatedEntity):
         self.target_y = target_y
         self.team = team
         self.launcher_id = launcher_id
+        self.cooldown = 1000
 
         # Set default attributes
         self.speed = 2
@@ -128,7 +131,7 @@ class Projectile(Entity, AnimatedEntity):
                     self.logger.debug(f"Projectile {self.id} hit {collision.id}")
                     returned_events.append(
                         Event(
-                            targets=[collision.id],
+                            targets_id=[collision.id],
                             type="damage",
                             data={"damage": self.damage},
                         )

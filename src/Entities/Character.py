@@ -2,9 +2,10 @@ import pygame
 from EntityManager import Entity, AnimatedEntity
 from Entities.Projectile import Projectile
 from EntityPlugins.Health import Health
+from EntityPlugins.AbilityManager import AbilityManager
 
 
-class Character(Entity, AnimatedEntity, Health):
+class Character(Entity, AnimatedEntity, Health, AbilityManager):
     """The main character of the game.
 
     Args:
@@ -47,7 +48,6 @@ class Character(Entity, AnimatedEntity, Health):
         name: str,
         x: int = 0,
         y: int = 0,
-        launcher_id: int = None,
         team: int = None,
     ) -> None:
         """A class for the players character.
@@ -63,6 +63,7 @@ class Character(Entity, AnimatedEntity, Health):
         Entity.__init__(self)
         AnimatedEntity.__init__(self, camera_lvl=2, has_hitbox=True, has_mask=True)
         Health.__init__(self, max_hp=100)
+        AbilityManager.__init__(self, entity_manager=self.entity_manager)
 
         # Set attributes
         self.name = name
@@ -72,12 +73,13 @@ class Character(Entity, AnimatedEntity, Health):
 
         # Set default attributes
         self.speed = 2
+        self.add_ability("auto_attack", Projectile)
 
         # Set internal attributes
-        self.__last_move = pygame.time.get_ticks()  # The last time the character moved
+        self.last_auto_attack = 0
 
     def update(self, event_list: list) -> None:
-        """Update the entity.
+        """This function is called at each frame. It allows the entity to react to a list of events.
 
         Args:
             event_list (list): The events to process.
@@ -91,33 +93,32 @@ class Character(Entity, AnimatedEntity, Health):
             # Move character
             if event.type == "move":
                 animation = self.__move(**event.data)
+            elif event.type == "auto_attack":
+                self.__auto_attack(**event.data)
             elif event.type == "damage":
                 self.logger.debug(
                     f"Character {self.id} took {event.data['damage']} damage"
                 )
                 self.damage(event.data["damage"])
 
-        # Check for auto attack
-        if (
-            pygame.time.get_ticks() - self.__last_move > 1000
-        ):  # TODO: Make this a variable
-            self.entity_manager.add(
-                Projectile,
-                {
-                    "x": self.x,
-                    "y": self.y,
-                    "target_x": self.x + 100,
-                    "target_y": self.y + 100,
-                    "team": self.team,
-                    "launcher_id": self.id,
-                },
-            )
-            self.__last_move = pygame.time.get_ticks()
-
         # Update animation
         self.set_animation(**animation)
 
         return []
+
+    def __auto_attack(self, x_click: int, y_click: int) -> None:
+        # Launch projectile
+        self.use_ability(
+            name="auto_attack",
+            kwargs={
+                "x": self.x,
+                "y": self.y,
+                "target_x": self.x + 1000 * (x_click - 0.5),
+                "target_y": self.y + 1000 * (y_click - 0.5),
+                "team": self.team,
+                "launcher_id": self.id,
+            },
+        )
 
     def __move(self, direction: str) -> None:
         """Move the character in the given direction.

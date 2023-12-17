@@ -13,6 +13,7 @@ class Config:
         "down": [pygame.K_DOWN, pygame.K_s],
         "left": [pygame.K_LEFT, pygame.K_q],
         "right": [pygame.K_RIGHT, pygame.K_d],
+        "auto_attack": [pygame.BUTTON_LEFT],
     }
     fps = 40
     max_hashed_assets = 10000

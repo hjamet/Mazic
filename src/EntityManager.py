@@ -10,20 +10,20 @@ class EntityManager:
         self.entities = []  # List of entities
         self.events = []  # List of events to be processed by the entities
         self.next_events = []  # List of events newly created by the entities
-        self.logger = Logger(self.__class__.__name__)
+        self.logger = Logger(self.__class__.__name__)  # Logger
+        self.camera_id = None  # The id of the camera entity
 
-    def add(self, entity: object, kwargs: dict = {}) -> object:
+    def add(self, entity_instance: object, kwargs: dict = {}) -> int:
         """Adds an entity to the game.
 
         Args:
-            entity (object): The entity class.
-            kwargs (dict, optional): The entity attributes. Defaults to {}.
+            entity (object): An instance of the entity to add.
 
         Returns:
-            Entity: The entity instance.
+            int: The id of the entity.
         """
-        # Create entity instance
-        entity_instance = entity(**kwargs)
+        # Spawn entity
+        entity_instance.spawn()
 
         # Add entity to the list of entities
         ## Add AnimatedEntity in order of their camera_lvl
@@ -35,8 +35,15 @@ class EntityManager:
             ):
                 entity_index += 1
 
+        # Check if entity is a camera
+        if (
+            hasattr(entity_instance, "class_name")
+            and entity_instance.class_name == "Camera"
+        ):
+            self.camera_id = entity_instance.id
+
         self.entities.insert(entity_index, entity_instance)
-        return entity_instance
+        return entity_instance.id
 
     def remove(self, entity: object) -> None:
         """Removes an entity from the game.
@@ -96,6 +103,16 @@ class EntityManager:
             self.logger.error("No id or entity_type provided.")
             return []
 
+    def get_camera(self):
+        """Returns the camera entity.
+
+        Returns:
+            object: The camera entity.
+        """
+        if self.camera_id is None:
+            raise ValueError("No camera found.")
+        return self.get_entities(self.camera_id)[0]
+
     def __call__(self, external_events: list = []) -> None:
         """Update all entities.
 
@@ -134,19 +151,33 @@ class Entity:
     # Sets the entity manager
     entity_manager = entity_manager
 
-    def __init__(self, log_initialization: bool = True) -> None:
+    def __init__(self, log_initialization: bool = False) -> None:
         """A base class for all entities in the game.
 
         Args:
-            log_initialization (bool, optional): Whether to log the initialization of the entity. Defaults to True.
+            log_initialization (bool, optional): Whether to log the initialization of the entity. Defaults to False.
+        """
+        # Instantiates Logger
+        self.logger = Logger(
+            f"{self.__class__.__name__}_unspawned",
+            log_initialization=log_initialization,
+        )
+        self.id = -1  # Unspawned entity
+
+    def spawn(self, log_spawning: bool = True) -> None:
+        """This method is intended to be used only once by the EntityManager.
+        It adds the entity to the world and makes it "alive".
+        Before being called, the entity does not exist in the world.
+
+        Args:
+            log_spawning (bool, optional): Whether to log the spawning of the entity. Defaults to True.
         """
         self.id = self.entity_manager.get_free_id()
 
-        # Instantiates Logger
-        self.logger = Logger(
-            f"{self.__class__.__name__}_{self.id}",
-            log_initialization=log_initialization,
-        )
+        # Update logger
+        self.logger.name = f"{self.__class__.__name__}_{self.id}"
+        if log_spawning:
+            self.logger.info(f"Entity spawned with id {self.id}")
 
     def update(self, events: list) -> list:
         """Default update method. To be overridden by child classes.
@@ -170,7 +201,7 @@ class Entity:
             self: The instance itself.
         """
         # Select events targeting the entity
-        entity_events = [event for event in events if self.id in event.targets]
+        entity_events = [event for event in events if self.id in event.targets_id]
 
         # Process events and get new ones
         new_events = self.update(entity_events)
@@ -393,19 +424,26 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
 
 class Event:
-    def __init__(self, targets: list, type: str, data: dict = {}) -> None:
-        self.targets = targets
+    def __init__(self, targets_id: list, type: str, data: dict = {}) -> None:
+        """A class for representing all the events in the game.
+
+        Args:
+            targets_id (list): The list of ids of the entities targeted by the event.
+            type (str): The type of event. Can be "move", "auto_attack", "damage", etc.
+            data (dict, optional): La liste des informations permettant la réalisation de l'évènement. Defaults to {}.
+        """
+        self.targets_id = targets_id
         self.type = type
         self.data = data
 
         # Transform class into ids
         index = 0
-        while index < len(self.targets):
-            if not (isinstance(self.targets[index], int)):
+        while index < len(self.targets_id):
+            if not (isinstance(self.targets_id[index], int)):
                 for entity in self.entity_manager.entities:
-                    if entity == self.targets[index]:
-                        self.targets.append(entity.id)
-                self.targets.pop(index)
+                    if entity == self.targets_id[index]:
+                        self.targets_id.append(entity.id)
+                self.targets_id.pop(index)
 
             else:
                 index += 1
