@@ -1,4 +1,5 @@
 import pygame
+import numpy as np
 from Logger import Logger
 from AssetManager import asset_manager, Asset
 from typing import List, Tuple
@@ -359,6 +360,36 @@ class AnimatedEntity(pygame.sprite.Sprite):
             )
 
         return collisions_directions
+
+    def get_closest_ennemy(self):
+        """Get the closest animated entity with a hitbox.
+
+        Returns:
+            Entity: The closest ennemy
+        """
+        # Get entities
+        entities = self.entity_manager.get_tangible_entities()
+        ## Remove entities in the same team and entities without health and invisible entities
+        for entity in entities:
+            if (
+                entity.team == self.team
+                or entity.id == self.id
+                or not hasattr(entity, "health_bar")
+                or not entity.is_visible
+            ):
+                entities.remove(entity)
+
+        # Get closest ennemi
+        return (
+            min(
+                entities,
+                key=lambda entity: np.sqrt(
+                    (self.x - entity.x) ** 2 + (self.y - entity.y) ** 2
+                ),
+            )
+            if entities != []
+            else None
+        )
 
 
 class Event:

@@ -66,7 +66,7 @@ class Projectile(Entity, AnimatedEntity):
         # Set default attributes
         self.speed = 2
         self.damage = 10  # The damage the projectile will do
-        self.scope_time = 1000  # The time the projectile will exist for in ms
+        self.scope_time = 5000  # The time the projectile will exist for in ms
 
         # Set private attributes
         self.launch_time = pygame.time.get_ticks()
