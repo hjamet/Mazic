@@ -3,7 +3,7 @@ import logging.handlers
 import os
 
 
-def Logger(name, level=logging.DEBUG, log_initialization=True):
+def Logger(name, level=logging.WARNING, log_initialization=True):
     """Initialize a logger.
 
     Args:
@@ -35,7 +35,7 @@ def Logger(name, level=logging.DEBUG, log_initialization=True):
     logger.addHandler(handler)
 
     stdout_logger = logging.StreamHandler()
-    stdout_logger.setLevel(logging.DEBUG)
+    stdout_logger.setLevel(level)
     stdout_logger.setFormatter(
         logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )

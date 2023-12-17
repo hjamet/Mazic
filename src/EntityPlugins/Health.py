@@ -21,12 +21,8 @@ class Health:
         self._is_dead = False
 
         # Health bar
-        self.health_bar = self.entity_manager.add(
-            HealthBar,
-            {
-                "entity": self,
-            },
-        )
+        health_bar = HealthBar(entity=self)
+        self.health_bar = self.entity_manager.add(health_bar)
 
     def damage(self, damage: int) -> None:
         """Take damage.

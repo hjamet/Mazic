@@ -5,6 +5,8 @@ import pygame
 
 
 class Camera(Entity):
+    class_name = "Camera"
+
     def __init__(
         self, game: object, entity_manager: EntityManager, following_id: int = None
     ) -> None:

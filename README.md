@@ -39,7 +39,7 @@ Just go to the release tab and download last game version ! 💃
 ### Repository Convention & Architecture 🦥
 
 #### Architecture 🦜
-
+<>
 - Le dossier `src` contient le code source du projet. Chaque fichier python contient généralement une classe du même nom. Le fichier `main.py` est le point d'entrée du programme. Les sous-dossiers permettent de ranger les utilitaires par catégorie.
 - Le dossier `doc` contient la documentation du projet. Cette dernière peut être générée à l'aide de Pdoc3. (```make doc```)
 - Le dossier `logs` contient les logs du projet. Ces derniers sont générés à l'aide de la classe `src.Logger` et sont sauvegardés dans un fichier `xxx.log` et affichés dans la console.
