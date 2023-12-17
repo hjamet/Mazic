@@ -1,8 +1,10 @@
+[![libera manifesto](https://img.shields.io/badge/libera-manifesto-lightgrey.svg)](https://liberamanifesto.com)
+
 # Mazic
 
 ## Description
 
-Mazic is a PvP game in which you play a mage trapped in a labyrinth haunted by a multitude of bloodthirsty monsters. Your objective? Unlock new abilities and increase your power to become the ultimate wizard!
+Mazic is a cooperative game in which you take on the role of a group of mages who are foolish or foolhardy enough to travel to a magical labyrinth infested by the worst creatures of the shadows in order to recover artefacts that can multiply their power. Alas, a terrifying legend has it that the souls of the mages who failed in their quest are trapped in the labyrinth and haunt the place, ready to do anything to prevent newcomers from escaping.
 
 ## Installation 🐼
 
@@ -12,7 +14,6 @@ Or you can run the Makefile with the following command :
 ```
 > make install
 ```
-
 
 ### You just want to play the Game...
 
