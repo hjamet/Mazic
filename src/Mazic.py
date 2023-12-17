@@ -1,9 +1,15 @@
+import time
+
 import pygame
-from Logger import Logger
+
+# Instantiate pygame
+pygame.init()
+
 import EntityManager
-from Entity.Character import Character
 from Camera import Camera
 from Config import Config
+from Entities.Character import Character
+from Logger import Logger
 
 
 class Mazic:
@@ -17,11 +23,16 @@ class Mazic:
         # Instantiate Logger
         self.logger = Logger(self.__class__.__name__)
 
-        # Instantiate pygame
-        pygame.init()
+        # Set start time
+        self.start_time = time.time()
 
         # Create the display
         self.screen = pygame.display.set_mode((1200, 1000))
+        # Toggles fullscreen
+        if self.config.fullscreen:
+            pygame.display.toggle_fullscreen()
+        self.window_width, self.window_height = pygame.display.get_surface().get_size()
+
         ## Set window title
         pygame.display.set_caption("Mazic")
         ## Set window icon
@@ -44,27 +55,43 @@ class Mazic:
         """Spawns the initial entities."""
 
         # Spawn main character
+        main_character = Character(
+            name="Alice",
+        )
         self.main_character_id = self.entity_manager.add(
-            Character, {"name": "Alice"}
-        ).id
+            main_character,
+        )
 
-        # Spawn other characters
-        self.entity_manager.add(Character, {"name": "Bob"})
+        # Spawn Another character
+        another_character = Character(
+            name="Bob",
+            x=100,
+            y=100,
+        )
+        self.entity_manager.add(another_character)
 
         # Spawn Camera
-        self.camera = self.entity_manager.add(
-            Camera,
-            {
-                "game": self,
-                "entity_manager": self.entity_manager,
-                "following_id": self.main_character_id,
-            },
+        self.camera = Camera(
+            game=self,
+            entity_manager=self.entity_manager,
+            following_id=self.main_character_id,
+        )
+        self.camera_id = self.entity_manager.add(
+            self.camera,
         )
 
     def run(self) -> None:
+        """Runs the game loop.
+
+        This method will start an infinite loop constantly updating the game state, looking for events and updating the display.
+        """
         # Game loop
         while self.running:
-            self.clock.tick(60)
+            self.clock.tick(self.config.fps)
+
+            # Log FPS every 1 second
+            if (time.time() - self.start_time) % 1 < 2 / (self.config.fps):
+                print(f"FPS: {self.clock.get_fps()}")
 
             # Capture events
             external_events = self.events()
@@ -72,8 +99,9 @@ class Mazic:
             # Update entities
             self.entity_manager(external_events=external_events)
 
-            # Update display
+            # Update display (this will also update hitboxes and masks)
             self.camera.update()
+
             pygame.display.flip()
 
     def events(self) -> None:
@@ -98,13 +126,29 @@ class Mazic:
             elif event.type == pygame.KEYUP:
                 self.key_pressed.remove(event.key)
 
+            # Capture mouse clicks
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # Capture left click
+                if event.button == pygame.BUTTON_LEFT:
+                    self.key_pressed.append(event.button)
+                elif event.button == pygame.BUTTON_RIGHT:
+                    self.key_pressed.append(event.button)
+
+            # Capture mouse releases
+            elif event.type == pygame.MOUSEBUTTONUP:
+                # Capture left click
+                if event.button == pygame.BUTTON_LEFT:
+                    self.key_pressed.remove(event.button)
+                elif event.button == pygame.BUTTON_RIGHT:
+                    self.key_pressed.remove(event.button)
+
         # Generate in-game events
         for key in self.key_pressed:
-            # Captures movement keys
+            # --------------------------- CAPTURE MOUVEMENT KEY -------------------------- #
             if key in self.config.key_map["up"]:
                 in_game_events.append(
                     EntityManager.Event(
-                        targets=[self.main_character_id],
+                        targets_id=[self.main_character_id],
                         type="move",
                         data={
                             "direction": "up",
@@ -114,7 +158,7 @@ class Mazic:
             elif key in self.config.key_map["down"]:
                 in_game_events.append(
                     EntityManager.Event(
-                        targets=[self.main_character_id],
+                        targets_id=[self.main_character_id],
                         type="move",
                         data={
                             "direction": "down",
@@ -124,7 +168,7 @@ class Mazic:
             elif key in self.config.key_map["left"]:
                 in_game_events.append(
                     EntityManager.Event(
-                        targets=[self.main_character_id],
+                        targets_id=[self.main_character_id],
                         type="move",
                         data={
                             "direction": "left",
@@ -134,10 +178,26 @@ class Mazic:
             elif key in self.config.key_map["right"]:
                 in_game_events.append(
                     EntityManager.Event(
-                        targets=[self.main_character_id],
+                        targets_id=[self.main_character_id],
                         type="move",
                         data={
                             "direction": "right",
+                        },
+                    )
+                )
+
+            # ---------------------------- CAPTURE AUTO ATTACK --------------------------- #
+            elif key in self.config.key_map["auto_attack"]:
+                x_click, y_click = pygame.mouse.get_pos()
+                in_game_events.append(
+                    EntityManager.Event(
+                        targets_id=[self.main_character_id],
+                        type="auto_attack",
+                        data={
+                            "x_click": (x_click - self.window_width // 2)
+                            * self.camera.zoom,
+                            "y_click": (y_click - self.window_height // 2)
+                            * self.camera.zoom,
                         },
                     )
                 )
