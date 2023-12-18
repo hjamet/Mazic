@@ -1,5 +1,7 @@
 from random import randint
 import pygame
+from typing import List
+import numpy as np
 
 WINDOW_SIZE = (1000, 1000)
 """The size of the window used to display the maze. This variable is not used in the final game, it is only used to test that the generation of the maze works correctly.""
@@ -33,13 +35,77 @@ class Mazegenerator:
         for _ in range(nbr_rooms):
             self.rooms.append(
                 Room(
-                    top_left=(
-                        randint(-max_edge, max_edge),
-                        randint(-max_edge, max_edge),
-                    ),
+                    top_left=(0, 0),
                     bottom_right=(randint(0, max_edge), randint(0, max_edge)),
                 )
             )
+
+    def b_separates_rooms(self):
+        """Step 2: Select the rooms so that they do not overlap.
+        Make also sure that every room is sticking to another one.
+        This function is meant to be call iteratively until all rooms are separated.
+
+        Returns:
+            bool: True if there are still overlapping rooms, False otherwise.
+        """
+        # Calculate overlapping rooms
+        overlapping_area = 0
+        for i, room1 in enumerate(self.rooms):
+            overlapping_rooms = room1.is_overlapping(self.rooms)
+            overlapping_area += sum(
+                room1.overlapping_area(overlapping_room)
+                for overlapping_room in overlapping_rooms[i:]
+            )
+        strength = np.sqrt(overlapping_area) / len(self.rooms)
+
+        for i, room1 in enumerate(self.rooms):
+            # Calculate all other rooms Gravity Center
+            other_rooms = [room2 for j, room2 in enumerate(self.rooms) if j != i]
+            other_rooms_centers = [room.get_center() for room in other_rooms] + [(0, 0)]
+            other_rooms_gravity_center = (
+                sum(other_room_center[0] for other_room_center in other_rooms_centers)
+                / len(other_rooms_centers),
+                sum(other_room_center[1] for other_room_center in other_rooms_centers)
+                / len(other_rooms_centers),
+            )
+
+            # Calculate overlapping rooms Gravity Center
+            overlapping_rooms = room1.is_overlapping(other_rooms)
+            overlapping_rooms_centers = [
+                room.get_center() for room in overlapping_rooms
+            ]
+            overlapping_rooms_gravity_center = (
+                (
+                    sum(
+                        overlapping_room_center[0]
+                        for overlapping_room_center in overlapping_rooms_centers
+                    )
+                    / len(overlapping_rooms_centers),
+                    sum(
+                        overlapping_room_center[1]
+                        for overlapping_room_center in overlapping_rooms_centers
+                    )
+                    / len(overlapping_rooms_centers),
+                )
+                if len(overlapping_rooms_centers) != 0
+                else None
+            )
+
+            # Move the room away from the overlapping rooms
+            # Move the room towards the other rooms
+            room1.move_towards(
+                other_rooms_gravity_center,
+                distance=strength / 2,
+            )
+            if overlapping_rooms_gravity_center is not None:
+                room1.move_away(
+                    overlapping_rooms_gravity_center,
+                    distance=strength,
+                )
+
+        print(strength)
+
+        return True
 
     def draw_maze(self):
         """Draw the maze in a Pygame window.
@@ -93,8 +159,11 @@ class Mazegenerator:
                 # Iterate the generation step
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if generation_step == 0:
-                        print("Generating rooms...")
-                        self.a_generate_rooms(nbr_rooms=1, max_edge=100)
+                        self.a_generate_rooms(nbr_rooms=20, max_edge=100)
+                        generation_step += 1
+                    elif generation_step == 1:
+                        if not (self.b_separates_rooms()):
+                            generation_step += 1
                 elif event.type == pygame.QUIT:
                     return
 
@@ -102,7 +171,7 @@ class Mazegenerator:
 class Room:
     """A class representing a rectangular room."""
 
-    def __init__(self, top_left: tuple, bottom_right: tuple) -> None:
+    def __init__(self, top_left: tuple, bottom_right: tuple):
         """Create a room.
 
         Args:
@@ -111,6 +180,104 @@ class Room:
         """
         self.top_left = top_left
         self.bottom_right = bottom_right
+
+    def get_center(self):
+        """Returns the coordinates of the center of the room."""
+        return (
+            (self.top_left[0] + self.bottom_right[0]) / 2,
+            (self.top_left[1] + self.bottom_right[1]) / 2,
+        )
+
+    def is_overlapping(self, rooms=List):
+        """Returns True if the room is overlapping with another one, False otherwise.
+
+        Args:
+            rooms (List[Room]): The list of rooms to check for overlapping.
+
+        Returns:
+            List[Room]: The list of rooms to check for overlapping.
+        """
+        overlapping = []
+        for room in rooms:
+            if (
+                self.top_left[0] < room.bottom_right[0]
+                and self.bottom_right[0] > room.top_left[0]
+                and self.top_left[1] < room.bottom_right[1]
+                and self.bottom_right[1] > room.top_left[1]
+            ):
+                overlapping.append(room)
+        return overlapping
+
+    def overlapping_area(self, room):
+        """Returns the overlapping area between the room and another one.
+
+        Args:
+            room (Room): The other room.
+
+        Returns:
+            int: The overlapping area.
+        """
+        return max(
+            0,
+            min(self.bottom_right[0], room.bottom_right[0])
+            - max(self.top_left[0], room.top_left[0]),
+        ) * max(
+            0,
+            min(self.bottom_right[1], room.bottom_right[1])
+            - max(self.top_left[1], room.top_left[1]),
+        )
+
+    def move_away(self, point: tuple, distance: int):
+        """Move the room away from a point.
+
+        Args:
+            point (tuple): The point to move the room away from.
+            distance (int): The distance to move the room away from the point.
+        """
+        center_x, center_y = self.get_center()
+        point_x, point_y = point
+
+        # Calculate vector
+        vect = (
+            (((center_x - point_x) > 0) * 2 - 1) * distance,
+            (((center_y - point_y) > 0) * 2 - 1) * distance,
+        )
+
+        # Update coords
+        self.top_left = (
+            self.top_left[0] + vect[0],
+            self.top_left[1] + vect[1],
+        )
+        self.bottom_right = (
+            self.bottom_right[0] + vect[0],
+            self.bottom_right[1] + vect[1],
+        )
+
+    def move_towards(self, point: tuple, distance: int):
+        """Move the room towards a point.
+
+        Args:
+            point (tuple): The point to move the room towards.
+            distance (int): The distance to move the room towards the point.
+        """
+        center_x, center_y = self.get_center()
+        point_x, point_y = point
+
+        # Calculate vector
+        vect = (
+            (((center_x - point_x) > 0) * 2 - 1) * distance,
+            (((center_y - point_y) > 0) * 2 - 1) * distance,
+        )
+
+        # Update coords
+        self.top_left = (
+            self.top_left[0] - vect[0],
+            self.top_left[1] - vect[1],
+        )
+        self.bottom_right = (
+            self.bottom_right[0] - vect[0],
+            self.bottom_right[1] - vect[1],
+        )
 
 
 if __name__ == "__main__":
