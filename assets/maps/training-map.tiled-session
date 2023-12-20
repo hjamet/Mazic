@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "training_map..tmj",
+    "activeFile": "training_map.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -31,8 +31,8 @@
             "scale": 3,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 76.16666666666669,
-                "y": 63.16666666666666
+                "x": 75.83333333333337,
+                "y": 62.833333333333314
             }
         },
         "training_map.tmx#Base": {
@@ -48,8 +48,7 @@
     "map.tileHeight": 16,
     "map.tileWidth": 16,
     "openFiles": [
-        "training_map.tmx",
-        "training_map..tmj"
+        "training_map.tmx"
     ],
     "project": "training-map.tiled-project",
     "recentFiles": [
