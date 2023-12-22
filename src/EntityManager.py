@@ -277,6 +277,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.rotation = 90
         self.size = 1
         self.reverse = False
+        self.transparency = 0
 
     def get_current_animation(self):
         """Returns the current animation."""
@@ -315,6 +316,9 @@ class AnimatedEntity(pygame.sprite.Sprite):
         # Reverse frame
         current_asset = current_asset.reverse(self.reverse)
 
+        # Set transparency
+        current_asset = current_asset.set_transparency(self.transparency)
+
         return current_asset
 
     def create_animation(self, animation: str, assets: list):
@@ -338,6 +342,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
         reverse: bool = False,
         size: float = 1,
         rotation: int = 0,
+        transparency: float = 0,
     ):
         """Changes the current animation of the entity
 
@@ -346,6 +351,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
             reverse (bool, optional): Whether the animation should be reversed. Defaults to False.
             size (float, optional): The size of the animation. Defaults to 1.
             rotation (int, optional): The rotation of the animation. Defaults to 0.
+            transparency (float, optional): The transparency of the animation. Defaults to 0.
 
         Returns:
             self: The instance itself.
@@ -354,6 +360,9 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.reverse = reverse if reverse is not None else self.reverse
         self.size = size if size is not None else self.size
         self.rotation = rotation if rotation is not None else self.rotation
+        self.transparency = (
+            transparency if transparency is not None else self.transparency
+        )
 
         # Reset animation index if animation type changed
         if self.current_animation_type != animation:
