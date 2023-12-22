@@ -71,6 +71,11 @@ class AssetManager:
             if asset.reverse_factor
             else asset_surface
         )
+        ## Apply transparency
+        if asset.transparency_factor != 0:
+            if asset.transparency_factor != 0:
+                alpha = int((1 - asset.transparency_factor) * 255)
+                asset_surface.set_alpha(alpha)
 
         # Save asset (only if it is based on an image)
         if asset.asset_name is not None:
@@ -143,8 +148,13 @@ class Asset:
 
         # Asset Transformations
         self.rotation_factor = 0
+        """int: The angle to rotate the asset."""
         self.scale_factor = 1
+        """float: The scale to apply to the asset."""
         self.reverse_factor = False
+        """bool: Whether to reverse the asset."""
+        self.transparency_factor = 0
+        """float: The transparency of the asset. 0 is fully opaque, 1 is fully transparent."""
 
     def rotate(self, angle: int):
         """Rotate the asset.
@@ -182,6 +192,21 @@ class Asset:
         self.reverse_factor = reverse
         return self
 
+    def set_transparency(self, transparency: float):
+        """Set the transparency of the asset.
+
+        Args:
+            transparency (float): The transparency of the asset. 0 is fully opaque, 1 is fully transparent.
+
+        Returns:
+            Asset: The asset.
+        """
+        # Check if transparency is valid
+        if transparency < 0 or transparency > 1:
+            raise ValueError("Transparency must be between 0 and 1.")
+        self.transparency_factor = transparency
+        return self
+
     def __hash__(self) -> str:
         """Hash the asset. This is used to store the asset in a dictionary.
         ONLY WORKS IF THE ASSET IS BASED ON AN IMAGE !
@@ -189,32 +214,48 @@ class Asset:
         Returns:
             str: The hash of the asset.
         """
-        return f"{self.asset_name}_{self.rotation_factor}_{self.scale_factor}_{self.reverse_factor}"
+        return f"{self.asset_name}_{self.rotation_factor}_{self.scale_factor}_{self.reverse_factor}_{self.transparency_factor}"
 
     def get_image(
-        self, angle: int = 0, scale: int = 1, reverse: bool = 0
+        self, angle: int = 0, scale: int = 1, reverse: bool = 0, transparency: float = 0
     ) -> pygame.Surface:
         """Get the asset.
+
+        Args:
+            angle (int): The angle to rotate the asset. Defaults to 0.
+            scale (int): The scale to apply to the asset. Defaults to 1.
+            reverse (bool): Whether to reverse the asset. Defaults to False.
+            transparency (float): The transparency of the asset. 0 is fully opaque, 1 is fully transparent. Defaults to 0.
 
         Returns:
             pygame.Surface: The asset.
         """
+        # Save old transformations
+        old_rotation_factor = self.rotation_factor
+        old_scale_factor = self.scale_factor
+        old_reverse_factor = self.reverse_factor
+        old_transparency_factor = self.transparency_factor
+
         # Apply transformations
         self.rotation_factor += angle
         self.scale_factor *= scale
         self.reverse_factor = (
             not (self.reverse_factor) if reverse else self.reverse_factor
         )
+        self.transparency_factor += transparency
+        if self.transparency_factor < 0:
+            self.transparency_factor = 0
+        elif self.transparency_factor > 1:
+            self.transparency_factor = 1
 
         # Get image
         image = self.asset_manager.get_image(self)
 
         # Revert transformations
-        self.rotation_factor -= angle
-        self.scale_factor /= scale
-        self.reverse_factor = (
-            not (self.reverse_factor) if reverse else self.reverse_factor
-        )
+        self.rotation_factor = old_rotation_factor
+        self.scale_factor = old_scale_factor
+        self.reverse_factor = old_reverse_factor
+        self.transparency_factor = old_transparency_factor
 
         return image
 
