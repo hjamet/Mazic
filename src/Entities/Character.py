@@ -3,6 +3,7 @@ from EntityManager import Entity, AnimatedEntity
 from Entities.Projectile import Projectile
 from EntityPlugins.Health import Health
 from EntityPlugins.AbilityManager import AbilityManager
+from Entities.Invisible.VisionLine import VisionLine
 
 
 class Character(Entity, AnimatedEntity, Health, AbilityManager):
@@ -168,3 +169,10 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             raise ValueError(f"Invalid direction: {direction}")
 
         return {"animation": "run", "reverse": reverse}
+
+    def __vision(self):
+        """Detect entities in line of sight based on mouse position."""
+        # Get mouse position
+        mouse_pos = pygame.mouse.get_pos()
+
+        # TODO: Create vision lines

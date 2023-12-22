@@ -6,8 +6,6 @@ class Floor(Entity, AnimatedEntity):
 
     assets_needed = {"idle": ["floor_1"]}
 
-    animation_speed = {"idle": 0}
-
     def __init__(self, x: int, y: int) -> None:
         """A class to represent a floor.
 
