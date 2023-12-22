@@ -71,6 +71,11 @@ class AssetManager:
             if asset.reverse_factor
             else asset_surface
         )
+        ## Apply transparency
+        if asset.transparency_factor != 0:
+            if asset.transparency_factor != 0:
+                alpha = int((1 - asset.transparency_factor) * 255)
+                asset_surface.set_alpha(alpha)
 
         # Save asset (only if it is based on an image)
         if asset.asset_name is not None:
