@@ -18,7 +18,7 @@ class Mazic:
     entity_manager = EntityManager.entity_manager
 
     # Sets the config
-    config = Config()
+    config = EntityManager.config
 
     def __init__(self) -> None:
         # Instantiate Logger
@@ -32,7 +32,7 @@ class Mazic:
         # Toggles fullscreen
         if self.config.fullscreen:
             pygame.display.toggle_fullscreen()
-        self.window_width, self.window_height = pygame.display.get_surface().get_size()
+        self.config.window_width, self.config.window_height = pygame.display.get_surface().get_size()
 
         ## Set window title
         pygame.display.set_caption("Mazic")

@@ -3,6 +3,7 @@ import numpy as np
 from Logger import Logger
 from AssetManager import asset_manager, Asset
 from typing import List, Tuple
+from Config import Config
 
 
 class EntityManager:
@@ -146,10 +147,14 @@ class EntityManager:
 # Instantiates the EntityManager
 entity_manager = EntityManager()
 
+# Instantiates the config
+config = Config()
+
 
 class Entity:
     # Sets the entity manager
     entity_manager = entity_manager
+    config = config
 
     def __init__(self, log_initialization: bool = False) -> None:
         """A base class for all entities in the game.

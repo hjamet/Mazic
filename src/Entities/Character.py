@@ -175,4 +175,21 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         # Get mouse position
         mouse_pos = pygame.mouse.get_pos()
 
-        # TODO: Create vision lines
+        # Get mouse relative position
+        window_width, window_height = (
+            self.config.window_width,
+            self.config.window_height,
+        )
+        camera_zoom = self.entity_manager.get_camera().zoom
+        x_mouse, y_mouse = (
+            (mouse_pos[0] - window_width // 2) * camera_zoom,
+            (mouse_pos[1] - window_height // 2) * camera_zoom,
+        )
+        
+        # Get mouse relative position in the world
+        x_mouse += self.x
+        y_mouse += self.y
+        
+        # TODO : Continue here ^^
+        
+        
