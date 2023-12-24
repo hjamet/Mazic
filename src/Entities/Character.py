@@ -1,9 +1,11 @@
 import pygame
 import numpy as np
+import pandas as pd
 from EntityManager import Entity, AnimatedEntity
 from Entities.Projectile import Projectile
 from EntityPlugins.Health import Health
 from EntityPlugins.AbilityManager import AbilityManager
+from utils.is_in_triangle import ft_is_in_triangle
 
 
 class Character(Entity, AnimatedEntity, Health, AbilityManager):
@@ -189,16 +191,40 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             (mouse_pos[1] - window_height // 2) * camera_zoom,
         )
 
-        # Get mouse relative position in the world
+        # Get mouse relative position in the world with a random offset
         x_mouse += self.x
         y_mouse += self.y
 
-        # Get entities in vision line
-        entities = self.entity_manager.get_entities_near_segment(
-            x1=self.x,
-            y1=self.y,
-            x2=x_mouse + np.random.randint(-10, 10),
-            y2=y_mouse + np.random.randint(-10, 10),
+        # Define vision triangle
+        vision_triangle = [
+            (self.x, self.y),
+            (
+                x_mouse + np.random.randint(-20, 0),
+                y_mouse + np.random.randint(-20, 0),
+            ),
+            (
+                x_mouse + np.random.randint(0, 20),
+                y_mouse + np.random.randint(0, 20),
+            ),
+        ]
+
+        # Get entities in vision triangle
+        entities = self.entity_manager.get_animated_entities()
+        entities_shapes = pd.DataFrame(
+            [entity.get_center() for entity in entities],
+            columns=["center_x", "center_y"],
+        )
+        in_triangle_index = ft_is_in_triangle(
+            entities_shapes,
+            *vision_triangle[0],
+            *vision_triangle[1],
+            *vision_triangle[2],
+        )
+        entities = [entities[i] for i in in_triangle_index]
+
+        # Sort entities by distance
+        entities.sort(
+            key=lambda entity: (entity.x - self.x) ** 2 + (entity.y - self.y) ** 2
         )
 
         # Make entities visible until a hitbox is found
