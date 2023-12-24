@@ -92,13 +92,17 @@ class EntityManager:
         Returns:
             object: The entity.
         """
-        if entity_type is not None:
+        if entity_type is not None and id is not None:
             return [
                 entity
                 for entity in self.entities
                 if entity.id == id and isinstance(entity, entity_type)
             ]
-        elif id is not None:
+        elif entity_type is not None and id is None:
+            return [
+                entity for entity in self.entities if isinstance(entity, entity_type)
+            ]
+        elif id is not None and entity_type is None:
             return [entity for entity in self.entities if entity.id == id]
         else:
             self.logger.error("No id or entity_type provided.")
