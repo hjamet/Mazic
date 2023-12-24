@@ -32,7 +32,10 @@ class Mazic:
         # Toggles fullscreen
         if self.config.fullscreen:
             pygame.display.toggle_fullscreen()
-        self.config.window_width, self.config.window_height = pygame.display.get_surface().get_size()
+        (
+            self.config.window_width,
+            self.config.window_height,
+        ) = pygame.display.get_surface().get_size()
 
         ## Set window title
         pygame.display.set_caption("Mazic")
@@ -201,9 +204,9 @@ class Mazic:
                         targets_id=[self.main_character_id],
                         type="auto_attack",
                         data={
-                            "x_click": (x_click - self.window_width // 2)
+                            "x_click": (x_click - self.config.window_width // 2)
                             * self.camera.zoom,
-                            "y_click": (y_click - self.window_height // 2)
+                            "y_click": (y_click - self.config.window_height // 2)
                             * self.camera.zoom,
                         },
                     )

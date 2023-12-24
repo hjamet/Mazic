@@ -201,7 +201,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Calculate vision line
         ANGLE = np.pi / 4
-        vision_line_nbr = (int(distance) + 1) * 2 + 1
+        vision_line_nbr = (int(distance / 16) + 1) * 2 + 1
         for i in range(vision_line_nbr):
             angle = basic_angle + ANGLE * (i - vision_line_nbr // 2)
             vision_line = (
