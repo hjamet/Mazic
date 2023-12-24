@@ -201,9 +201,10 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Calculate vision line
         ANGLE = np.pi / 4
-        vision_line_nbr = (int(distance / 16) + 1) * 2 + 1
+        vision_line_nbr = (int(distance / 160) + 1) * 2 + 1
+        print(vision_line_nbr)
         for i in range(vision_line_nbr):
-            angle = basic_angle + ANGLE * (i - vision_line_nbr // 2)
+            angle = basic_angle + ANGLE * (i / (vision_line_nbr - 1) - 0.5)
             vision_line = (
                 self.x,
                 self.y,
@@ -212,7 +213,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             )
 
             # Get entities in vision line
-            entities = self.entity_manager.get_entities_near_line(*vision_line)
+            entities = self.entity_manager.get_entities_near_segment(*vision_line)
 
             # Make entities visible until a hitbox is found
             for entity in entities:

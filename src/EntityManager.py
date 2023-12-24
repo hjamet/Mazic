@@ -1,4 +1,5 @@
 import pygame
+import pandas as pd
 import numpy as np
 from Logger import Logger
 from AssetManager import asset_manager, Asset
@@ -118,7 +119,53 @@ class EntityManager:
             raise ValueError("No camera found.")
         return self.get_entities(self.camera_id)[0]
 
-    def get_entities_near_line(self, x1: int, y1: int, x2: int, y2: int):
+    def __distance_points_to_segment(
+        self, x1: int, y1: int, x2: int, y2: int, p_x: List[int], p_y: List[int]
+    ):
+        """Returns the distance between a point and a segment.
+
+        Args:
+            x1 (int): The x coordinate of the first point of the segment.
+            y1 (int): The y coordinate of the first point of the segment.
+            x2 (int): The x coordinate of the second point of the segment.
+            y2 (int): The y coordinate of the second point of the segment.
+            p_x (list): The x coordinates of the points.
+            p_y (list): The y coordinates of the points.
+
+        Returns:
+            np.array: The distances between the points and the segment."""
+        # Conversion des coordonnées en tableau numpy
+        p_x = np.array(p_x)
+        p_y = np.array(p_y)
+
+        # Calcul des vecteurs de déplacement
+        segment_vec = np.array([x2 - x1, y2 - y1])
+        segment_len = np.linalg.norm(segment_vec)
+        segment_unitvec = segment_vec / segment_len
+
+        # Calcul des vecteurs allant de l'extrémité du segment (x1, y1) à chaque point (px, py)
+        point_vec = np.vstack((p_x - x1, p_y - y1)).T
+
+        # Projection scalaire des vecteurs point sur le vecteur du segment
+        proj_lengths = np.dot(point_vec, segment_unitvec)
+
+        # Trouver les points projetés sur le segment pour toutes les entités
+        proj_lengths_clipped = np.clip(proj_lengths, 0, segment_len)
+
+        # Trouver les points les plus proches sur le segment pour toutes les entités
+        nearest_points = np.array([x1, y1]) + np.outer(
+            proj_lengths_clipped, segment_unitvec
+        )
+
+        # Calculer les vecteurs entre chaque point (px, py) et leur point le plus proche sur le segment
+        displacement = nearest_points - point_vec
+
+        # Calcul des distances euclidiennes entre les points (px, py) et les plus proches sur le segment
+        distances_to_segment = np.linalg.norm(displacement, axis=1)
+
+        return distances_to_segment
+
+    def get_entities_near_segment(self, x1: int, y1: int, x2: int, y2: int):
         """Returns all entities near the line defined by the two points.
 
         Args:
@@ -130,31 +177,29 @@ class EntityManager:
         Returns:
             list: A list of entities.
         """
-        entities = self.get_entities(None, entity_type=AnimatedEntity)
-        result = []
-        for entity in entities:
-            entity_center_x, entity_center_y, entity_width, entity_height = (
-                entity.get_center(),
-                entity.rect.width,
-                entity.rect.height,
-            )
+        # Get entities
+        entities = pd.Series(self.get_entities(None, entity_type=AnimatedEntity))
+        entities_shapes = pd.DataFrame(
+            [entity.get_shape() for entity in entities],
+            columns=["center_x", "center_y", "width", "height"],
+        )
 
-            # Check if entity is near the line
-            numerator = abs(
-                (y2 - y1) * entity_center_x
-                - (x2 - x1) * entity_center_y
-                + x2 * y1
-                - y2 * x1
-            )
-            denominator = np.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2)
-            distance_to_line = numerator / denominator if denominator != 0 else 0
-            if distance_to_line < min(entity_width, entity_height):
-                result.append((entity, distance_to_line))
+        # Get distances between entities and the segment
+        distances = self.__distance_points_to_segment(
+            x1, y1, x2, y2, entities_shapes["center_x"], entities_shapes["center_y"]
+        )
+        result = distances < entities_shapes[["width", "height"]].min(axis=1)
+        # Get entities with this mask
+        result = pd.merge(
+            entities[result].rename("entity"),
+            pd.Series(distances)[result].rename("distance"),
+            left_index=True,
+            right_index=True,
+        )
+        # Sort entities by distance
+        result = result.sort_values(by="distance")
 
-        # Sort by distance (closest first)
-        result.sort(key=lambda x: x[1])
-        # Return only entities
-        return [entity for entity, _ in result]
+        return result["entity"].tolist()
 
     def __call__(self, external_events: list = []) -> None:
         """Update all entities.
@@ -326,16 +371,16 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.reverse = False
         self.transparency = 0
 
-    def get_center(self):
-        """Returns the center of the entity.
+    def get_shape(self):
+        """Returns the shape of the entity.
 
         Returns:
-            tuple: The center of the entity.
+            tuple: The shape of the entity. (center_x, center_y, width, height)
         """
         sixe_x, size_y = self.animations[self.current_animation_type][
             int(self.current_animation_index)
         ].get_size()
-        return (self.x + sixe_x / 2, self.y + size_y / 2)
+        return (self.x + sixe_x / 2, self.y + size_y / 2, sixe_x, size_y)
 
     def get_current_animation(self):
         """Returns the current animation."""
