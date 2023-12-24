@@ -193,30 +193,16 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         x_mouse += self.x
         y_mouse += self.y
 
-        # Calculate angle and distance
-        basic_angle = (
-            np.arctan2(y_mouse - self.y, x_mouse - self.x) if x_mouse != self.x else 0
+        # Get entities in vision line
+        entities = self.entity_manager.get_entities_near_segment(
+            x1=self.x,
+            y1=self.y,
+            x2=x_mouse + np.random.randint(-10, 10),
+            y2=y_mouse + np.random.randint(-10, 10),
         )
-        distance = np.sqrt((x_mouse - self.x) ** 2 + (y_mouse - self.y) ** 2)
 
-        # Calculate vision line
-        ANGLE = np.pi / 4
-        vision_line_nbr = (int(distance / 160) + 1) * 2 + 1
-        print(vision_line_nbr)
-        for i in range(vision_line_nbr):
-            angle = basic_angle + ANGLE * (i / (vision_line_nbr - 1) - 0.5)
-            vision_line = (
-                self.x,
-                self.y,
-                self.x + np.cos(angle) * distance,
-                self.y + np.sin(angle) * distance,
-            )
-
-            # Get entities in vision line
-            entities = self.entity_manager.get_entities_near_segment(*vision_line)
-
-            # Make entities visible until a hitbox is found
-            for entity in entities:
-                entity.is_visible = True
-                if entity.has_hitbox:
-                    break
+        # Make entities visible until a hitbox is found
+        for entity in entities:
+            entity.is_visible = True
+            if entity.has_hitbox:
+                break
