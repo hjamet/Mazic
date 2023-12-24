@@ -52,6 +52,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         x: int = 0,
         y: int = 0,
         team: int = None,
+        is_main_character: bool = False,
     ) -> None:
         """A class for the players character.
 
@@ -60,6 +61,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             x (int): The x position of the character. Defaults to 0.
             y (int): The y position of the character. Defaults to 0.
             team (int): The team of the character. Defaults to None (hurt all).
+            is_main_character (bool): Whether the character is the main character or not. Defaults to False.
         """
 
         # Call parent constructors
@@ -73,6 +75,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         self.x = x
         self.y = y
         self.team = team
+        self.is_main_character = is_main_character
 
         # Set default attributes
         self.speed = 2
@@ -108,7 +111,8 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         self.set_animation(**animation)
 
         # Update vision
-        self.__vision()
+        if self.is_main_character:
+            self.__vision()
 
         return []
 
@@ -187,24 +191,39 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         )
         camera_zoom = self.entity_manager.get_camera().zoom
         x_mouse, y_mouse = (
-            (mouse_pos[0] - window_width // 2) * camera_zoom,
-            (mouse_pos[1] - window_height // 2) * camera_zoom,
+            (mouse_pos[0] - window_width // 2) / camera_zoom,
+            (mouse_pos[1] - window_height // 2) / camera_zoom,
         )
 
         # Get mouse relative position in the world with a random offset
-        x_mouse += self.x
-        y_mouse += self.y
+        x_mouse += self.x + np.random.randint(-16, 16)
+        y_mouse += self.y + np.random.randint(-16, 16)
+
+        # Get distance to mouse
+        distance = np.sqrt((x_mouse - self.x) ** 2 + (y_mouse - self.y) ** 2) / 16
+        vision_range = 160 / distance if distance != 0 else 160
+
+        # Get unit orthogonal vector
+        x_ortho = y_mouse - self.y
+        y_ortho = -(x_mouse - self.x)
+        norm = np.sqrt(x_ortho**2 + y_ortho**2)
+        if norm != 0:
+            x_ortho /= norm
+            y_ortho /= norm
+        else:
+            x_ortho = 1
+            y_ortho = 0
 
         # Define vision triangle
         vision_triangle = [
             (self.x, self.y),
             (
-                x_mouse + np.random.randint(-20, 0),
-                y_mouse + np.random.randint(-20, 0),
+                x_mouse + vision_range * x_ortho,
+                y_mouse + vision_range * y_ortho,
             ),
             (
-                x_mouse + np.random.randint(0, 20),
-                y_mouse + np.random.randint(0, 20),
+                x_mouse - vision_range * x_ortho,
+                y_mouse - vision_range * y_ortho,
             ),
         ]
 

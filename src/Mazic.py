@@ -29,6 +29,7 @@ class Mazic:
 
         # Create the display
         self.screen = pygame.display.set_mode((1200, 1000))
+
         # Toggles fullscreen
         if self.config.fullscreen:
             pygame.display.toggle_fullscreen()
@@ -61,6 +62,7 @@ class Mazic:
         # Spawn main character
         main_character = Character(
             name="Alice",
+            is_main_character=True,
         )
         self.main_character_id = self.entity_manager.add(
             main_character,
@@ -205,9 +207,9 @@ class Mazic:
                         type="auto_attack",
                         data={
                             "x_click": (x_click - self.config.window_width // 2)
-                            * self.camera.zoom,
+                            / self.camera.zoom,
                             "y_click": (y_click - self.config.window_height // 2)
-                            * self.camera.zoom,
+                            / self.camera.zoom,
                         },
                     )
                 )
