@@ -1,9 +1,9 @@
 import pygame
+import numpy as np
 from EntityManager import Entity, AnimatedEntity
 from Entities.Projectile import Projectile
 from EntityPlugins.Health import Health
 from EntityPlugins.AbilityManager import AbilityManager
-from Entities.Invisible.VisionLine import VisionLine
 
 
 class Character(Entity, AnimatedEntity, Health, AbilityManager):
@@ -105,6 +105,9 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         # Update animation
         self.set_animation(**animation)
 
+        # Update vision
+        self.__vision()
+
         return []
 
     def __auto_attack(self, x_click: int, y_click: int) -> None:
@@ -185,11 +188,34 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             (mouse_pos[0] - window_width // 2) * camera_zoom,
             (mouse_pos[1] - window_height // 2) * camera_zoom,
         )
-        
+
         # Get mouse relative position in the world
         x_mouse += self.x
         y_mouse += self.y
-        
-        # TODO : Continue here ^^
-        
-        
+
+        # Calculate angle and distance
+        basic_angle = (
+            np.arctan2(y_mouse - self.y, x_mouse - self.x) if x_mouse != self.x else 0
+        )
+        distance = np.sqrt((x_mouse - self.x) ** 2 + (y_mouse - self.y) ** 2)
+
+        # Calculate vision line
+        ANGLE = np.pi / 4
+        vision_line_nbr = (int(distance) + 1) * 2 + 1
+        for i in range(vision_line_nbr):
+            angle = basic_angle + ANGLE * (i - vision_line_nbr // 2)
+            vision_line = (
+                self.x,
+                self.y,
+                self.x + np.cos(angle) * distance,
+                self.y + np.sin(angle) * distance,
+            )
+
+            # Get entities in vision line
+            entities = self.entity_manager.get_entities_near_line(*vision_line)
+
+            # Make entities visible until a hitbox is found
+            for entity in entities:
+                entity.is_visible = True
+                if entity.has_hitbox:
+                    break

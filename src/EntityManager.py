@@ -114,6 +114,44 @@ class EntityManager:
             raise ValueError("No camera found.")
         return self.get_entities(self.camera_id)[0]
 
+    def get_entities_near_line(self, x1: int, y1: int, x2: int, y2: int):
+        """Returns all entities near the line defined by the two points.
+
+        Args:
+            x1 (int): The x coordinate of the first point.
+            y1 (int): The y coordinate of the first point.
+            x2 (int): The x coordinate of the second point.
+            y2 (int): The y coordinate of the second point.
+
+        Returns:
+            list: A list of entities.
+        """
+        entities = self.get_entities(None, entity_type=AnimatedEntity)
+        result = []
+        for entity in entities:
+            entity_center_x, entity_center_y, entity_width, entity_height = (
+                entity.get_center(),
+                entity.rect.width,
+                entity.rect.height,
+            )
+
+            # Check if entity is near the line
+            numerator = abs(
+                (y2 - y1) * entity_center_x
+                - (x2 - x1) * entity_center_y
+                + x2 * y1
+                - y2 * x1
+            )
+            denominator = np.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2)
+            distance_to_line = numerator / denominator if denominator != 0 else 0
+            if distance_to_line < min(entity_width, entity_height):
+                result.append((entity, distance_to_line))
+
+        # Sort by distance (closest first)
+        result.sort(key=lambda x: x[1])
+        # Return only entities
+        return [entity for entity, _ in result]
+
     def __call__(self, external_events: list = []) -> None:
         """Update all entities.
 
@@ -241,7 +279,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.has_mask = has_mask
 
         # Set private attributes
-        self._is_visible = True
+        self.is_visible = True
 
         # Check if child class has assets_needed
         if not hasattr(self, "assets_needed"):
@@ -284,11 +322,22 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.reverse = False
         self.transparency = 0
 
+    def get_center(self):
+        """Returns the center of the entity.
+
+        Returns:
+            tuple: The center of the entity.
+        """
+        sixe_x, size_y = self.animations[self.current_animation_type][
+            int(self.current_animation_index)
+        ].get_size()
+        return (self.x + sixe_x / 2, self.y + size_y / 2)
+
     def get_current_animation(self):
         """Returns the current animation."""
         # Check if entity is visible
         if (
-            self._is_visible is False
+            self.is_visible is False
             or self.animations[self.current_animation_type] == []
         ):
             return None
