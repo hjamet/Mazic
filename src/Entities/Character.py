@@ -230,15 +230,18 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         # Get entities in vision triangle
         entities = self.entity_manager.get_animated_entities()
         entities_shapes = pd.DataFrame(
-            [entity.get_center() for entity in entities],
-            columns=["center_x", "center_y"],
+            [entity.get_corners() for entity in entities],
+            columns=["x_1", "y_1", "x_2", "y_2", "x_3", "y_3", "x_4", "y_4"],
         )
-        in_triangle_index = ft_is_in_triangle(
-            entities_shapes,
-            *vision_triangle[0],
-            *vision_triangle[1],
-            *vision_triangle[2],
-        )
+        
+        in_triangle_index = pd.concat([
+            pd.Series(ft_is_in_triangle(
+                entities_shapes.iloc[:, 0:i + 2],
+                *vision_triangle[0],
+                *vision_triangle[1],
+                *vision_triangle[2],
+            )) for i in range(0, 8, 2)
+        ]).unique()
         entities = [entities[i] for i in in_triangle_index]
 
         # Sort entities by distance

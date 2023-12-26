@@ -10,6 +10,7 @@ from Camera import Camera
 from Config import Config
 from Entities.Character import Character
 from Entities.Maze.Floor import Floor
+from Entities.Maze.Wall import Wall
 from Logger import Logger
 
 
@@ -79,8 +80,12 @@ class Mazic:
         # Spawn floor
         for x in range(-10, 10):
             for y in range(-10, 10):
-                floor = Floor(x=x * 16, y=y * 16)
-                self.entity_manager.add(floor)
+                if y != 0:
+                    floor = Floor(x=x * 16, y=y * 16)
+                    self.entity_manager.add(floor)
+                else:
+                    wall = Wall(x=x * 16, y=y * 16)
+                    self.entity_manager.add(wall)
 
         # Spawn Camera
         self.camera = Camera(

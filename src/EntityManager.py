@@ -289,16 +289,16 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.reverse = False
         self.transparency = 0
 
-    def get_center(self):
-        """Returns the center of the entity.
+    def get_corners(self):
+        """Returns the 4 corners of the entity.
 
         Returns:
-            tuple: The center of the entity.
+            tuple: 8 values representing the 4 corners of the entity.
         """
         sixe_x, size_y = self.animations[self.current_animation_type][
             int(self.current_animation_index)
         ].get_size()
-        return (self.x + sixe_x / 2, self.y + size_y / 2)
+        return self.x, self.y, self.x + sixe_x, self.y, self.x, self.y + size_y, self.x + sixe_x, self.y + size_y
 
     def get_current_animation(self):
         """Returns the current animation."""
@@ -406,10 +406,20 @@ class AnimatedEntity(pygame.sprite.Sprite):
         ## Remove self
         if self in entities:
             entities.remove(self)
+            
+        # Split entities in two lists : entities with a mask and entities without a mask
+        entities_with_mask = [
+            entity for entity in entities if entity.has_mask is True
+        ]
+        entities_without_mask = [
+            entity for entity in entities if entity.has_mask is False
+        ]
 
         # Get collisions
         collisions = pygame.sprite.spritecollide(
-            self, entities, False, pygame.sprite.collide_mask
+            self, entities_with_mask, False, pygame.sprite.collide_mask
+        ) + pygame.sprite.spritecollide(
+            self, entities_without_mask, False, pygame.sprite.collide_rect
         )
 
         # Get collision direction
