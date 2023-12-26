@@ -201,7 +201,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Get distance to mouse
         distance = np.sqrt((x_mouse - self.x) ** 2 + (y_mouse - self.y) ** 2) / 16
-        vision_range = 160 / distance if distance != 0 else 160
+        vision_range = min(160 / distance if distance != 0 else 160, 10)
 
         # Get unit orthogonal vector
         x_ortho = y_mouse - self.y
