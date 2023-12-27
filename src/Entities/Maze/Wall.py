@@ -15,7 +15,7 @@ class Wall(Entity, AnimatedEntity):
         """
         # Call parent constructors
         Entity.__init__(self)
-        AnimatedEntity.__init__(self, camera_lvl=1, has_hitbox=True, has_mask=False)
+        AnimatedEntity.__init__(self, camera_lvl=1, has_hitbox=True, has_mask=False, block_vision=True, is_tangible=True)
 
         # Set attributes
         self.x = x

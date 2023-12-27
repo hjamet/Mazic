@@ -80,6 +80,7 @@ class EntityManager:
         return [
             entity
             for entity in self.entities
+            if hasattr(entity, "is_tangible") and entity.is_tangible
             if hasattr(entity, "rect") and entity.rect is not None
         ]
 
@@ -227,7 +228,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
     asset_manager = asset_manager
 
     def __init__(
-        self, camera_lvl: int = 0, has_hitbox: bool = False, has_mask: bool = False
+        self, camera_lvl: int = 0, has_hitbox: bool = False, has_mask: bool = False, block_vision: bool = False, is_tangible: bool = True
     ) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
@@ -236,6 +237,8 @@ class AnimatedEntity(pygame.sprite.Sprite):
             camera_lvl (int, optional): The camera level. Bigger number means the entity will be displayed on top of the others. Defaults to 0.
             hitbox (bool, optional): Whether the entity has a hitbox. Defaults to False.
             mask (bool, optional): Whether the entity has a mask (for pixel perfect collision). Defaults to True.
+            block_vision (bool, optional): Whether the entity blocks the vision of other entities. Defaults to False.
+            is_tangible (bool, optional): Whether the entity must be taken in account during collision calculation
 
         Raises:
             NotImplementedError: If the child class does not have an assets_needed attribute.
@@ -244,6 +247,8 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.camera_lvl = camera_lvl
         self.has_hitbox = has_hitbox
         self.has_mask = has_mask
+        self.block_vision = block_vision
+        self.is_tangible = is_tangible
 
         # Set private attributes
         self.is_visible = True
@@ -289,16 +294,16 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.reverse = False
         self.transparency = 0
 
-    def get_corners(self):
-        """Returns the 4 corners of the entity.
+    def get_corners_and_center(self):
+        """Returns the 4 corners and the center of the entity.
 
         Returns:
-            tuple: 8 values representing the 4 corners of the entity.
+            tuple: 10 values representing the 4 corners and the center of the entity.
         """
         sixe_x, size_y = self.animations[self.current_animation_type][
             int(self.current_animation_index)
         ].get_size()
-        return self.x, self.y, self.x + sixe_x, self.y, self.x, self.y + size_y, self.x + sixe_x, self.y + size_y
+        return self.x, self.y, self.x + sixe_x, self.y, self.x, self.y + size_y, self.x + sixe_x, self.y + size_y, self.x + sixe_x / 2, self.y + size_y / 2
 
     def get_current_animation(self):
         """Returns the current animation."""

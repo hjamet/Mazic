@@ -66,7 +66,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Call parent constructors
         Entity.__init__(self)
-        AnimatedEntity.__init__(self, camera_lvl=2, has_hitbox=True, has_mask=True)
+        AnimatedEntity.__init__(self, camera_lvl=2, has_hitbox=True, has_mask=True, is_tangible=True)
         Health.__init__(self, max_hp=100)
         AbilityManager.__init__(self, entity_manager=self.entity_manager)
 
@@ -226,31 +226,48 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
                 y_mouse - vision_range * y_ortho,
             ),
         ]
-
-        # Get entities in vision triangle
-        entities = self.entity_manager.get_animated_entities()
-        entities_shapes = pd.DataFrame(
-            [entity.get_corners() for entity in entities],
-            columns=["x_1", "y_1", "x_2", "y_2", "x_3", "y_3", "x_4", "y_4"],
+        
+        # Get mini squares to overlap triangle
+        precision = 4
+        min_x, min_y = min([point[0] for point in vision_triangle]), min([point[1] for point in vision_triangle])
+        max_x, max_y = max([point[0] for point in vision_triangle]), max([point[1] for point in vision_triangle])
+        squares = pd.DataFrame(
+            [
+                (x, y)
+                for x in np.arange(min_x, max_x, precision)
+                for y in np.arange(min_y, max_y, precision)
+            ],
+            columns=["x", "y"],
+        )
+        squares_in_triangle = squares.iloc[ft_is_in_triangle(
+            squares,
+            *vision_triangle[0],
+            *vision_triangle[1],
+            *vision_triangle[2],
+        )]
+        
+        # Create basic mask made of mini rects
+        rects = squares_in_triangle.apply(
+            lambda square: pygame.Rect(
+                square.x - precision / 2,
+                square.y - precision / 2,
+                precision,
+                precision,
+            ),
+            axis=1,
         )
         
-        in_triangle_index = pd.concat([
-            pd.Series(ft_is_in_triangle(
-                entities_shapes.iloc[:, 0:i + 2],
-                *vision_triangle[0],
-                *vision_triangle[1],
-                *vision_triangle[2],
-            )) for i in range(0, 8, 2)
-        ]).unique()
-        entities = [entities[i] for i in in_triangle_index]
+        # Get entities in vision triangle
+        entities = self.entity_manager.get_tangible_entities()
+        entities_in_vision = [entity for entity in entities if any(entity.rect.colliderect(rect) for rect in rects)]
 
         # Sort entities by distance
-        entities.sort(
+        entities_in_vision.sort(
             key=lambda entity: (entity.x - self.x) ** 2 + (entity.y - self.y) ** 2
         )
 
         # Make entities visible until a hitbox is found
-        for entity in entities:
+        for entity in entities_in_vision:
             entity.is_visible = True
             if entity.has_hitbox:
                 break
