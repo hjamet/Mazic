@@ -189,19 +189,24 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             self.config.window_width,
             self.config.window_height,
         )
-        camera_zoom = self.entity_manager.get_camera().zoom
+        camera = self.entity_manager.get_camera()
+        camera_zoom = camera.zoom
+        camera_coords = camera.x, camera.y
         x_mouse, y_mouse = (
-            (mouse_pos[0] - window_width // 2) / camera_zoom,
-            (mouse_pos[1] - window_height // 2) / camera_zoom,
+            mouse_pos[0] / camera_zoom,
+            mouse_pos[1] / camera_zoom,
         )
 
         # Get mouse relative position in the world with a random offset
-        x_mouse += self.x + np.random.randint(-16, 16)
-        y_mouse += self.y + np.random.randint(-16, 16)
+        x_mouse += camera_coords[0] - window_width / 2 / camera_zoom
+        y_mouse += camera_coords[1] - window_height / 2 / camera_zoom
+        
+        from Entities.Debug import Point
+        self.entity_manager.add(Point(x_mouse, y_mouse))
 
         # Get distance to mouse
         distance = np.sqrt((x_mouse - self.x) ** 2 + (y_mouse - self.y) ** 2) / 16
-        vision_range = min(160 / distance if distance != 0 else 160, 10)
+        vision_range = 4
 
         # Get unit orthogonal vector
         x_ortho = y_mouse - self.y
@@ -214,9 +219,17 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             x_ortho = 1
             y_ortho = 0
 
-        # Define vision triangle
-        vision_triangle = [
-            (self.x, self.y),
+        # Define vision triangles
+        vision_triangle_1 = [
+            (self.x + x_ortho, self.y + y_ortho),
+            (self.x - 2 * x_ortho, self.y - 2 * y_ortho),
+            (
+                x_mouse + vision_range * x_ortho,
+                y_mouse + vision_range * y_ortho,
+            ),
+        ]
+        vision_triangle_2 = [
+            (self.x - 2 * x_ortho, self.y - 2 * y_ortho),
             (
                 x_mouse + vision_range * x_ortho,
                 y_mouse + vision_range * y_ortho,
@@ -227,39 +240,27 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             ),
         ]
         
-        # Get mini squares to overlap triangle
-        precision = 4
-        min_x, min_y = min([point[0] for point in vision_triangle]), min([point[1] for point in vision_triangle])
-        max_x, max_y = max([point[0] for point in vision_triangle]), max([point[1] for point in vision_triangle])
-        squares = pd.DataFrame(
-            [
-                (x, y)
-                for x in np.arange(min_x, max_x, precision)
-                for y in np.arange(min_y, max_y, precision)
-            ],
-            columns=["x", "y"],
-        )
-        squares_in_triangle = squares.iloc[ft_is_in_triangle(
-            squares,
-            *vision_triangle[0],
-            *vision_triangle[1],
-            *vision_triangle[2],
-        )]
-        
-        # Create basic mask made of mini rects
-        rects = squares_in_triangle.apply(
-            lambda square: pygame.Rect(
-                square.x - precision / 2,
-                square.y - precision / 2,
-                precision,
-                precision,
-            ),
-            axis=1,
-        )
-        
         # Get entities in vision triangle
-        entities = self.entity_manager.get_tangible_entities()
-        entities_in_vision = [entity for entity in entities if any(entity.rect.colliderect(rect) for rect in rects)]
+        entities = self.entity_manager.get_animated_entities()
+        entities_shapes = pd.DataFrame(
+            [entity.get_center() for entity in entities],
+        )
+        
+        in_triangle_index = pd.concat([
+            pd.Series(ft_is_in_triangle(
+                entities_shapes,
+                *vision_triangle_1[0],
+                *vision_triangle_1[1],
+                *vision_triangle_1[2],
+            )),
+            pd.Series(ft_is_in_triangle(
+                entities_shapes,
+                *vision_triangle_2[0],
+                *vision_triangle_2[1],
+                *vision_triangle_2[2],
+            )),
+        ]).unique()
+        entities_in_vision = [entities[i] for i in in_triangle_index]
 
         # Sort entities by distance
         entities_in_vision.sort(
@@ -269,5 +270,5 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         # Make entities visible until a hitbox is found
         for entity in entities_in_vision:
             entity.is_visible = True
-            if entity.has_hitbox:
+            if entity.block_vision:
                 break

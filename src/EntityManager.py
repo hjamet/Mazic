@@ -80,7 +80,7 @@ class EntityManager:
         return [
             entity
             for entity in self.entities
-            if hasattr(entity, "is_tangible") and entity.is_tangible
+            if hasattr(entity, "is_tangible") and entity.is_tangible is True
             if hasattr(entity, "rect") and entity.rect is not None
         ]
 
@@ -294,16 +294,16 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.reverse = False
         self.transparency = 0
 
-    def get_corners_and_center(self):
-        """Returns the 4 corners and the center of the entity.
+    def get_center(self):
+        """Returns the center of the entity
 
         Returns:
-            tuple: 10 values representing the 4 corners and the center of the entity.
+            tuple: 2 values x and y describing the center of the entity.
         """
         sixe_x, size_y = self.animations[self.current_animation_type][
             int(self.current_animation_index)
         ].get_size()
-        return self.x, self.y, self.x + sixe_x, self.y, self.x, self.y + size_y, self.x + sixe_x, self.y + size_y, self.x + sixe_x / 2, self.y + size_y / 2
+        return self.x + sixe_x / 2, self.y + size_y / 2
 
     def get_current_animation(self):
         """Returns the current animation."""
