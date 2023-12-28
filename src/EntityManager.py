@@ -56,7 +56,7 @@ class EntityManager:
         if entity in self.entities:
             self.entities.remove(entity)
         else:
-            self.logger.warning(f"Entity {entity} not found.")
+            self.logger.warning(f"Entity not found.")
 
     def get_free_id(self):
         return max(self.entities, key=lambda x: x.id).id + 1 if self.entities else 0

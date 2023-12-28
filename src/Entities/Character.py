@@ -123,8 +123,8 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             kwargs={
                 "x": self.x,
                 "y": self.y,
-                "target_x": x_click + self.x,
-                "target_y": y_click + self.y,
+                "target_x": x_click,
+                "target_y": y_click,
                 "team": self.team,
                 "launcher_id": self.id,
             },
@@ -198,8 +198,8 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         )
 
         # Get mouse relative position in the world with a random offset
-        x_mouse += camera_coords[0] - window_width / 2 / camera_zoom
-        y_mouse += camera_coords[1] - window_height / 2 / camera_zoom
+        x_mouse += camera_coords[0] - window_width / (2 * camera_zoom)
+        y_mouse += camera_coords[1] - window_height / (2 * camera_zoom)
         
         from Entities.Debug import Point
         self.entity_manager.add(Point(x_mouse, y_mouse))

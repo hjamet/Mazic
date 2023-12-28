@@ -216,9 +216,9 @@ class Mazic:
                         targets_id=[self.main_character_id],
                         type="auto_attack",
                         data={
-                            "x_click": (x_click - self.config.window_width // 2)
+                            "x_click": self.camera.x + (x_click - self.config.window_width / 2)
                             / self.camera.zoom,
-                            "y_click": (y_click - self.config.window_height // 2)
+                            "y_click": self.camera.y + (y_click - self.config.window_height / 2)
                             / self.camera.zoom,
                         },
                     )
