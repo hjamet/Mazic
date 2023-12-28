@@ -6,6 +6,7 @@ from Entities.Projectile import Projectile
 from EntityPlugins.Health import Health
 from EntityPlugins.AbilityManager import AbilityManager
 from utils.is_in_triangle import ft_is_in_triangle
+from Entities.Debug import Point
 
 
 class Character(Entity, AnimatedEntity, Health, AbilityManager):
@@ -200,13 +201,11 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         # Get mouse relative position in the world with a random offset
         x_mouse += camera_coords[0] - window_width / (2 * camera_zoom)
         y_mouse += camera_coords[1] - window_height / (2 * camera_zoom)
-        
-        from Entities.Debug import Point
-        self.entity_manager.add(Point(x_mouse, y_mouse))
+
+        # self.entity_manager.add(Point(x_mouse, y_mouse))
 
         # Get distance to mouse
-        distance = np.sqrt((x_mouse - self.x) ** 2 + (y_mouse - self.y) ** 2) / 16
-        vision_range = 4
+        vision_range = 3
 
         # Get unit orthogonal vector
         x_ortho = y_mouse - self.y
@@ -222,26 +221,28 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         # Define vision triangles
         vision_triangle_1 = [
             (self.x + x_ortho, self.y + y_ortho),
-            (self.x - 2 * x_ortho, self.y - 2 * y_ortho),
+            (self.x - 16 * x_ortho, self.y - 16 * y_ortho),
             (
-                x_mouse + vision_range * x_ortho,
-                y_mouse + vision_range * y_ortho,
+                x_mouse + vision_range * x_ortho * 16,
+                y_mouse + vision_range * y_ortho * 16,
             ),
         ]
         vision_triangle_2 = [
-            (self.x - 2 * x_ortho, self.y - 2 * y_ortho),
+            (self.x - 16 * x_ortho, self.y - 16 * y_ortho),
             (
-                x_mouse + vision_range * x_ortho,
-                y_mouse + vision_range * y_ortho,
+                x_mouse + vision_range * x_ortho * 16,
+                y_mouse + vision_range * y_ortho * 16,
             ),
             (
-                x_mouse - vision_range * x_ortho,
-                y_mouse - vision_range * y_ortho,
+                x_mouse - vision_range * x_ortho * 16,
+                y_mouse - vision_range * y_ortho * 16,
             ),
         ]
         
         # Get entities in vision triangle
         entities = self.entity_manager.get_animated_entities()
+        # Remove all points from entities
+        entities = list(filter(lambda entity: not isinstance(entity, Point), entities)) # TODO debug
         entities_shapes = pd.DataFrame(
             [entity.get_center() for entity in entities],
         )
@@ -266,6 +267,13 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         entities_in_vision.sort(
             key=lambda entity: (entity.x - self.x) ** 2 + (entity.y - self.y) ** 2
         )
+        
+        # for entity in entities_in_vision:
+        #     self.entity_manager.add(Point(entity.x, entity.y, color=(0, 255, 0)))
+        # for point in vision_triangle_1:
+        #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
+        # for point in vision_triangle_2:
+        #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
 
         # Make entities visible until a hitbox is found
         for entity in entities_in_vision:
