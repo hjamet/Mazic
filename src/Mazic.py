@@ -9,6 +9,8 @@ import EntityManager
 from Camera import Camera
 from Config import Config
 from Entities.Character import Character
+from Entities.Maze.Floor import Floor
+from Entities.Maze.Wall import Wall
 from Logger import Logger
 
 
@@ -17,7 +19,7 @@ class Mazic:
     entity_manager = EntityManager.entity_manager
 
     # Sets the config
-    config = Config()
+    config = EntityManager.config
 
     def __init__(self) -> None:
         # Instantiate Logger
@@ -28,10 +30,14 @@ class Mazic:
 
         # Create the display
         self.screen = pygame.display.set_mode((1200, 1000))
+
         # Toggles fullscreen
         if self.config.fullscreen:
             pygame.display.toggle_fullscreen()
-        self.window_width, self.window_height = pygame.display.get_surface().get_size()
+        (
+            self.config.window_width,
+            self.config.window_height,
+        ) = pygame.display.get_surface().get_size()
 
         ## Set window title
         pygame.display.set_caption("Mazic")
@@ -57,6 +63,9 @@ class Mazic:
         # Spawn main character
         main_character = Character(
             name="Alice",
+            is_main_character=True,
+            x = 0,
+            y = 32
         )
         self.main_character_id = self.entity_manager.add(
             main_character,
@@ -69,6 +78,19 @@ class Mazic:
             y=100,
         )
         self.entity_manager.add(another_character)
+
+        # Spawn floor
+        for x in range(-10, 10):
+            for y in range(-10, 10):
+                if y != 0:
+                    floor = Floor(x=x * 16, y=y * 16)
+                    if y > 0 :
+                        floor.is_visible = True
+                    self.entity_manager.add(floor)
+                else:
+                    wall = Wall(x=x * 16, y=y * 16)
+                    wall.is_visible = True # TODO delete this line
+                    self.entity_manager.add(wall)
 
         # Spawn Camera
         self.camera = Camera(
@@ -194,10 +216,10 @@ class Mazic:
                         targets_id=[self.main_character_id],
                         type="auto_attack",
                         data={
-                            "x_click": (x_click - self.window_width // 2)
-                            * self.camera.zoom,
-                            "y_click": (y_click - self.window_height // 2)
-                            * self.camera.zoom,
+                            "x_click": self.camera.x + (x_click - self.config.window_width / 2)
+                            / self.camera.zoom,
+                            "y_click": self.camera.y + (y_click - self.config.window_height / 2)
+                            / self.camera.zoom,
                         },
                     )
                 )

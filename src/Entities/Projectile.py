@@ -64,7 +64,8 @@ class Projectile(Entity, AnimatedEntity, Ability):
         self.target_y = target_y
         self.team = team
         self.launcher_id = launcher_id
-        self.cooldown = 10
+        self.cooldown = 1000
+        """The cooldown of the projectile in ms"""
 
         # Set default attributes
         self.speed = 2

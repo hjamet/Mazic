@@ -1,8 +1,10 @@
 import pygame
+import pandas as pd
 import numpy as np
 from Logger import Logger
 from AssetManager import asset_manager, Asset
 from typing import List, Tuple
+from Config import Config
 
 
 class EntityManager:
@@ -54,7 +56,7 @@ class EntityManager:
         if entity in self.entities:
             self.entities.remove(entity)
         else:
-            self.logger.warning(f"Entity {entity} not found.")
+            self.logger.warning(f"Entity not found.")
 
     def get_free_id(self):
         return max(self.entities, key=lambda x: x.id).id + 1 if self.entities else 0
@@ -78,6 +80,7 @@ class EntityManager:
         return [
             entity
             for entity in self.entities
+            if hasattr(entity, "is_tangible") and entity.is_tangible is True
             if hasattr(entity, "rect") and entity.rect is not None
         ]
 
@@ -91,13 +94,17 @@ class EntityManager:
         Returns:
             object: The entity.
         """
-        if entity_type is not None:
+        if entity_type is not None and id is not None:
             return [
                 entity
                 for entity in self.entities
                 if entity.id == id and isinstance(entity, entity_type)
             ]
-        elif id is not None:
+        elif entity_type is not None and id is None:
+            return [
+                entity for entity in self.entities if isinstance(entity, entity_type)
+            ]
+        elif id is not None and entity_type is None:
             return [entity for entity in self.entities if entity.id == id]
         else:
             self.logger.error("No id or entity_type provided.")
@@ -146,10 +153,14 @@ class EntityManager:
 # Instantiates the EntityManager
 entity_manager = EntityManager()
 
+# Instantiates the config
+config = Config()
+
 
 class Entity:
     # Sets the entity manager
     entity_manager = entity_manager
+    config = config
 
     def __init__(self, log_initialization: bool = False) -> None:
         """A base class for all entities in the game.
@@ -217,7 +228,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
     asset_manager = asset_manager
 
     def __init__(
-        self, camera_lvl: int = 0, has_hitbox: bool = False, has_mask: bool = False
+        self, camera_lvl: int = 0, has_hitbox: bool = False, has_mask: bool = False, block_vision: bool = False, is_tangible: bool = True
     ) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
@@ -226,6 +237,8 @@ class AnimatedEntity(pygame.sprite.Sprite):
             camera_lvl (int, optional): The camera level. Bigger number means the entity will be displayed on top of the others. Defaults to 0.
             hitbox (bool, optional): Whether the entity has a hitbox. Defaults to False.
             mask (bool, optional): Whether the entity has a mask (for pixel perfect collision). Defaults to True.
+            block_vision (bool, optional): Whether the entity blocks the vision of other entities. Defaults to False.
+            is_tangible (bool, optional): Whether the entity must be taken in account during collision calculation
 
         Raises:
             NotImplementedError: If the child class does not have an assets_needed attribute.
@@ -234,9 +247,11 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.camera_lvl = camera_lvl
         self.has_hitbox = has_hitbox
         self.has_mask = has_mask
+        self.block_vision = block_vision
+        self.is_tangible = is_tangible
 
         # Set private attributes
-        self._is_visible = True
+        self.is_visible = True
 
         # Check if child class has assets_needed
         if not hasattr(self, "assets_needed"):
@@ -279,11 +294,22 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.reverse = False
         self.transparency = 0
 
+    def get_center(self):
+        """Returns the center of the entity
+
+        Returns:
+            tuple: 2 values x and y describing the center of the entity.
+        """
+        sixe_x, size_y = self.animations[self.current_animation_type][
+            int(self.current_animation_index)
+        ].get_size()
+        return self.x + sixe_x / 2, self.y + size_y / 2
+
     def get_current_animation(self):
         """Returns the current animation."""
         # Check if entity is visible
         if (
-            self._is_visible is False
+            self.is_visible is False
             or self.animations[self.current_animation_type] == []
         ):
             return None
@@ -385,10 +411,20 @@ class AnimatedEntity(pygame.sprite.Sprite):
         ## Remove self
         if self in entities:
             entities.remove(self)
+            
+        # Split entities in two lists : entities with a mask and entities without a mask
+        entities_with_mask = [
+            entity for entity in entities if entity.has_mask is True
+        ]
+        entities_without_mask = [
+            entity for entity in entities if entity.has_mask is False
+        ]
 
         # Get collisions
         collisions = pygame.sprite.spritecollide(
-            self, entities, False, pygame.sprite.collide_mask
+            self, entities_with_mask, False, pygame.sprite.collide_mask
+        ) + pygame.sprite.spritecollide(
+            self, entities_without_mask, False, pygame.sprite.collide_rect
         )
 
         # Get collision direction
