@@ -84,8 +84,6 @@ class Mazic:
             for y in range(-10, 10):
                 if y != 0:
                     floor = Floor(x=x * 16, y=y * 16)
-                    if y > 0 :
-                        floor.is_visible = True
                     self.entity_manager.add(floor)
                 else:
                     wall = Wall(x=x * 16, y=y * 16)

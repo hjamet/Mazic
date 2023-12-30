@@ -87,10 +87,8 @@ class AssetManager:
 
         # Check if memory is full
         if len(self.transformed_asset) > self.config.max_hashed_assets:
-            # Delete a random asset
-            del self.transformed_asset[
-                np.random.choice(list(self.transformed_asset.keys()))
-            ]
+            # Delete oldest asset
+            del self.transformed_asset[next(iter(self.transformed_asset))]
 
         # Return asset
         return asset_surface

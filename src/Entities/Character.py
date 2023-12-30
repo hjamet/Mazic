@@ -278,7 +278,8 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
 
         # Make entities visible until a hitbox is found
+        current_tick = pygame.time.get_ticks()
         for entity in entities_in_vision:
-            entity.last_seen = pygame.time.get_ticks()
+            entity.last_seen = current_tick
             if entity.block_vision:
                 break
