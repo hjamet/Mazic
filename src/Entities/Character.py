@@ -64,11 +64,10 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             team (int): The team of the character. Defaults to None (hurt all).
             is_main_character (bool): Whether the character is the main character or not. Defaults to False.
         """
-
         # Call parent constructors
         Entity.__init__(self)
         AnimatedEntity.__init__(self, camera_lvl=2, has_hitbox=True, has_mask=True, is_tangible=True)
-        Health.__init__(self, max_hp=100)
+        Health.__init__(self, max_hp=100, is_main_character_health=is_main_character)
         AbilityManager.__init__(self, entity_manager=self.entity_manager)
 
         # Set attributes
