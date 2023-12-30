@@ -84,6 +84,8 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Set internal attributes
         self.last_auto_attack = 0
+        if self.is_main_character:
+            self.visibility_memory = None
 
     def update(self, event_list: list) -> None:
         """This function is called at each frame. It allows the entity to react to a list of events.
@@ -277,6 +279,6 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Make entities visible until a hitbox is found
         for entity in entities_in_vision:
-            entity.is_visible = True
+            entity.last_seen = pygame.time.get_ticks()
             if entity.block_vision:
                 break

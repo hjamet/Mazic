@@ -68,6 +68,7 @@ class HealthBar(Entity, AnimatedEntity):
 
         # Set attributes
         self.entity = entity
+        self.visibility_memory = None
 
         # Set Private attributes
         self.current_hp = self.entity.hp
