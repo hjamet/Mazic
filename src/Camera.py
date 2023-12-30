@@ -64,6 +64,16 @@ class Camera(Entity):
             ## Check if the entity has an animation
             if asset is None:
                 continue
+            
+            # Check for entity visibility
+            if animated_entity.visibility_memory is not None:
+                if animated_entity.last_seen is None:
+                    transparency = 1
+                else:
+                    transparency =  (pygame.time.get_ticks() - animated_entity.last_seen) / (1000 * animated_entity.visibility_memory)
+                if transparency >= 1:
+                    continue
+                asset.set_transparency(asset.transparency_factor + transparency)
 
             # Get the asset size
             asset_size = asset.get_size()
@@ -92,14 +102,6 @@ class Camera(Entity):
                 > self.game.screen.get_height()
             ):
                 continue
-            
-            # Check for entity visibility
-            if animated_entity.visibility_memory is not None:
-                if animated_entity.last_seen is None:
-                    transparency = 1
-                else:
-                    transparency =  (pygame.time.get_ticks() - animated_entity.last_seen) / (1000 * animated_entity.visibility_memory)
-                asset.set_transparency(asset.transparency_factor + transparency)
 
             # Apply all transformations and get final image
             image = asset.get_image(
