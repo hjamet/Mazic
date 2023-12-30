@@ -20,4 +20,3 @@ class Wall(Entity, AnimatedEntity):
         # Set attributes
         self.x = x
         self.y = y
-        self.is_visible = False

@@ -71,11 +71,15 @@ class AssetManager:
             if asset.reverse_factor
             else asset_surface
         )
-        ## Apply transparency
-        if asset.transparency_factor != 0:
-            if asset.transparency_factor != 0:
-                alpha = int((1 - asset.transparency_factor) * 255)
-                asset_surface.set_alpha(alpha)
+        # Apply transparency
+        if asset.transparency_factor > 0:
+            alpha = int((1 - asset.transparency_factor) * 255)
+            asset_surface.set_alpha(alpha)
+        # Apply coloration
+        if asset.coloration_factor > 0:
+            surface_matrix = pygame.surfarray.array3d(asset_surface)
+            surface_matrix_updated = (1 - asset.coloration_factor) * surface_matrix + asset.coloration_factor * np.full_like(surface_matrix, asset.coloration_color)
+            asset_surface = pygame.surfarray.make_surface(surface_matrix_updated)
 
         # Save asset (only if it is based on an image)
         if asset.asset_name is not None:
@@ -83,10 +87,8 @@ class AssetManager:
 
         # Check if memory is full
         if len(self.transformed_asset) > self.config.max_hashed_assets:
-            # Delete a random asset
-            del self.transformed_asset[
-                np.random.choice(list(self.transformed_asset.keys()))
-            ]
+            # Delete oldest asset
+            del self.transformed_asset[next(iter(self.transformed_asset))]
 
         # Return asset
         return asset_surface
@@ -155,6 +157,10 @@ class Asset:
         """bool: Whether to reverse the asset."""
         self.transparency_factor = 0
         """float: The transparency of the asset. 0 is fully opaque, 1 is fully transparent."""
+        self.coloration_color = (0, 0, 0) # Black
+        """tuple: The color to apply to the asset."""
+        self.coloration_factor = 0
+        """float: The coloration of the asset. 0 is no coloration, 1 is fully colorized."""
 
     def rotate(self, angle: int):
         """Rotate the asset.
@@ -202,9 +208,29 @@ class Asset:
             Asset: The asset.
         """
         # Check if transparency is valid
-        if transparency < 0 or transparency > 1:
-            raise ValueError("Transparency must be between 0 and 1.")
+        if transparency < 0:
+            transparency = 0
+        elif transparency > 1:
+            transparency = 1
         self.transparency_factor = transparency
+        return self
+    
+    def colorize(self, color: tuple, factor: float):
+        """Colorize the asset.
+
+        Args:
+            color (tuple): The color to apply to the asset.
+            factor (float): The coloration of the asset. 0 is no coloration, 1 is fully colorized.
+
+        Returns:
+            Asset: The asset.
+        """
+        self.coloration_color = color
+        if factor < 0:
+            factor = 0
+        elif factor > 1:
+            factor = 1
+        self.coloration_factor = factor
         return self
 
     def __hash__(self) -> str:
@@ -214,10 +240,10 @@ class Asset:
         Returns:
             str: The hash of the asset.
         """
-        return f"{self.asset_name}_{self.rotation_factor}_{self.scale_factor}_{self.reverse_factor}_{self.transparency_factor}"
+        return f"{self.asset_name}_{self.rotation_factor}_{self.scale_factor}_{self.reverse_factor}_{self.transparency_factor}_{self.coloration_color}_{self.coloration_factor}"
 
     def get_image(
-        self, angle: int = 0, scale: int = 1, reverse: bool = 0, transparency: float = 0
+        self, angle: int = 0, scale: int = 1, reverse: bool = 0, transparency: float = 0, color: tuple = (0, 0, 0), coloration: float = 0
     ) -> pygame.Surface:
         """Get the asset.
 
@@ -226,6 +252,8 @@ class Asset:
             scale (int): The scale to apply to the asset. Defaults to 1.
             reverse (bool): Whether to reverse the asset. Defaults to False.
             transparency (float): The transparency of the asset. 0 is fully opaque, 1 is fully transparent. Defaults to 0.
+            color (tuple): The color to apply to the asset. Defaults to (0, 0, 0).
+            coloration (float): The coloration of the asset. 0 is no coloration, 1 is fully colorized. Defaults to 0.
 
         Returns:
             pygame.Surface: The asset.
@@ -235,6 +263,8 @@ class Asset:
         old_scale_factor = self.scale_factor
         old_reverse_factor = self.reverse_factor
         old_transparency_factor = self.transparency_factor
+        old_coloration_color = self.coloration_color
+        old_coloration_factor = self.coloration_factor
 
         # Apply transformations
         self.rotation_factor += angle
@@ -247,6 +277,13 @@ class Asset:
             self.transparency_factor = 0
         elif self.transparency_factor > 1:
             self.transparency_factor = 1
+        self.coloration_color = color
+        self.coloration_factor += coloration
+        if self.coloration_factor < 0:
+            self.coloration_factor = 0
+        elif self.coloration_factor > 1:
+            self.coloration_factor = 1
+        
 
         # Get image
         image = self.asset_manager.get_image(self)
@@ -256,6 +293,8 @@ class Asset:
         self.scale_factor = old_scale_factor
         self.reverse_factor = old_reverse_factor
         self.transparency_factor = old_transparency_factor
+        self.coloration_color = old_coloration_color
+        self.coloration_factor = old_coloration_factor
 
         return image
 

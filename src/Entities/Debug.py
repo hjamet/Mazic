@@ -27,6 +27,9 @@ class Point(Entity, AnimatedEntity):
         self.x = x
         self.y = y
         
+        # Set internal attributes
+        self.visibility_memory = None
+        
     def update(self, events : list):
         self.entity_manager.remove(self)
     

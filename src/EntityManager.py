@@ -252,6 +252,8 @@ class AnimatedEntity(pygame.sprite.Sprite):
 
         # Set private attributes
         self.is_visible = True
+        self.last_seen = None
+        self.visibility_memory = 10
 
         # Check if child class has assets_needed
         if not hasattr(self, "assets_needed"):

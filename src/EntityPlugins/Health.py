@@ -1,27 +1,28 @@
 import pygame
 from EntityManager import Entity, AnimatedEntity
 
-
 class Health:
     """A parent class to manage health for entities.
     It includes taking damage, healing and health bar.
     """
 
-    def __init__(self, max_hp: int) -> None:
+    def __init__(self, max_hp: int, is_main_character_health: bool = False) -> None:
         """A class to manage health for entities.
 
         Args:
-            initial_hp (int): The initial health points.
+            max_hp (int): The maximum health points.
+            is_main_character (bool): Whether the character is the main character or not. Defaults to False.
         """
         # Set attributes
         self.max_hp = max_hp
+        self.is_main_character_health = is_main_character_health
 
         # Set default attributes
         self.hp = max_hp
         self._is_dead = False
 
         # Health bar
-        health_bar = HealthBar(entity=self)
+        health_bar = HealthBar(entity=self, is_main_character_health=is_main_character_health)
         self.health_bar = self.entity_manager.add(health_bar)
 
     def damage(self, damage: int) -> None:
@@ -56,11 +57,12 @@ class HealthBar(Entity, AnimatedEntity):
 
     assets_needed = {"idle": []}  # This is a placeholder
 
-    def __init__(self, entity: AnimatedEntity):
+    def __init__(self, entity: AnimatedEntity, is_main_character_health: bool = False):
         """A class to display a health bar.
 
         Args:
             entity (AnimatedEntity): The entity to display the health bar on.
+            is_main_character_health (bool): Whether the character is the main character or not. Defaults to False.
         """
         # Call parent constructors
         Entity.__init__(self)
@@ -68,6 +70,8 @@ class HealthBar(Entity, AnimatedEntity):
 
         # Set attributes
         self.entity = entity
+        if is_main_character_health:
+            self.visibility_memory = None
 
         # Set Private attributes
         self.current_hp = self.entity.hp
