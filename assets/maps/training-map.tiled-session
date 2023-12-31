@@ -1,0 +1,66 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "training_map.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "Tous les Fichiers (*)",
+    "fileStates": {
+        "": {
+            "scaleInDock": 5.5
+        },
+        "#Base": {
+            "dynamicWrapping": false
+        },
+        "Base.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 3
+        },
+        "training_map..tmj": {
+            "scale": 3.503125,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 127.45762711864407,
+                "y": 0.1427297056200132
+            }
+        },
+        "training_map..tmj#Base": {
+            "scaleInDock": 1
+        },
+        "training_map.tmx": {
+            "scale": 5.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 3.3636363636363455,
+                "y": 92.63636363636365
+            }
+        },
+        "training_map.tmx#Base": {
+            "scaleInDock": 5.5
+        }
+    },
+    "last.exportedFilePath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/maps",
+    "last.externalTilesetPath": "//wsl.localhost/Ubuntu-20.04/home/lopilo24/ProjetsPersos/Mazic/assets/maps",
+    "last.imagePath": "//wsl.localhost/Ubuntu-20.04/home/lopilo24/ProjetsPersos/Mazic/assets/frames",
+    "map.fixedSize": false,
+    "map.lastUsedExportFilter": "Fichiers CSV (*.csv)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "openFiles": [
+        "training_map.tmx"
+    ],
+    "project": "training-map.tiled-project",
+    "recentFiles": [
+        "Base.tsx",
+        "training_map.tmx",
+        "training_map..tmj"
+    ],
+    "tileset.lastUsedFilter": "Fichiers de jeu de tuiles Tiled (*.tsx *.xml)",
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.type": 1
+}
