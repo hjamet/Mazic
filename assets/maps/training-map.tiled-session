@@ -32,11 +32,11 @@
             "scaleInDock": 1
         },
         "training_map.tmx": {
-            "scale": 5.5,
-            "selectedLayer": 0,
+            "scale": 2,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 3.3636363636363455,
-                "y": 92.63636363636365
+                "x": 8.5,
+                "y": 106.25
             }
         },
         "training_map.tmx#Base": {
@@ -56,8 +56,8 @@
     ],
     "project": "training-map.tiled-project",
     "recentFiles": [
-        "Base.tsx",
         "training_map.tmx",
+        "Base.tsx",
         "training_map..tmj"
     ],
     "tileset.lastUsedFilter": "Fichiers de jeu de tuiles Tiled (*.tsx *.xml)",
