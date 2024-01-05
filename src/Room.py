@@ -38,6 +38,12 @@ class Room:
         if sum(len(csv_dict[layer_name]) for layer_name in csv_dict) == 0:
             raise ValueError(f"The csv file {name} does not exist or is empty.")
         
+        # Drop rows and columns with only -1 values
+        for layer_name in csv_dict:
+            csv_dict[layer_name].replace(-1, pd.NA, inplace=True)
+            csv_dict[layer_name].dropna(axis=0, how="all", inplace=True)
+            csv_dict[layer_name].dropna(axis=1, how="all", inplace=True)
+        
         # Find dimensions
         self.height = len(csv_dict["Walls"])
         self.width = len(csv_dict["Walls"].columns)
