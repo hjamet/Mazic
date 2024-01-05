@@ -3,35 +3,84 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "room_csv/Room 1.tmx",
+    "activeFile": "room_csv/room_1.tmx",
     "expandedProjectPaths": [
         "room_csv",
-        "."
+        ".",
+        "frames"
     ],
     "file.lastUsedOpenFilter": "Tous les Fichiers (*)",
     "fileStates": {
+        "": {
+            "scaleInDock": 1
+        },
+        "#Base": {
+            "dynamicWrapping": false
+        },
+        "frames/Base.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1.5
+        },
+        "frames/room_1.tmx": {
+            "scale": 3,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 102,
+                "y": 41.16666666666666
+            }
+        },
+        "room_csv/Base.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
         "room_csv/Room 1.tmx": {
             "scale": 4,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 47.125,
-                "y": 5.375
+                "x": 47.5,
+                "y": 4.625
             }
         },
         "room_csv/Room 1.tmx#Base": {
             "dynamicWrapping": true,
             "scaleInDock": 1,
             "scaleInEditor": 1
+        },
+        "room_csv/room_1.tmx": {
+            "scale": 1,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 142,
+                "y": -107.5
+            }
+        },
+        "room_csv/room_1.tmx#Base": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         }
     },
     "last.exportedFilePath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/room_csv",
+    "last.externalTilesetPath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/room_csv",
     "last.imagePath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/frames",
-    "map.lastUsedExportFilter": "Tous les Fichiers (*)",
+    "map.lastUsedExportFilter": "Fichiers CSV (*.csv)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 20,
     "openFiles": [
-        "room_csv/Room 1.tmx"
+        "room_csv/room_1.tmx"
     ],
     "project": "Rooms.tiled-project",
     "recentFiles": [
-        "room_csv/Room 1.tmx"
-    ]
+        "room_csv/Base.tsx",
+        "room_csv/room_1.tmx",
+        "room_csv/Room 1.tmx",
+        "frames/room_1.tmx",
+        "frames/Base.tsx"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.type": 1
 }

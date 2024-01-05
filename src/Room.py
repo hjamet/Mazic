@@ -28,19 +28,27 @@ class Room:
             list: Liste d'entités
         """
         csv_dict = {}
-        for layer_name in ["Murs", "Objets", "Sol"]:
+        for layer_name in ["Walls", "Objects", "Floors"]:
             try:
-                csv_dict[layer_name] = pd.read_csv(os.path.join("assets", "room_csv", f"{name}._{layer_name}.csv"), header=None)
+                csv_dict[layer_name] = pd.read_csv(os.path.join("assets", "room_csv", f"{name}_{layer_name}.csv"), header=None)
             except:
                 csv_dict[layer_name] = []
         
         # Check if csv is valid
         if sum(len(csv_dict[layer_name]) for layer_name in csv_dict) == 0:
             raise ValueError(f"The csv file {name} does not exist or is empty.")
+        
+        # Find dimensions
+        self.height = len(csv_dict["Walls"])
+        self.width = len(csv_dict["Walls"].columns)
+        
+        # Find doors
+        floor_matrix = csv_dict["Floors"].values
+        
             
         return []
             
         
 
 if __name__ == "__main__":
-    room = Room("Room 1")
+    room = Room("room_1")
