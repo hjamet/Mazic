@@ -12,9 +12,13 @@ class Room:
         Args:
             name (str): Nom du fichier csv à charger
         """
+        # Save attributes
         self.name = name
         
-    def __load_csv(name : str) -> List[Entity]:
+        # Load csv
+        self.map = self.__load_csv(name)
+        
+    def __load_csv(self, name : str) -> List[Entity]:
         """Charge un fichier csv et le convertit en une liste d'entités.
         
         Args:
@@ -23,4 +27,20 @@ class Room:
         Returns:
             list: Liste d'entités
         """
-        csv = pd.read_csv(os.path.join("assets", "room_csv", name + ".csv"))
+        csv_dict = {}
+        for layer_name in ["Murs", "Objets", "Sol"]:
+            try:
+                csv_dict[layer_name] = pd.read_csv(os.path.join("assets", "room_csv", f"{name}._{layer_name}.csv"), header=None)
+            except:
+                csv_dict[layer_name] = []
+        
+        # Check if csv is valid
+        if sum(len(csv_dict[layer_name]) for layer_name in csv_dict) == 0:
+            raise ValueError(f"The csv file {name} does not exist or is empty.")
+            
+        return []
+            
+        
+
+if __name__ == "__main__":
+    room = Room("Room 1")
