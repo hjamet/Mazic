@@ -3,6 +3,7 @@ import pandas as pd
 from typing import List
 from EntityManager import Entity
 import os
+import numpy as np
 
 
 class Room:
@@ -93,7 +94,7 @@ class Room:
 
         # Drop rows and columns with only -1 values
         for layer_name in csv_dict:
-            csv_dict[layer_name].replace(-1, pd.NA, inplace=True)
+            csv_dict[layer_name].replace(-1, np.nan, inplace=True)
             csv_dict[layer_name].dropna(axis=0, how="all", inplace=True)
             csv_dict[layer_name].dropna(axis=1, how="all", inplace=True)
 
@@ -104,6 +105,10 @@ class Room:
         # Find doors
         wall_and_floor = csv_dict["Walls"].copy()
         wall_and_floor.update(csv_dict["Floors"])
+        wall_and_floor_matrix = wall_and_floor.to_numpy()
+        first_row = wall_and_floor_matrix[0, :]
+        mask = np.vectorize(lambda x: np.isnan(x) or x in self.floor_assets)(first_row)
+        result = np.where(mask, True, False)
 
         return []
 
