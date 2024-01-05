@@ -10,6 +10,9 @@
         "#Base": {
             "dynamicWrapping": false
         },
+        "//wsl.localhost/Ubuntu-20.04/home/lopilo24/ProjetsPersos/Mazic/assets/room_csv/Base.tsx": {
+            "dynamicWrapping": true
+        },
         "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/frames/Base.tsx": {
             "dynamicWrapping": true,
             "scaleInDock": 1,
