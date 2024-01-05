@@ -1,13 +1,32 @@
 {
+    "activeFile": "",
     "expandedProjectPaths": [
-        "."
     ],
+    "file.lastUsedOpenFilter": "Tous les Fichiers (*)",
     "fileStates": {
         "": {
-            "scaleInDock": 5.5
+            "scaleInDock": 1
         },
         "#Base": {
             "dynamicWrapping": false
+        },
+        "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/frames/Base.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/room_csv/Room 1.tmx": {
+            "scale": 2,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 4.25,
+                "y": -225.25
+            }
+        },
+        "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/room_csv/Room 1.tmx#Base": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "Base.tsx": {
             "dynamicWrapping": true,
@@ -29,8 +48,8 @@
             "scale": 0.75,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": -28,
-                "y": 197.99999999999994
+                "x": 501.33333333333326,
+                "y": 227.33333333333326
             }
         },
         "training_map.tmx#Base": {
@@ -38,14 +57,22 @@
         }
     },
     "last.exportedFilePath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/room_csv",
+    "last.externalTilesetPath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/frames",
+    "last.imagePath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/frames",
     "map.lastUsedExportFilter": "Fichiers CSV (*.csv)",
     "map.lastUsedFormat": "tmx",
     "openFiles": [
-        "training_map.tmx"
     ],
+    "project": "training-map.tiled-project",
     "recentFiles": [
+        "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/room_csv/Room 1.tmx",
+        "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/frames/Base.tsx",
         "training_map.tmx",
         "Base.tsx",
         "training_map..tmj"
-    ]
+    ],
+    "tileset.embedInMap": true,
+    "tileset.lastUsedFilter": "Tous les Fichiers (*)",
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.type": 1
 }

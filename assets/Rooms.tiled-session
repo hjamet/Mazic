@@ -1,0 +1,37 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "room_csv/Room 1.tmx",
+    "expandedProjectPaths": [
+        "room_csv",
+        "."
+    ],
+    "file.lastUsedOpenFilter": "Tous les Fichiers (*)",
+    "fileStates": {
+        "room_csv/Room 1.tmx": {
+            "scale": 4,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 47.125,
+                "y": 5.375
+            }
+        },
+        "room_csv/Room 1.tmx#Base": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "last.exportedFilePath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/room_csv",
+    "last.imagePath": "//wsl.localhost/Ubuntu/home/lopilo/code/Perso/Mazic/assets/frames",
+    "map.lastUsedExportFilter": "Tous les Fichiers (*)",
+    "openFiles": [
+        "room_csv/Room 1.tmx"
+    ],
+    "project": "Rooms.tiled-project",
+    "recentFiles": [
+        "room_csv/Room 1.tmx"
+    ]
+}
