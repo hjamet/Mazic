@@ -13,6 +13,9 @@ from Entities.Maze.Floor import Floor
 from Entities.Maze.Wall import Wall
 from Logger import Logger
 
+# Test
+from RoomSpawner import RoomSpawner
+
 
 class Mazic:
     # Sets the entity manager
@@ -61,12 +64,7 @@ class Mazic:
         """Spawns the initial entities."""
 
         # Spawn main character
-        main_character = Character(
-            name="Alice",
-            is_main_character=True,
-            x = 0,
-            y = 32
-        )
+        main_character = Character(name="Alice", is_main_character=True, x=0, y=32)
         self.main_character_id = self.entity_manager.add(
             main_character,
         )
@@ -79,16 +77,10 @@ class Mazic:
         )
         self.entity_manager.add(another_character)
 
-        # Spawn floor
-        for x in range(-10, 10):
-            for y in range(-10, 10):
-                if y != 0:
-                    floor = Floor(x=x * 16, y=y * 16)
-                    self.entity_manager.add(floor)
-                else:
-                    wall = Wall(x=x * 16, y=y * 16)
-                    wall.is_visible = True # TODO delete this line
-                    self.entity_manager.add(wall)
+        # Spawn room
+        room_spawner = RoomSpawner(room_nbr=1)
+        for entity in room_spawner.get_entities():
+            self.entity_manager.add(entity)
 
         # Spawn Camera
         self.camera = Camera(
@@ -214,9 +206,11 @@ class Mazic:
                         targets_id=[self.main_character_id],
                         type="auto_attack",
                         data={
-                            "x_click": self.camera.x + (x_click - self.config.window_width / 2)
+                            "x_click": self.camera.x
+                            + (x_click - self.config.window_width / 2)
                             / self.camera.zoom,
-                            "y_click": self.camera.y + (y_click - self.config.window_height / 2)
+                            "y_click": self.camera.y
+                            + (y_click - self.config.window_height / 2)
                             / self.camera.zoom,
                         },
                     )
