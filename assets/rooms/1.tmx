@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="left-up" width="6" height="7" tilewidth="16" tileheight="16" infinite="1" nextlayerid="3" nextobjectid="1">
  <tileset firstgid="1" source="Mazic.tsx"/>
- <layer id="1" name="Sol" width="6" height="7">
+ <layer id="1" name="floor" width="6" height="7">
   <data encoding="csv">
    <chunk x="0" y="0" width="16" height="16">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -23,7 +23,7 @@
 </chunk>
   </data>
  </layer>
- <layer id="2" name="Murs" width="6" height="7">
+ <layer id="2" name="wall" width="6" height="7">
   <data encoding="csv">
    <chunk x="0" y="0" width="16" height="16">
 329,333,333,0,332,334,0,0,0,0,0,0,0,0,0,0,
