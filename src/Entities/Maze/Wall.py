@@ -2,17 +2,27 @@ from EntityManager import Entity, AnimatedEntity
 
 
 class Wall(Entity, AnimatedEntity):
-    """A collisionless element that makes up the floor of the labyrinth."""
+    """A collision element that makes up the walls of the labyrinth."""
 
     assets_needed = {"idle": ["wall_mid"]}
 
-    def __init__(self, x: int, y: int, assets_needed: dict = None):
-        """A class to represent a floor.
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        assets_needed: dict = None,
+        rotation: int = 0,
+        reverse: bool = False,
+    ):
+        """
+        Initialize a Wall object.
 
         Args:
-            x (int): The x coordinate of the floor.
-            y (int): The y coordinate of the floor.
-            assets_needed (dict, optional): The assets needed to create the floor. Defaults to None.
+            x (int): The x coordinate of the wall.
+            y (int): The y coordinate of the wall.
+            assets_needed (dict, optional): The assets needed to create the wall. Defaults to None.
+            rotation (int, optional): The rotation of the wall. Defaults to 0.
+            reverse (bool, optional): Whether the wall is reversed. Defaults to False.
         """
         # Set assets needed
         if assets_needed is not None:
@@ -32,3 +42,6 @@ class Wall(Entity, AnimatedEntity):
         # Set attributes
         self.x = x
         self.y = y
+
+        # Set animation
+        self.set_animation("idle", rotation=rotation, reverse=reverse)

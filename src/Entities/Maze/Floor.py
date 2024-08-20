@@ -6,13 +6,22 @@ class Floor(Entity, AnimatedEntity):
 
     assets_needed = {"idle": ["floor_1"]}
 
-    def __init__(self, x: int, y: int, assets_needed: dict = None):
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        assets_needed: dict = None,
+        rotation: int = 0,
+        reverse: bool = False,
+    ):
         """A class to represent a floor.
 
         Args:
             x (int): The x coordinate of the floor.
             y (int): The y coordinate of the floor.
             assets_needed (dict, optional): The assets needed to create the floor. Defaults to None.
+            rotation (int, optional): The rotation of the floor. Defaults to 0.
+            reverse (bool, optional): Whether the floor is reversed. Defaults to False.
         """
         # Set assets needed
         if assets_needed is not None:
@@ -32,3 +41,6 @@ class Floor(Entity, AnimatedEntity):
         # Set attributes
         self.x = x
         self.y = y
+
+        # Set animation
+        self.set_animation("idle", rotation=rotation, reverse=reverse)

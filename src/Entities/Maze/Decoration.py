@@ -6,13 +6,23 @@ class Decoration(Entity, AnimatedEntity):
 
     assets_needed = {"idle": ["wall_top_mid"]}
 
-    def __init__(self, x: int, y: int, assets_needed: dict = None):
-        """A class to represent a decoration.
+    def __init__(
+        self,
+        x: int,
+        y: int,
+        assets_needed: dict = None,
+        rotation: int = 0,
+        reverse: bool = False,
+    ):
+        """
+        Initialize a Decoration object.
 
         Args:
             x (int): The x coordinate of the decoration.
             y (int): The y coordinate of the decoration.
             assets_needed (dict, optional): The assets needed to create the decoration. Defaults to None.
+            rotation (int, optional): The rotation of the decoration. Defaults to 0.
+            reverse (bool, optional): Whether the decoration is reversed. Defaults to False.
         """
         # Set assets needed
         if assets_needed is not None:
@@ -32,3 +42,6 @@ class Decoration(Entity, AnimatedEntity):
         # Set attributes
         self.x = x
         self.y = y
+
+        # Set animation
+        self.set_animation("idle", rotation=rotation, reverse=reverse)
