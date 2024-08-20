@@ -190,112 +190,79 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
     def __vision(self):
         """Detect entities in line of sight based on mouse position."""
-        # Get mouse position
         mouse_pos = pygame.mouse.get_pos()
-
-        # Get mouse relative position
-        window_width, window_height = (
-            self.config.window_width,
-            self.config.window_height,
-        )
         camera = self.entity_manager.get_camera()
-        camera_zoom = camera.zoom
-        camera_coords = camera.x, camera.y
         x_mouse, y_mouse = (
-            mouse_pos[0] / camera_zoom,
-            mouse_pos[1] / camera_zoom,
+            (mouse_pos[0] / camera.zoom)
+            + camera.x
+            - self.config.window_width / (2 * camera.zoom),
+            (mouse_pos[1] / camera.zoom)
+            + camera.y
+            - self.config.window_height / (2 * camera.zoom),
         )
 
-        # Get mouse relative position in the world with a random offset
-        x_mouse += camera_coords[0] - window_width / (2 * camera_zoom)
-        y_mouse += camera_coords[1] - window_height / (2 * camera_zoom)
-
-        self.entity_manager.add(Point(x_mouse, y_mouse))
-
-        # Get distance to mouse
-        vision_range = 3
-
-        # Get unit orthogonal vector
-        x_ortho = y_mouse - self.y
-        y_ortho = -(x_mouse - self.x)
-        norm = np.sqrt(x_ortho**2 + y_ortho**2)
+        vision_range = 3 * 16
+        dx, dy = x_mouse - self.x, y_mouse - self.y
+        norm = (dx**2 + dy**2) ** 0.5
         if norm != 0:
-            x_ortho /= norm
-            y_ortho /= norm
+            x_ortho, y_ortho = dy / norm, -dx / norm
         else:
-            x_ortho = 1
-            y_ortho = 0
+            x_ortho, y_ortho = 1, 0
 
-        # Define vision triangles
-        vision_triangle_1 = [
-            (self.x + x_ortho, self.y + y_ortho),
-            (self.x - 16 * x_ortho, self.y - 16 * y_ortho),
-            (
-                x_mouse + vision_range * x_ortho * 16,
-                y_mouse + vision_range * y_ortho * 16,
-            ),
-        ]
-        vision_triangle_2 = [
-            (self.x - 16 * x_ortho, self.y - 16 * y_ortho),
-            (
-                x_mouse + vision_range * x_ortho * 16,
-                y_mouse + vision_range * y_ortho * 16,
-            ),
-            (
-                x_mouse - vision_range * x_ortho * 16,
-                y_mouse - vision_range * y_ortho * 16,
-            ),
-        ]
-
-        # Get entities in vision triangle
-        entities = self.entity_manager.get_animated_entities()
-        # Debug vision
-        # entities = list(filter(lambda entity: not isinstance(entity, Point), entities))
-        entities_shapes = pd.DataFrame(
-            [entity.get_center() for entity in entities],
+        vision_triangles = np.array(
+            [
+                [
+                    self.x + x_ortho,
+                    self.y + y_ortho,
+                    self.x - 16 * x_ortho,
+                    self.y - 16 * y_ortho,
+                    x_mouse + vision_range * x_ortho,
+                    y_mouse + vision_range * y_ortho,
+                ],
+                [
+                    self.x - 16 * x_ortho,
+                    self.y - 16 * y_ortho,
+                    x_mouse + vision_range * x_ortho,
+                    y_mouse + vision_range * y_ortho,
+                    x_mouse - vision_range * x_ortho,
+                    y_mouse - vision_range * y_ortho,
+                ],
+            ]
         )
 
-        in_triangle_index = pd.concat(
+        entities = self.entity_manager.get_animated_entities()
+        entities_centers = np.array([entity.get_center() for entity in entities])
+
+        def is_in_triangle(points, triangle):
+            """Check if points are inside a triangle."""
+            v0 = triangle[2:4] - triangle[0:2]
+            v1 = triangle[4:6] - triangle[0:2]
+            v2 = points - triangle[0:2]
+
+            dot00 = np.dot(v0, v0)
+            dot01 = np.dot(v0, v1)
+            dot02 = np.dot(v0, v2.T)
+            dot11 = np.dot(v1, v1)
+            dot12 = np.dot(v1, v2.T)
+
+            invDenom = 1 / (dot00 * dot11 - dot01 * dot01)
+            u = (dot11 * dot02 - dot01 * dot12) * invDenom
+            v = (dot00 * dot12 - dot01 * dot02) * invDenom
+
+            return (u >= 0) & (v >= 0) & (u + v < 1)
+
+        in_triangle = np.any(
             [
-                pd.Series(
-                    ft_is_in_triangle(
-                        entities_shapes,
-                        *vision_triangle_1[0],
-                        *vision_triangle_1[1],
-                        *vision_triangle_1[2],
-                    )
-                ),
-                pd.Series(
-                    ft_is_in_triangle(
-                        entities_shapes,
-                        *vision_triangle_2[0],
-                        *vision_triangle_2[1],
-                        *vision_triangle_2[2],
-                    )
-                ),
-            ]
-        ).unique()
-        entities_in_vision = [entities[i] for i in in_triangle_index]
+                is_in_triangle(entities_centers, triangle)
+                for triangle in vision_triangles
+            ],
+            axis=0,
+        )
+        entities_in_vision = [
+            entity for entity, in_triangle in zip(entities, in_triangle) if in_triangle
+        ]
 
-        # Fonction pour vérifier si une ligne intersecte avec un rectangle
         def line_intersects_rect(x1, y1, x2, y2, rx, ry, rw, rh):
-            """
-            Vérifie si une ligne intersecte avec un rectangle.
-
-            Args:
-                x1, y1 (float): Coordonnées du point de départ de la ligne.
-                x2, y2 (float): Coordonnées du point d'arrivée de la ligne.
-                rx, ry (float): Coordonnées du coin supérieur gauche du rectangle.
-                rw, rh (float): Largeur et hauteur du rectangle.
-
-            Returns:
-                bool: True si la ligne intersecte le rectangle, False sinon.
-            """
-            left = rx
-            right = rx + rw
-            top = ry
-            bottom = ry + rh
-
             def ccw(ax, ay, bx, by, cx, cy):
                 return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
 
@@ -304,39 +271,32 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
                     bx, by, cx, cy, dx, dy
                 ) and ccw(ax, ay, bx, by, cx, cy) != ccw(ax, ay, bx, by, dx, dy)
 
-            return (
-                intersect(x1, y1, x2, y2, left, top, right, top)
-                or intersect(x1, y1, x2, y2, right, top, right, bottom)
-                or intersect(x1, y1, x2, y2, right, bottom, left, bottom)
-                or intersect(x1, y1, x2, y2, left, bottom, left, top)
+            left, right, top, bottom = rx, rx + rw, ry, ry + rh
+            return any(
+                intersect(x1, y1, x2, y2, *edge)
+                for edge in [
+                    (left, top, right, top),
+                    (right, top, right, bottom),
+                    (right, bottom, left, bottom),
+                    (left, bottom, left, top),
+                ]
             )
 
-        # Debug vision
-        # for entity in entities_in_vision:
-        #     self.entity_manager.add(Point(entity.x, entity.y, color=(0, 255, 0)))
-        # for point in vision_triangle_1:
-        #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
-        # for point in vision_triangle_2:
-        #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
-
-        # Make entities visible until a hitbox is found
         current_tick = pygame.time.get_ticks()
         for entity in entities_in_vision:
-            is_visible = True
-            for blocking_entity in entities_in_vision:
-                if blocking_entity != entity and blocking_entity.block_vision:
-                    if line_intersects_rect(
-                        self.x,
-                        self.y,
-                        entity.x,
-                        entity.y,
-                        blocking_entity.x,
-                        blocking_entity.y,
-                        16,
-                        16,
-                    ):
-                        is_visible = False
-                        break
-
-            if is_visible:
+            if not any(
+                blocking_entity != entity
+                and blocking_entity.block_vision
+                and line_intersects_rect(
+                    self.x,
+                    self.y,
+                    entity.x,
+                    entity.y,
+                    blocking_entity.x,
+                    blocking_entity.y,
+                    16,
+                    16,
+                )
+                for blocking_entity in entities_in_vision
+            ):
                 entity.last_seen = current_tick
