@@ -27,12 +27,26 @@ class RoomSpawner:
         """
         # Dictionary of asset names (to be completed)
         self._asset_names = {
+            110: "wall_mid",
+            112: "wall_outer_mid_left",
             219: "floor_1",
             220: "floor_3",
             221: "floor_4",
             222: "floor_5",
             223: "floor_6",
             224: "floor_8",
+            307: "wall_edge_right",
+            311: "wall_edge_tshape_left",
+            312: "wall_edge_tshape_right",
+            325: "wall_left",
+            326: "wall_outer_front_left",
+            327: "wall_outer_mid_right",
+            328: "wall_outer_top_left",
+            329: "wall_outer_top_right",
+            330: "wall_right",
+            331: "wall_top_left",
+            333: "wall_top_right",
+            332: "wall_top_mid",
         }
 
         # Load room data
@@ -66,23 +80,32 @@ class RoomSpawner:
 
     def _decode_asset(self, asset_number: int) -> AssetInfo:
         """
-        Decode an asset number into an AssetInfo containing the asset information.
+        Decode an asset number into an AssetInfo containing optimized asset information.
 
         Args:
             asset_number (int): The encoded asset number.
 
         Returns:
-            AssetInfo: A namedtuple containing the asset information.
+            AssetInfo: A namedtuple containing the optimized asset information.
         """
+        asset_number -= 1
         asset_id = asset_number & self._ASSET_ID_MASK
         flip_h = bool(asset_number & self._FLIP_H_MASK)
         flip_v = bool(asset_number & self._FLIP_V_MASK)
         rotation = ((asset_number & self._ROTATION_MASK) >> 28) * 90
 
-        # Combine flip_h and flip_v into a single 'reverse' value
-        reverse = flip_h or flip_v
+        # Optimize flip and rotation combinations
+        if flip_h and flip_v:
+            flip_h = flip_v = False
+            rotation = (rotation + 180) % 360
+        elif flip_v:
+            flip_v = False
+            flip_h = not flip_h
+            rotation = (rotation + 180) % 360
 
-        asset_name = self._asset_names.get(asset_id, f"error")
+        reverse = flip_h  # Now only horizontal flip is used
+
+        asset_name = self._asset_names.get(asset_id, "error")
 
         return AssetInfo(
             id=asset_id, name=asset_name, rotation=rotation, reverse=reverse
