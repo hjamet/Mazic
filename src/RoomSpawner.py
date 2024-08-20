@@ -2,6 +2,7 @@ import json
 import os
 from Entities.Maze.Floor import Floor
 from Entities.Maze.Wall import Wall
+from Entities.Maze.Decoration import Decoration
 
 
 class RoomSpawner:
@@ -31,6 +32,8 @@ class RoomSpawner:
                     self.entities.append(Floor(**tile_args))
                 elif layer["name"] == "wall":
                     self.entities.append(Wall(**tile_args))
+                elif layer["name"] == "decoration":
+                    self.entities.append(Decoration(**tile_args))
                 else:
                     raise ValueError(f"Unknown layer name: {layer['name']}")
 
