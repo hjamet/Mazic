@@ -64,7 +64,7 @@ class Mazic:
         """Spawns the initial entities."""
 
         # Spawn main character
-        main_character = Character(name="Alice", is_main_character=True, x=0, y=32)
+        main_character = Character(name="Alice", is_main_character=True, x=-32, y=32)
         self.main_character_id = self.entity_manager.add(
             main_character,
         )

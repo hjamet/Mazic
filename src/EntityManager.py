@@ -228,7 +228,13 @@ class AnimatedEntity(pygame.sprite.Sprite):
     asset_manager = asset_manager
 
     def __init__(
-        self, camera_lvl: int = 0, has_hitbox: bool = False, has_mask: bool = False, block_vision: bool = False, is_tangible: bool = True
+        self,
+        camera_lvl: int = 0,
+        has_hitbox: bool = False,
+        has_mask: bool = False,
+        block_vision: bool = False,
+        is_tangible: bool = True,
+        hitbox_height_ratio: float = 1.0,
     ) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
@@ -239,6 +245,9 @@ class AnimatedEntity(pygame.sprite.Sprite):
             mask (bool, optional): Whether the entity has a mask (for pixel perfect collision). Defaults to True.
             block_vision (bool, optional): Whether the entity blocks the vision of other entities. Defaults to False.
             is_tangible (bool, optional): Whether the entity must be taken in account during collision calculation
+            hitbox_height_ratio (float): Ratio of the hitbox height to the image height.
+                                         1.0 means the hitbox has the same height as the image.
+                                         0.5 means the hitbox has half the height of the image, aligned to the bottom.
 
         Raises:
             NotImplementedError: If the child class does not have an assets_needed attribute.
@@ -264,9 +273,11 @@ class AnimatedEntity(pygame.sprite.Sprite):
         # Load animations
         self.animations = {
             animation_type: [
-                Asset(asset_name=asset_name)
-                if isinstance(asset_name, str)
-                else Asset(asset_surface=asset_name)
+                (
+                    Asset(asset_name=asset_name)
+                    if isinstance(asset_name, str)
+                    else Asset(asset_surface=asset_name)
+                )
                 for asset_name in assets_name
             ]
             for animation_type, assets_name in self.assets_needed.items()
@@ -295,6 +306,8 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.size = 1
         self.reverse = False
         self.transparency = 0
+
+        self.hitbox_height_ratio = hitbox_height_ratio
 
     def get_center(self):
         """Returns the center of the entity
@@ -358,9 +371,11 @@ class AnimatedEntity(pygame.sprite.Sprite):
             assets (list): The list of assets to use for the animation. Can be either strings or surfaces.
         """
         self.animations[animation] = [
-            Asset(asset_name=asset_name)
-            if isinstance(asset_name, str)
-            else Asset(asset_surface=asset_name)
+            (
+                Asset(asset_name=asset_name)
+                if isinstance(asset_name, str)
+                else Asset(asset_surface=asset_name)
+            )
             for asset_name in assets
         ]
 
@@ -413,11 +428,9 @@ class AnimatedEntity(pygame.sprite.Sprite):
         ## Remove self
         if self in entities:
             entities.remove(self)
-            
+
         # Split entities in two lists : entities with a mask and entities without a mask
-        entities_with_mask = [
-            entity for entity in entities if entity.has_mask is True
-        ]
+        entities_with_mask = [entity for entity in entities if entity.has_mask is True]
         entities_without_mask = [
             entity for entity in entities if entity.has_mask is False
         ]

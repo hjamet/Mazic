@@ -66,7 +66,14 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         """
         # Call parent constructors
         Entity.__init__(self)
-        AnimatedEntity.__init__(self, camera_lvl=2, has_hitbox=True, has_mask=True, is_tangible=True)
+        AnimatedEntity.__init__(
+            self,
+            camera_lvl=2,
+            has_hitbox=True,
+            has_mask=True,
+            is_tangible=True,
+            hitbox_height_ratio=0.5,
+        )  # Half-height hitbox
         Health.__init__(self, max_hp=100, is_main_character_health=is_main_character)
         AbilityManager.__init__(self, entity_manager=self.entity_manager)
 
@@ -239,36 +246,44 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
                 y_mouse - vision_range * y_ortho * 16,
             ),
         ]
-        
+
         # Get entities in vision triangle
         entities = self.entity_manager.get_animated_entities()
         # Remove all points from entities
-        entities = list(filter(lambda entity: not isinstance(entity, Point), entities)) # TODO debug
+        entities = list(
+            filter(lambda entity: not isinstance(entity, Point), entities)
+        )  # TODO debug
         entities_shapes = pd.DataFrame(
             [entity.get_center() for entity in entities],
         )
-        
-        in_triangle_index = pd.concat([
-            pd.Series(ft_is_in_triangle(
-                entities_shapes,
-                *vision_triangle_1[0],
-                *vision_triangle_1[1],
-                *vision_triangle_1[2],
-            )),
-            pd.Series(ft_is_in_triangle(
-                entities_shapes,
-                *vision_triangle_2[0],
-                *vision_triangle_2[1],
-                *vision_triangle_2[2],
-            )),
-        ]).unique()
+
+        in_triangle_index = pd.concat(
+            [
+                pd.Series(
+                    ft_is_in_triangle(
+                        entities_shapes,
+                        *vision_triangle_1[0],
+                        *vision_triangle_1[1],
+                        *vision_triangle_1[2],
+                    )
+                ),
+                pd.Series(
+                    ft_is_in_triangle(
+                        entities_shapes,
+                        *vision_triangle_2[0],
+                        *vision_triangle_2[1],
+                        *vision_triangle_2[2],
+                    )
+                ),
+            ]
+        ).unique()
         entities_in_vision = [entities[i] for i in in_triangle_index]
 
         # Sort entities by distance
         entities_in_vision.sort(
             key=lambda entity: (entity.x - self.x) ** 2 + (entity.y - self.y) ** 2
         )
-        
+
         # for entity in entities_in_vision:
         #     self.entity_manager.add(Point(entity.x, entity.y, color=(0, 255, 0)))
         # for point in vision_triangle_1:

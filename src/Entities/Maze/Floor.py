@@ -23,7 +23,7 @@ class Floor(Entity, AnimatedEntity):
         AnimatedEntity.__init__(
             self,
             camera_lvl=1,
-            has_hitbox=True,
+            has_hitbox=False,
             has_mask=False,
             block_vision=False,
             is_tangible=False,
