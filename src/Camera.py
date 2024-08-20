@@ -4,6 +4,20 @@ from EntityManager import Entity, EntityManager
 import pygame
 
 
+def get_bounding_rect(image):
+    """
+    Get the smallest rectangle that contains all non-transparent pixels.
+
+    Args:
+        image (pygame.Surface): The image to analyze.
+
+    Returns:
+        pygame.Rect: The bounding rectangle.
+    """
+    mask = pygame.mask.from_surface(image)
+    return mask.get_bounding_rects()[0] if mask.count() > 0 else image.get_rect()
+
+
 class Camera(Entity):
     class_name = "Camera"
 
@@ -96,11 +110,44 @@ class Camera(Entity):
             image = asset.get_image(scale=self.zoom)
 
             # Calculate the position of the entity on the screen
-            screen_x = int(screen_x)
-            screen_y = int(screen_y)
+            screen_x = int(
+                (animated_entity.x * self.zoom - self.x * self.zoom)
+                + self.game.screen.get_width() / 2
+            )
+            screen_y = int(
+                (animated_entity.y * self.zoom - self.y * self.zoom)
+                + self.game.screen.get_height() / 2
+            )
 
-            # If the entity has no hitbox, just display the image
-            if animated_entity.rect is None:
+            # Get the bounding rect of non-transparent pixels
+            bounding_rect = get_bounding_rect(image)
+
+            # Update hitbox shape
+            if animated_entity.has_mask:
+                animated_entity.mask = pygame.mask.from_surface(image)
+
+            # Adjust hitbox size based on bounding rect and hitbox_height_ratio
+            hitbox_height = int(
+                bounding_rect.height * animated_entity.hitbox_height_ratio
+            )
+            hitbox_width = bounding_rect.width
+
+            # Create new rect with adjusted size
+            new_rect = pygame.Rect(0, 0, hitbox_width, hitbox_height)
+
+            # Position the new rect
+            new_rect.centerx = screen_x + bounding_rect.centerx - image.get_width() // 2
+            new_rect.bottom = screen_y + bounding_rect.bottom - image.get_height() // 2
+
+            animated_entity.rect = new_rect
+
+            # Display the image
+            image_rect = image.get_rect(center=(screen_x, screen_y))
+            self.game.screen.blit(image, image_rect)
+
+            # Debug: Draw hitbox outline
+            if animated_entity.rect:
+                pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
                 self.game.screen.blit(
                     image,
                     (
