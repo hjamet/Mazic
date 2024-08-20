@@ -3,15 +3,6 @@ import os
 from Entities.Maze.Floor import Floor
 from Entities.Maze.Wall import Wall
 
-# for x in range(-10, 10):
-#     for y in range(-10, 10):
-#         if y != 0:
-#             floor = Floor(x=x * 16, y=y * 16)
-#             self.entity_manager.add(floor)
-#         else:
-#             wall = Wall(x=x * 16, y=y * 16)
-#             self.entity_manager.add(wall)
-
 
 class RoomSpawner:
 
