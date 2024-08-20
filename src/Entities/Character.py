@@ -249,10 +249,8 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Get entities in vision triangle
         entities = self.entity_manager.get_animated_entities()
-        # Remove all points from entities
-        entities = list(
-            filter(lambda entity: not isinstance(entity, Point), entities)
-        )  # TODO debug
+        # Debug vision
+        # entities = list(filter(lambda entity: not isinstance(entity, Point), entities))
         entities_shapes = pd.DataFrame(
             [entity.get_center() for entity in entities],
         )
@@ -279,24 +277,66 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         ).unique()
         entities_in_vision = [entities[i] for i in in_triangle_index]
 
-        # Sort entities by distance and whether they block vision
-        entities_in_vision.sort(
-            key=lambda entity: (
-                (entity.x - self.x) ** 2 + (entity.y - self.y) ** 2,
-                entity.block_vision,
-            )
-        )
+        # Fonction pour vérifier si une ligne intersecte avec un rectangle
+        def line_intersects_rect(x1, y1, x2, y2, rx, ry, rw, rh):
+            """
+            Vérifie si une ligne intersecte avec un rectangle.
 
-        for entity in entities_in_vision:
-            self.entity_manager.add(Point(entity.x, entity.y, color=(0, 255, 0)))
-        for point in vision_triangle_1:
-            self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
-        for point in vision_triangle_2:
-            self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
+            Args:
+                x1, y1 (float): Coordonnées du point de départ de la ligne.
+                x2, y2 (float): Coordonnées du point d'arrivée de la ligne.
+                rx, ry (float): Coordonnées du coin supérieur gauche du rectangle.
+                rw, rh (float): Largeur et hauteur du rectangle.
+
+            Returns:
+                bool: True si la ligne intersecte le rectangle, False sinon.
+            """
+            left = rx
+            right = rx + rw
+            top = ry
+            bottom = ry + rh
+
+            def ccw(ax, ay, bx, by, cx, cy):
+                return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
+
+            def intersect(ax, ay, bx, by, cx, cy, dx, dy):
+                return ccw(ax, ay, cx, cy, dx, dy) != ccw(
+                    bx, by, cx, cy, dx, dy
+                ) and ccw(ax, ay, bx, by, cx, cy) != ccw(ax, ay, bx, by, dx, dy)
+
+            return (
+                intersect(x1, y1, x2, y2, left, top, right, top)
+                or intersect(x1, y1, x2, y2, right, top, right, bottom)
+                or intersect(x1, y1, x2, y2, right, bottom, left, bottom)
+                or intersect(x1, y1, x2, y2, left, bottom, left, top)
+            )
+
+        # Debug vision
+        # for entity in entities_in_vision:
+        #     self.entity_manager.add(Point(entity.x, entity.y, color=(0, 255, 0)))
+        # for point in vision_triangle_1:
+        #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
+        # for point in vision_triangle_2:
+        #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
 
         # Make entities visible until a hitbox is found
         current_tick = pygame.time.get_ticks()
         for entity in entities_in_vision:
-            entity.last_seen = current_tick
-            if entity.block_vision:
-                break
+            is_visible = True
+            for blocking_entity in entities_in_vision:
+                if blocking_entity != entity and blocking_entity.block_vision:
+                    if line_intersects_rect(
+                        self.x,
+                        self.y,
+                        entity.x,
+                        entity.y,
+                        blocking_entity.x,
+                        blocking_entity.y,
+                        16,
+                        16,
+                    ):
+                        is_visible = False
+                        break
+
+            if is_visible:
+                entity.last_seen = current_tick
