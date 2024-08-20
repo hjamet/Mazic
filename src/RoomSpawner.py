@@ -35,6 +35,7 @@ class RoomSpawner:
             222: "floor_5",
             223: "floor_6",
             224: "floor_8",
+            228: "floor_spikes_anim_f3",
             307: "wall_edge_right",
             311: "wall_edge_tshape_left",
             312: "wall_edge_tshape_right",

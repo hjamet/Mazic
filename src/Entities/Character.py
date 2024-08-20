@@ -210,7 +210,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         x_mouse += camera_coords[0] - window_width / (2 * camera_zoom)
         y_mouse += camera_coords[1] - window_height / (2 * camera_zoom)
 
-        # self.entity_manager.add(Point(x_mouse, y_mouse))
+        self.entity_manager.add(Point(x_mouse, y_mouse))
 
         # Get distance to mouse
         vision_range = 3
@@ -279,17 +279,20 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         ).unique()
         entities_in_vision = [entities[i] for i in in_triangle_index]
 
-        # Sort entities by distance
+        # Sort entities by distance and whether they block vision
         entities_in_vision.sort(
-            key=lambda entity: (entity.x - self.x) ** 2 + (entity.y - self.y) ** 2
+            key=lambda entity: (
+                (entity.x - self.x) ** 2 + (entity.y - self.y) ** 2,
+                entity.block_vision,
+            )
         )
 
-        # for entity in entities_in_vision:
-        #     self.entity_manager.add(Point(entity.x, entity.y, color=(0, 255, 0)))
-        # for point in vision_triangle_1:
-        #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
-        # for point in vision_triangle_2:
-        #     self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
+        for entity in entities_in_vision:
+            self.entity_manager.add(Point(entity.x, entity.y, color=(0, 255, 0)))
+        for point in vision_triangle_1:
+            self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
+        for point in vision_triangle_2:
+            self.entity_manager.add(Point(point[0], point[1], color=(0, 0, 255)))
 
         # Make entities visible until a hitbox is found
         current_tick = pygame.time.get_ticks()
