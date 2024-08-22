@@ -497,12 +497,12 @@ class AnimatedEntity(pygame.sprite.Sprite):
                     else -(adjustment + speed)
                 )
 
-        # 6. Update hitbox position and size
-        self.rect.x = (self.x - camera.x) * zoom
-        self.rect.y = (self.y - camera.y) * zoom
-        self.rect.width *= zoom
-        self.rect.height *= zoom * self.hitbox_height_ratio
-        self.rect.bottom = self.rect.y + self.rect.height
+        # # 6. Update hitbox position and size
+        # self.rect.x = (self.x - camera.x) * zoom
+        # self.rect.y = (self.y - camera.y) * zoom
+        # self.rect.width *= zoom
+        # self.rect.height *= zoom * self.hitbox_height_ratio
+        # self.rect.bottom = self.rect.y + self.rect.height
 
         # 7. Return the list of collisions
         return collisions
