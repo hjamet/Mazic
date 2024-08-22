@@ -1,12 +1,12 @@
 import json
 import os
 from collections import namedtuple
-from typing import List, Tuple
-from Logger import Logger
+from typing import List, Set, Tuple
 
 from Entities.Maze.Decoration import Decoration
 from Entities.Maze.Floor import Floor
 from Entities.Maze.Wall import Wall
+from Logger import Logger
 
 AssetInfo = namedtuple("AssetInfo", ["id", "name", "rotation", "reverse"])
 
@@ -44,21 +44,24 @@ class RoomSpawner:
         332: "wall_top_mid",
     }
 
-    def __init__(self, room_nbr: int) -> None:
+    def __init__(self, room_nbr: int, x: int = 0, y: int = 0) -> None:
         """
-        Initialize the RoomSpawner and generate room entities.
+        Initialise le RoomSpawner et génère les entités de la salle.
 
         Args:
-            room_nbr (int): The number of the room to generate.
+            room_nbr (int): Le numéro de la salle à générer.
+            x (int): La coordonnée x de l'entité en haut à gauche de la salle. Par défaut 0.
+            y (int): La coordonnée y de l'entité en haut à gauche de la salle. Par défaut 0.
         """
-        # Logger
         self.logger = Logger(self.__class__.__name__)
+        self.x = x
+        self.y = y
 
-        # Load room data
+        # Charger les données de la salle
         with open(os.path.join("assets", "rooms", f"{room_nbr}.json"), "r") as f:
             data = json.load(f)
 
-        # Create entities
+        # Créer les entités
         self.entities = []
         for layer in data["layers"]:
             for i, asset_nbr in enumerate(layer["chunks"][0]["data"]):
@@ -67,8 +70,8 @@ class RoomSpawner:
 
                 asset_info = self._decode_asset(asset_nbr)
                 tile_args = {
-                    "x": (i % layer["chunks"][0]["width"]) * 16,
-                    "y": (i // layer["chunks"][0]["width"]) * 16,
+                    "x": self.x + (i % layer["chunks"][0]["width"]) * 16,
+                    "y": self.y + (i // layer["chunks"][0]["width"]) * 16,
                     "assets_needed": {"idle": [asset_info.name]},
                     "rotation": asset_info.rotation,
                     "reverse": asset_info.reverse,
@@ -81,33 +84,22 @@ class RoomSpawner:
                 elif layer["name"] == "decoration":
                     self.entities.append(Decoration(**tile_args))
                 else:
-                    raise ValueError(f"Unknown layer name: {layer['name']}")
+                    raise ValueError(f"Nom de couche inconnu : {layer['name']}")
 
-        # Calculer les coins du carré englobant
-        self.min_x = float("inf")
-        self.min_y = float("inf")
-        self.max_x = float("-inf")
-        self.max_y = float("-inf")
-
-        for entity in self.entities:
-            self.min_x = min(self.min_x, entity.x)
-            self.min_y = min(self.min_y, entity.y)
-            self.max_x = max(self.max_x, entity.x + 16)  # Assuming tile size is 16
-            self.max_y = max(self.max_y, entity.y + 16)
-
+        self._calculate_bounding_box()
         self.logger.info(f"{self.get_entrances()}")
 
     def overlaps_with(self, other_room: "RoomSpawner") -> bool:
         """
-        Check if this room overlaps with another room.
+        Vérifie si cette salle chevauche une autre salle.
 
         Args:
-            other_room (RoomSpawner): The other room to check for overlap.
+            other_room (RoomSpawner): L'autre salle à vérifier pour le chevauchement.
 
         Returns:
-            bool: True if the rooms overlap, False otherwise.
+            bool: True si les salles se chevauchent, False sinon.
         """
-        # Vérifier si les carrés englobants se chevauchent
+        # Vérifier si les boîtes englobantes se chevauchent
         if (
             self.max_x <= other_room.min_x
             or other_room.max_x <= self.min_x
@@ -116,7 +108,7 @@ class RoomSpawner:
         ):
             return False
 
-        # Si les carrés englobants se chevauchent, vérifier les tuiles individuelles
+        # Si les boîtes englobantes se chevauchent, vérifier les tuiles individuelles
         self_tiles = set((entity.x, entity.y) for entity in self.entities)
         other_tiles = set((entity.x, entity.y) for entity in other_room.entities)
 
@@ -159,30 +151,62 @@ class RoomSpawner:
         """Return the list of generated entities."""
         return self.entities
 
-    def get_entrances(self) -> List[Tuple[int, int]]:
+    def get_entrances(self) -> Tuple[Tuple[Tuple[int, int], ...], ...]:
         """
-        Returns a list of coordinates of the room's entrances.
-
-        An entrance is defined as a floor tile adjacent to an empty space.
+        Identifie et regroupe les entrées (floors adjacents à des cases vides).
 
         Returns:
-            List[Tuple[int, int]]: List of (x, y) coordinates of entrances.
+            Tuple[Tuple[Tuple[int, int], ...]]: Groupes d'entrées coordonnées.
         """
-        entrances = []
-        floor_tiles = set(
-            (entity.x, entity.y)
-            for entity in self.entities
-            if isinstance(entity, Floor)
-        )
-
-        # Define directions to check (up, down, left, right)
+        all_tiles = {(e.x, e.y) for e in self.entities}
+        floor_tiles = {(e.x, e.y) for e in self.entities if isinstance(e, Floor)}
         directions = [(0, -16), (0, 16), (-16, 0), (16, 0)]
 
-        for x, y in floor_tiles:
-            for dx, dy in directions:
-                adjacent_tile = (x + dx, y + dy)
-                if adjacent_tile not in floor_tiles:
-                    entrances.append((x, y))
-                    break  # Break to avoid adding the same entrance multiple times
+        def is_entrance(x: int, y: int) -> bool:
+            """Vérifie si une tuile est une entrée."""
+            return any((x + dx, y + dy) not in all_tiles for dx, dy in directions)
 
-        return entrances
+        def get_entrance_group(x: int, y: int) -> Set[Tuple[int, int]]:
+            """Trouve récursivement les tuiles d'entrée adjacentes."""
+            group = set()
+            stack = [(x, y)]
+            while stack:
+                cx, cy = stack.pop()
+                if (
+                    (cx, cy) not in group
+                    and (cx, cy) in floor_tiles
+                    and is_entrance(cx, cy)
+                ):
+                    group.add((cx, cy))
+                    stack.extend((cx + dx, cy + dy) for dx, dy in directions)
+            return group
+
+        entrances = []
+        processed = set()
+        for tile in floor_tiles:
+            if tile not in processed and is_entrance(*tile):
+                group = get_entrance_group(*tile)
+                if group:
+                    entrances.append(tuple(sorted(group)))
+                    processed.update(group)
+
+        return tuple(entrances)
+
+    def _calculate_bounding_box(self) -> None:
+        """
+        Calcule la boîte englobante de la salle basée sur ses entités.
+
+        Cette méthode met à jour les attributs min_x, max_x, min_y et max_y de la salle.
+        """
+        if not self.entities:
+            self.min_x = self.max_x = self.min_y = self.max_y = 0
+            return
+
+        self.min_x = min(entity.x for entity in self.entities)
+        self.max_x = (
+            max(entity.x for entity in self.entities) + 16
+        )  # +16 pour la largeur de la tuile
+        self.min_y = min(entity.y for entity in self.entities)
+        self.max_y = (
+            max(entity.y for entity in self.entities) + 16
+        )  # +16 pour la hauteur de la tuile

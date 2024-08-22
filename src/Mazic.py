@@ -13,7 +13,7 @@ from Entities.Character import Character
 from Logger import Logger
 
 # Test
-from MazeGenerator.RoomSpawner import RoomSpawner
+from MazeGenerator.MazeManager import MazeManager
 
 
 class Mazic:
@@ -81,8 +81,8 @@ class Mazic:
         self.entity_manager.add(another_character)
 
         # Spawn room
-        room_spawner = RoomSpawner(room_nbr=1)
-        for entity in room_spawner.get_entities():
+        maze_manager = MazeManager(1)
+        for entity in maze_manager.get_all_entities():
             self.entity_manager.add(entity)
 
         # Spawn Camera
