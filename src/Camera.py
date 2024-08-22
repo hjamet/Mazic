@@ -70,32 +70,17 @@ class Camera(Entity):
     def update(self) -> None:
         """
         Display the entities and update their hitboxes.
-
-        This method performs the following tasks for each animated entity:
-        1. Checks if the entity is within the camera view.
-        2. Applies visibility and transparency effects if applicable.
-        3. Calculates the entity's position on the screen.
-        4. Updates the entity's hitbox (rect) based on the total image size.
-        5. Displays the entity on the screen.
-        6. Updates the entity's mask if needed.
-        7. Draws debug outlines for hitboxes.
-
-        The hitbox is calculated based on the total image size, not just the visible pixels,
-        ensuring consistent collision detection regardless of transparency.
         """
-        # Fill the screen with black
         self.game.screen.fill((0, 0, 0))
 
         for animated_entity in self.entity_manager.get_animated_entities():
-            # Get the current animation
             asset = animated_entity.get_current_animation()
             if asset is None:
                 continue
 
-            # Get the asset size
             asset_size = asset.get_size()
 
-            # Check if the entity is in the camera view
+            # Vérification de la visibilité dans la caméra
             screen_x = (
                 animated_entity.x * self.zoom - self.x * self.zoom
             ) + self.game.screen.get_width() / 2
@@ -110,58 +95,54 @@ class Camera(Entity):
             ):
                 continue
 
-            # Check for entity visibility
+            # Gestion de la transparence
             if animated_entity.visibility_memory is not None:
-                if animated_entity.last_seen is None:
-                    transparency = 1
-                else:
-                    transparency = (
-                        pygame.time.get_ticks() - animated_entity.last_seen
-                    ) / (1000 * animated_entity.visibility_memory)
+                transparency = (
+                    1
+                    if animated_entity.last_seen is None
+                    else (pygame.time.get_ticks() - animated_entity.last_seen)
+                    / (1000 * animated_entity.visibility_memory)
+                )
                 asset.set_transparency(asset.transparency_factor + transparency)
 
-            # Apply all transformations and get final image
             image = asset.get_image(scale=self.zoom)
+            screen_x = int(screen_x)
+            screen_y = int(screen_y)
 
-            # Calculate the position of the entity on the screen
-            screen_x = int(
-                (animated_entity.x * self.zoom - self.x * self.zoom)
-                + self.game.screen.get_width() / 2
-            )
-            screen_y = int(
-                (animated_entity.y * self.zoom - self.y * self.zoom)
-                + self.game.screen.get_height() / 2
-            )
-
-            # Adjust hitbox size based on total image size and hitbox_height_ratio
-            hitbox_height = int(
-                image.get_height() * animated_entity.hitbox_height_ratio
-            )
-            hitbox_width = image.get_width()
-
-            # Create new rect with adjusted size
-            new_rect = pygame.Rect(0, 0, hitbox_width, hitbox_height)
-
-            # Position the new rect
-            new_rect.centerx = screen_x
-            new_rect.bottom = screen_y + image.get_height() // 2
+            if animated_entity.hitbox_bounding:
+                bounding_rect = get_bounding_rect(image)
+                hitbox_height = int(
+                    bounding_rect.height * animated_entity.hitbox_height_ratio
+                )
+                hitbox_width = bounding_rect.width
+                new_rect = pygame.Rect(0, 0, hitbox_width, hitbox_height)
+                new_rect.centerx = (
+                    screen_x + bounding_rect.centerx - image.get_width() // 2
+                )
+                new_rect.bottom = (
+                    screen_y + bounding_rect.bottom - image.get_height() // 2
+                )
+            else:
+                hitbox_height = int(
+                    image.get_height() * animated_entity.hitbox_height_ratio
+                )
+                hitbox_width = image.get_width()
+                new_rect = pygame.Rect(0, 0, hitbox_width, hitbox_height)
+                new_rect.centerx = screen_x
+                new_rect.bottom = screen_y + image.get_height() // 2
 
             animated_entity.rect = new_rect
 
-            # Display the image
+            # Affichage de l'image
             image_rect = image.get_rect(center=(screen_x, screen_y))
             self.game.screen.blit(image, image_rect)
 
-            # Debug: Draw hitbox outline
-            if animated_entity.rect:
-                pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
-
-            # Update mask if needed
+            # Mise à jour du masque si nécessaire
             if animated_entity.has_mask:
                 animated_entity.mask = pygame.mask.from_surface(image)
 
-            # Debug: Draw image outline
+            # Debug: Affichage des contours
+            if animated_entity.rect:
+                pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
             pygame.draw.rect(self.game.screen, (0, 255, 0), image_rect, 1)
-
-            # Debug: Draw center point
             pygame.draw.circle(self.game.screen, (0, 0, 255), (screen_x, screen_y), 2)

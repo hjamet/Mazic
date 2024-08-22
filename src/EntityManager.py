@@ -235,6 +235,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
         block_vision: bool = False,
         is_tangible: bool = True,
         hitbox_height_ratio: float = 1.0,
+        hitbox_bounding: bool = False,
     ) -> None:
         """A class for the visible objects in the game.
         Manages the display and animations.
@@ -248,6 +249,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
             hitbox_height_ratio (float): Ratio of the hitbox height to the image height.
                                          1.0 means the hitbox has the same height as the image.
                                          0.5 means the hitbox has half the height of the image, aligned to the bottom.
+            hitbox_bounding (bool, optional): Whether to use the bounding rect of the image as the hitbox. Defaults to False.
 
         Raises:
             NotImplementedError: If the child class does not have an assets_needed attribute.
@@ -308,6 +310,7 @@ class AnimatedEntity(pygame.sprite.Sprite):
         self.transparency = 0
 
         self.hitbox_height_ratio = hitbox_height_ratio
+        self.hitbox_bounding = hitbox_bounding
 
     def get_center(self):
         """Returns the center of the entity

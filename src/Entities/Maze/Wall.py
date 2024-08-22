@@ -37,6 +37,7 @@ class Wall(Entity, AnimatedEntity):
             has_mask=False,
             block_vision=True,
             is_tangible=True,
+            hitbox_bounding=True,
         )
 
         # Set attributes
