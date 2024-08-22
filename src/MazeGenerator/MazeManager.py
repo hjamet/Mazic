@@ -50,7 +50,7 @@ class MazeManager:
             bool: True if the room was successfully added, False otherwise.
         """
         x, y = position
-        new_room = RoomSpawner(room_nbr, x * 16, y * 16)  # Multiply by 16 for tile size
+        new_room = RoomSpawner(room_nbr, x * 8, y * 8)  # Multiply by 16 for tile size
 
         self.rooms.append(new_room)
         self.room_positions.append(position)
