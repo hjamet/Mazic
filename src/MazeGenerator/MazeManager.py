@@ -31,7 +31,6 @@ class MazeManager:
 
         # Ajouter des salles voisines pour chaque groupe d'entrées
         for entrance_group in start_room_entrances:
-
             # Trouver une salle compatible
             new_room = self.find_matching_room(entrance_group)
             if new_room:
@@ -75,49 +74,41 @@ class MazeManager:
         return None
 
     def find_matching_room(
-        self, exits: List[Tuple[Tuple[int, int], ...]]
+        self, entrance_group
     ) -> Optional[Tuple[RoomSpawner, Tuple[int, int]]]:
         """
-        Trouve une salle compatible avec les groupes de sorties donnés.
+        Trouve une salle compatible avec le groupe d'entrées donné.
 
         Args:
-            exits (List[Tuple[Tuple[int, int], ...]]): Liste des groupes de coordonnées des sorties.
+            entrance_group (EntranceGroup): Groupe d'entrées avec coordonnées et direction.
 
         Returns:
             Optional[Tuple[RoomSpawner, Tuple[int, int]]]: Tuple contenant la salle compatible
             et sa position relative, ou None si aucune salle n'est trouvée.
         """
-        # Obtenir la liste des fichiers de salle disponibles
         room_files = [f for f in os.listdir("assets/rooms") if f.endswith(".json")]
-
-        # Mélanger la liste pour une sélection aléatoire
         random.shuffle(room_files)
 
         for room_file in room_files:
             room_nbr = int(room_file.split(".")[0])
-
-            # Créer une salle temporaire
             temp_room = RoomSpawner(room_nbr)
             temp_entrances = temp_room.get_entrances()
 
-            # Essayer chaque groupe d'entrées de la nouvelle salle
-            for entrance_group in temp_entrances:
-                # Vérifier si les tailles des groupes correspondent
-                if len(exits) == len(entrance_group):
-                    # Calculer la position relative basée sur la première entrée/sortie
-                    exit_x, exit_y = exits[0]
-                    entrance_x, entrance_y = entrance_group[0]
+            for temp_entrance_group in temp_entrances:
+                if len(entrance_group.coordinates) == len(
+                    temp_entrance_group.coordinates
+                ):
+                    exit_x, exit_y = entrance_group.coordinates[0]
+                    entrance_x, entrance_y = temp_entrance_group.coordinates[0]
                     rel_x = (exit_x - entrance_x) // 16
                     rel_y = (exit_y - entrance_y) // 16
 
-                    # Vérifier si la salle peut être placée à cette position
                     if self.can_place_room(temp_room, (rel_x, rel_y)):
-                        # Vérifier si toutes les entrées correspondent aux sorties
                         if all(
-                            (exit_x - entrance_x) // 16 == rel_x
-                            and (exit_y - entrance_y) // 16 == rel_y
-                            for (exit_x, exit_y), (entrance_x, entrance_y) in zip(
-                                exits, entrance_group
+                            (ex - enx) // 16 == rel_x and (ey - eny) // 16 == rel_y
+                            for (ex, ey), (enx, eny) in zip(
+                                entrance_group.coordinates,
+                                temp_entrance_group.coordinates,
                             )
                         ):
                             return temp_room, (rel_x, rel_y)

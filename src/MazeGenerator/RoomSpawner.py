@@ -9,6 +9,7 @@ from Entities.Maze.Wall import Wall
 from Logger import Logger
 
 AssetInfo = namedtuple("AssetInfo", ["id", "name", "rotation", "reverse"])
+EntranceGroup = namedtuple("EntranceGroup", ["coordinates", "direction"])
 
 
 class RoomSpawner:
@@ -152,41 +153,49 @@ class RoomSpawner:
         """Return the list of generated entities."""
         return self.entities
 
-    def get_entrances(self) -> Tuple[Tuple[Tuple[int, int], ...], ...]:
+    def get_entrances(self) -> Tuple[EntranceGroup, ...]:
         """
         Identifie et regroupe les cases vides adjacentes aux entrées (floors adjacents à des cases vides).
 
         Returns:
-            Tuple[Tuple[Tuple[int, int], ...]]: Groupes uniques de coordonnées des cases vides adjacentes aux entrées.
+            Tuple[EntranceGroup, ...]: Groupes uniques d'entrées avec leurs coordonnées et directions.
         """
         floor_tiles = {(e.x, e.y) for e in self.entities if isinstance(e, Floor)}
         wall_tiles = {(e.x, e.y) for e in self.entities if isinstance(e, Wall)}
-        directions = [(0, -16), (0, 16), (-16, 0), (16, 0)]
+        directions = [
+            (0, -16, "up"),
+            (0, 16, "down"),
+            (-16, 0, "left"),
+            (16, 0, "right"),
+        ]
 
-        def get_empty_adjacent(x: int, y: int) -> Tuple[int, int]:
-            """Trouve la case vide adjacente à une entrée."""
-            for dx, dy in directions:
+        def get_empty_adjacent(x: int, y: int) -> Tuple[int, int, str]:
+            """Trouve la case vide adjacente à une entrée et sa direction."""
+            for dx, dy, direction in directions:
                 adj_tile = (x + dx, y + dy)
                 if adj_tile not in floor_tiles and adj_tile not in wall_tiles:
-                    return adj_tile
+                    return (*adj_tile, direction)
             return None
 
-        def get_entrance_group(x: int, y: int) -> Set[Tuple[int, int]]:
+        def get_entrance_group(x: int, y: int) -> Tuple[Set[Tuple[int, int]], str]:
             """Trouve récursivement les cases vides adjacentes aux entrées connectées."""
             group = set()
             stack = [(x, y)]
+            direction = None
             while stack:
                 cx, cy = stack.pop()
                 empty_adj = get_empty_adjacent(cx, cy)
-                if empty_adj and empty_adj not in group:
-                    group.add(empty_adj)
-                    stack.extend(
-                        (cx + dx, cy + dy)
-                        for dx, dy in directions
-                        if (cx + dx, cy + dy) in floor_tiles
-                        and (cx + dx, cy + dy) not in wall_tiles
-                    )
-            return group
+                if empty_adj:
+                    ex, ey, direction = empty_adj
+                    if (ex, ey) not in group:
+                        group.add((ex, ey))
+                        stack.extend(
+                            (cx + dx, cy + dy)
+                            for dx, dy, _ in directions
+                            if (cx + dx, cy + dy) in floor_tiles
+                            and (cx + dx, cy + dy) not in wall_tiles
+                        )
+            return group, direction
 
         entrances = set()
         processed = set()
@@ -194,13 +203,13 @@ class RoomSpawner:
             if tile not in wall_tiles:
                 empty_adj = get_empty_adjacent(*tile)
                 if empty_adj and tile not in processed:
-                    group = get_entrance_group(*tile)
+                    group, direction = get_entrance_group(*tile)
                     if group:
-                        entrances.add(tuple(sorted(group)))
+                        entrances.add(EntranceGroup(tuple(sorted(group)), direction))
                         processed.update(
                             tile
                             for x, y in group
-                            for dx, dy in directions
+                            for dx, dy, _ in directions
                             if (x - dx, y - dy) in floor_tiles
                             and (x - dx, y - dy) not in wall_tiles
                         )
