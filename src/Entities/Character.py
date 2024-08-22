@@ -71,7 +71,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             has_mask=True,
             is_tangible=True,
             hitbox_height_ratio=0.5,
-        )  # Half-height hitbox
+        )
         Health.__init__(self, max_hp=100, is_main_character_health=is_main_character)
         AbilityManager.__init__(self, entity_manager=self.entity_manager)
 
