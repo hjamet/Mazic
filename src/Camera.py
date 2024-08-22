@@ -145,9 +145,9 @@ class Camera(Entity):
             image_rect = image.get_rect(center=(screen_x, screen_y))
             self.game.screen.blit(image, image_rect)
 
-            # Debug: Draw hitbox outline
             if animated_entity.rect:
-                pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
+                # Debug: Draw hitbox outline
+                # pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
                 self.game.screen.blit(
                     image,
                     (
@@ -180,6 +180,6 @@ class Camera(Entity):
                 image_rect = image.get_rect(center=(screen_x, screen_y))
                 self.game.screen.blit(image, image_rect)
 
-            # Debug: Draw hitbox outline
-            if animated_entity.rect:
-                pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
+            # # Debug: Draw hitbox outline
+            # if animated_entity.rect:
+            #     pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
