@@ -22,8 +22,8 @@ class MazeManager:
             start_room_nbr (int, optional): Number of the starting room. If None, a random room is chosen.
         """
         # Initialiser la grille
-        self.grid = np.full((1, 1), 0, dtype=int)
-        origin = (0, 0)
+        self.grid = np.array([[0]], dtype=int)
+        self.grid_origin = (0, 0)
 
         # Choisir une salle de départ aléatoire si non spécifiée
         if start_room_nbr is None:
@@ -57,12 +57,13 @@ class MazeManager:
         Args:
             room_index (int): Index of the room in the list of rooms.
         """
-        # Get the targeted room
         room = self.rooms[room_index]
 
         # Check if the room is out of bounds
-        min_x, min_y = room.top_left_x, room.top_left_y
-        max_x, max_y = room.bottom_right_x, room.bottom_right_y
+        min_x = (room.top_left_x // 16) - self.grid_origin[0]
+        min_y = (room.top_left_y // 16) - self.grid_origin[1]
+        max_x = (room.bottom_right_x // 16) - self.grid_origin[0]
+        max_y = (room.bottom_right_y // 16) - self.grid_origin[1]
         grid_height, grid_width = self.grid.shape
 
         # Create a bigger grid if the room is out of bounds
@@ -83,21 +84,17 @@ class MazeManager:
             self.grid = new_grid
 
             # Update grid_origin
-            if not hasattr(self, "grid_origin"):
-                self.grid_origin = (0, 0)
             self.grid_origin = (
                 self.grid_origin[0] + new_min_x,
                 self.grid_origin[1] + new_min_y,
             )
 
-        # Regarde toutes les entités de la salle
+        # Write room entities to grid
         for entity in room.entities:
             if isinstance(entity, Floor):
-                # Inscris le numéro de la salle à chaque position de l'entité dans la grille
-                entity_x, entity_y = entity.x // 16, entity.y // 16
-                grid_x = entity_x - self.grid_origin[0]
-                grid_y = entity_y - self.grid_origin[1]
-                self.grid[grid_y, grid_x] = room_index + 1
+                entity_x = (entity.x // 16) - self.grid_origin[0]
+                entity_y = (entity.y // 16) - self.grid_origin[1]
+                self.grid[entity_y, entity_x] = room_index + 1
 
     def add_room(self, room_nbr: int, position: Tuple[int, int]) -> bool:
         """
