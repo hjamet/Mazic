@@ -1,9 +1,10 @@
 import logging
 import logging.handlers
 import os
+from Config import Config
 
 
-def Logger(name, level=logging.WARNING, log_initialization=True):
+def Logger(name, level=Config().log_level, log_initialization=True):
     """Initialize a logger.
 
     Args:

@@ -1,9 +1,12 @@
-from collections import namedtuple
 import json
 import os
+from collections import namedtuple
+from typing import List, Tuple
+from Logger import Logger
+
+from Entities.Maze.Decoration import Decoration
 from Entities.Maze.Floor import Floor
 from Entities.Maze.Wall import Wall
-from Entities.Maze.Decoration import Decoration
 
 AssetInfo = namedtuple("AssetInfo", ["id", "name", "rotation", "reverse"])
 
@@ -17,6 +20,30 @@ class RoomSpawner:
     _FLIP_V_MASK = 0x40000000
     _ROTATION_MASK = 0x30000000
 
+    _asset_names = {
+        110: "wall_mid",
+        112: "wall_outer_mid_left",
+        219: "floor_1",
+        220: "floor_3",
+        221: "floor_4",
+        222: "floor_5",
+        223: "floor_6",
+        224: "floor_8",
+        228: "floor_spikes_anim_f3",
+        307: "wall_edge_right",
+        311: "wall_edge_tshape_left",
+        312: "wall_edge_tshape_right",
+        325: "wall_left",
+        326: "wall_outer_front_left",
+        327: "wall_outer_mid_right",
+        328: "wall_outer_top_left",
+        329: "wall_outer_top_right",
+        330: "wall_right",
+        331: "wall_top_left",
+        333: "wall_top_right",
+        332: "wall_top_mid",
+    }
+
     def __init__(self, room_nbr: int) -> None:
         """
         Initialize the RoomSpawner and generate room entities.
@@ -24,30 +51,8 @@ class RoomSpawner:
         Args:
             room_nbr (int): The number of the room to generate.
         """
-        # Dictionary of asset names (to be completed)
-        self._asset_names = {
-            110: "wall_mid",
-            112: "wall_outer_mid_left",
-            219: "floor_1",
-            220: "floor_3",
-            221: "floor_4",
-            222: "floor_5",
-            223: "floor_6",
-            224: "floor_8",
-            228: "floor_spikes_anim_f3",
-            307: "wall_edge_right",
-            311: "wall_edge_tshape_left",
-            312: "wall_edge_tshape_right",
-            325: "wall_left",
-            326: "wall_outer_front_left",
-            327: "wall_outer_mid_right",
-            328: "wall_outer_top_left",
-            329: "wall_outer_top_right",
-            330: "wall_right",
-            331: "wall_top_left",
-            333: "wall_top_right",
-            332: "wall_top_mid",
-        }
+        # Logger
+        self.logger = Logger(self.__class__.__name__)
 
         # Load room data
         with open(os.path.join("assets", "rooms", f"{room_nbr}.json"), "r") as f:
@@ -89,6 +94,8 @@ class RoomSpawner:
             self.min_y = min(self.min_y, entity.y)
             self.max_x = max(self.max_x, entity.x + 16)  # Assuming tile size is 16
             self.max_y = max(self.max_y, entity.y + 16)
+
+        self.logger.info(f"{self.get_entrances()}")
 
     def overlaps_with(self, other_room: "RoomSpawner") -> bool:
         """
@@ -151,3 +158,31 @@ class RoomSpawner:
     def get_entities(self):
         """Return the list of generated entities."""
         return self.entities
+
+    def get_entrances(self) -> List[Tuple[int, int]]:
+        """
+        Returns a list of coordinates of the room's entrances.
+
+        An entrance is defined as a floor tile adjacent to an empty space.
+
+        Returns:
+            List[Tuple[int, int]]: List of (x, y) coordinates of entrances.
+        """
+        entrances = []
+        floor_tiles = set(
+            (entity.x, entity.y)
+            for entity in self.entities
+            if isinstance(entity, Floor)
+        )
+
+        # Define directions to check (up, down, left, right)
+        directions = [(0, -16), (0, 16), (-16, 0), (16, 0)]
+
+        for x, y in floor_tiles:
+            for dx, dy in directions:
+                adjacent_tile = (x + dx, y + dy)
+                if adjacent_tile not in floor_tiles:
+                    entrances.append((x, y))
+                    break  # Break to avoid adding the same entrance multiple times
+
+        return entrances

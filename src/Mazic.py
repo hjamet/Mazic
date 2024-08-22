@@ -5,6 +5,8 @@ import pygame
 # Instantiate pygame
 pygame.init()
 
+import logging
+
 import EntityManager
 from Camera import Camera
 from Entities.Character import Character
@@ -20,6 +22,10 @@ class Mazic:
 
     # Sets the config
     config = EntityManager.config
+
+    # Sets the logger
+    log_level = config.log_level
+    logging.basicConfig(level=log_level)
 
     def __init__(self) -> None:
         # Instantiate Logger
