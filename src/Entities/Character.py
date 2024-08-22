@@ -137,52 +137,26 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
             },
         )
 
-    def __move(self, direction: str) -> None:
-        """Move the character in the given direction.
+    def __move(self, direction: str) -> dict:
+        """
+        Déplace le personnage dans la direction donnée en utilisant move_with_collisions.
 
         Args:
-            direction (str): The direction to move the character.
+            direction (str): La direction dans laquelle déplacer le personnage ('up', 'down', 'left', 'right').
+
+        Returns:
+            dict: Un dictionnaire contenant l'animation à utiliser et si elle doit être inversée.
         """
         reverse = None
 
-        # Set the last move time
-        self.__last_move = pygame.time.get_ticks()
+        # Utiliser move_with_collisions pour déplacer le personnage
+        collisions = self.move_with_collisions(direction, self.speed)
 
-        # Check for collisions
-        collisions = self.get_collisions()
-        collisions_x = (
-            max(
-                [collision[1] for collision in collisions],
-                key=lambda collision: abs(collision),
-            )
-            if collisions
-            else 0
-        )
-        collisions_y = (
-            max(
-                [collision[2] for collision in collisions],
-                key=lambda collision: abs(collision),
-            )
-            if collisions
-            else 0
-        )
-
-        if direction == "up":
-            if collisions_y >= 0:
-                self.y -= self.speed
-        elif direction == "down":
-            if collisions_y <= 0:
-                self.y += self.speed
-        elif direction == "left":
-            if collisions_x >= 0:
-                self.x -= self.speed
+        # Déterminer si l'animation doit être inversée
+        if direction == "left":
             reverse = True
         elif direction == "right":
-            if collisions_x <= 0:
-                self.x += self.speed
             reverse = False
-        else:
-            raise ValueError(f"Invalid direction: {direction}")
 
         return {"animation": "run", "reverse": reverse}
 

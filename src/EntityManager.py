@@ -413,6 +413,118 @@ class AnimatedEntity(pygame.sprite.Sprite):
             self.current_animation_type = animation
         return self
 
+    def move_with_collisions(self, direction: str, speed: int) -> List[Tuple]:
+        """
+        Déplace l'entité dans la direction spécifiée en tenant compte des collisions.
+
+        Args:
+            direction (str): Direction du mouvement ('up', 'down', 'right', 'left').
+            speed (int): Vitesse du mouvement.
+
+        Returns:
+            List[Tuple]: Liste des entités en collision après le mouvement.
+        """
+        # Obtenir la caméra
+        camera = self.entity_manager.get_camera()
+        zoom = camera.zoom
+
+        # Calcul du déplacement
+        dx, dy = 0, 0
+        if direction == "up":
+            dy = -speed
+        elif direction == "down":
+            dy = speed
+        elif direction == "right":
+            dx = speed
+        elif direction == "left":
+            dx = -speed
+        else:
+            return []  # Direction invalide
+
+        # Déplacer la hitbox et l'entité
+        original_pos = (self.x, self.y)
+        self.x += dx
+        self.y += dy
+        self.rect.x += dx
+        self.rect.y += dy
+
+        # Obtenir les entités tangibles
+        entities = self.entity_manager.get_tangible_entities()
+        entities = [e for e in entities if e != self]
+
+        collisions = []
+        for entity in entities:
+            if self.rect.colliderect(entity.rect):
+                collisions.append(entity)
+
+        # Ajuster la position en cas de collision
+        if collisions:
+            if direction == "up":
+                self.y += max(
+                    int(
+                        max(
+                            0,
+                            (
+                                min(self.rect.bottom, collision.rect.bottom)
+                                - max(self.rect.top, collision.rect.top)
+                            )
+                            / zoom,
+                        )
+                    )
+                    for collision in collisions
+                )
+            elif direction == "down":
+                self.y -= max(
+                    int(
+                        max(
+                            0,
+                            (
+                                min(self.rect.bottom, collision.rect.bottom)
+                                - max(self.rect.top, collision.rect.top)
+                            )
+                            / zoom,
+                        )
+                    )
+                    for collision in collisions
+                )
+            elif direction == "right":
+                self.x -= max(
+                    int(
+                        max(
+                            0,
+                            (
+                                min(self.rect.right, collision.rect.right)
+                                - max(self.rect.left, collision.rect.left)
+                            )
+                            / zoom,
+                        )
+                    )
+                    for collision in collisions
+                )
+            elif direction == "left":
+                self.x += max(
+                    int(
+                        max(
+                            0,
+                            (
+                                min(self.rect.right, collision.rect.right)
+                                - max(self.rect.left, collision.rect.left)
+                            )
+                            / zoom,
+                        )
+                    )
+                    for collision in collisions
+                )
+
+        # Ajuster la position de la hitbox
+        self.rect.x = (self.x - camera.x) * zoom
+        self.rect.y = (self.y - camera.y) * zoom
+        self.rect.width = self.rect.width * zoom
+        self.rect.height = self.rect.height * zoom * self.hitbox_height_ratio
+        self.rect.bottom = self.rect.y + self.rect.height
+
+        return collisions
+
     def get_collisions(self) -> List[Tuple]:
         """Get the list of entities the character is colliding with. The list is empty if the entity has no hitbox.
 

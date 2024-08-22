@@ -1,6 +1,7 @@
 import pygame
 from EntityManager import Entity, AnimatedEntity
 
+
 class Health:
     """A parent class to manage health for entities.
     It includes taking damage, healing and health bar.
@@ -22,7 +23,9 @@ class Health:
         self._is_dead = False
 
         # Health bar
-        health_bar = HealthBar(entity=self, is_main_character_health=is_main_character_health)
+        health_bar = HealthBar(
+            entity=self, is_main_character_health=is_main_character_health
+        )
         self.health_bar = self.entity_manager.add(health_bar)
 
     def damage(self, damage: int) -> None:
@@ -66,7 +69,7 @@ class HealthBar(Entity, AnimatedEntity):
         """
         # Call parent constructors
         Entity.__init__(self)
-        AnimatedEntity.__init__(self, camera_lvl=3)
+        AnimatedEntity.__init__(self, camera_lvl=3, is_tangible=False)
 
         # Set attributes
         self.entity = entity
