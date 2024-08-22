@@ -3,13 +3,17 @@ import random
 from typing import List, Optional, Tuple, Set
 
 from EntityManager import Entity
+from Entities.Maze.Floor import Floor
 
 from .RoomSpawner import RoomSpawner
+from typing import List, Tuple, Optional
+import numpy as np
+
+import numpy as np
+from typing import List, Tuple, Optional
 
 
 class MazeManager:
-    """Manages the rooms of the maze and their positioning."""
-
     def __init__(self, start_room_nbr: int = None):
         """
         Initialize the maze manager with a starting room and its neighbors.
@@ -17,6 +21,10 @@ class MazeManager:
         Args:
             start_room_nbr (int, optional): Number of the starting room. If None, a random room is chosen.
         """
+        # Initialiser la grille
+        self.grid = np.full((1, 1), 0, dtype=int)
+        origin = (0, 0)
+
         # Choisir une salle de départ aléatoire si non spécifiée
         if start_room_nbr is None:
             room_files = [f for f in os.listdir("assets/rooms") if f.endswith(".json")]
@@ -26,20 +34,74 @@ class MazeManager:
         self.rooms: List[RoomSpawner] = [RoomSpawner(start_room_nbr, 0, 0)]
         self.room_positions: List[Tuple[int, int]] = [(0, 0)]
 
+        # Mettre à jour la grille
+        self._write_room_to_grid(0)
+
         # Obtenir les groupes d'entrées de la première salle
         start_room_entrances = self.rooms[0].get_entrances()
 
         # Ajouter des salles voisines pour chaque groupe d'entrées
         for entrance_group in start_room_entrances:
-            # Trouver une salle compatible
             new_room = self.find_matching_room(entrance_group)
             if new_room:
                 new_room_spawner, position = new_room
                 self.add_room(new_room_spawner.room_nbr, position)
 
+        # To csv
+        np.savetxt("maze.csv", self.grid, delimiter=" ", fmt="%d")
+
+    def _write_room_to_grid(self, room_index: int) -> None:
+        """
+        Write the room to the grid.
+
+        Args:
+            room_index (int): Index of the room in the list of rooms.
+        """
+        # Get the targeted room
+        room = self.rooms[room_index]
+
+        # Check if the room is out of bounds
+        min_x, min_y = room.top_left_x, room.top_left_y
+        max_x, max_y = room.bottom_right_x, room.bottom_right_y
+        grid_height, grid_width = self.grid.shape
+
+        # Create a bigger grid if the room is out of bounds
+        if min_x < 0 or min_y < 0 or max_x >= grid_width or max_y >= grid_height:
+            new_min_x = min(0, min_x)
+            new_min_y = min(0, min_y)
+            new_max_x = max(grid_width - 1, max_x)
+            new_max_y = max(grid_height - 1, max_y)
+
+            new_grid = np.full(
+                (new_max_y - new_min_y + 1, new_max_x - new_min_x + 1), 0, dtype=int
+            )
+            new_grid[
+                -new_min_y : grid_height - new_min_y,
+                -new_min_x : grid_width - new_min_x,
+            ] = self.grid
+
+            self.grid = new_grid
+
+            # Update grid_origin
+            if not hasattr(self, "grid_origin"):
+                self.grid_origin = (0, 0)
+            self.grid_origin = (
+                self.grid_origin[0] + new_min_x,
+                self.grid_origin[1] + new_min_y,
+            )
+
+        # Regarde toutes les entités de la salle
+        for entity in room.entities:
+            if isinstance(entity, Floor):
+                # Inscris le numéro de la salle à chaque position de l'entité dans la grille
+                entity_x, entity_y = entity.x // 16, entity.y // 16
+                grid_x = entity_x - self.grid_origin[0]
+                grid_y = entity_y - self.grid_origin[1]
+                self.grid[grid_y, grid_x] = room_index + 1
+
     def add_room(self, room_nbr: int, position: Tuple[int, int]) -> bool:
         """
-        Add a new room to the maze.
+        Add a new room to the maze and update the grid.
 
         Args:
             room_nbr (int): Number of the new room.
@@ -49,29 +111,17 @@ class MazeManager:
             bool: True if the room was successfully added, False otherwise.
         """
         x, y = position
-        new_room = RoomSpawner(room_nbr, x * 8, y * 8)  # Multiply by 16 for tile size
+        new_room = RoomSpawner(room_nbr, x * 8, y * 8)
 
+        # Ajouter la nouvelle salle
+        room_index = len(self.rooms)
         self.rooms.append(new_room)
         self.room_positions.append(position)
+
+        # Mettre à jour la grille avec la nouvelle salle
+        self._write_room_to_grid(room_index)
+
         return True
-
-    def get_entity_room(self, entity: Entity) -> Optional[RoomSpawner]:
-        """
-        Identify the room in which an entity is located.
-
-        Args:
-            entity (Entity): The entity to locate.
-
-        Returns:
-            Optional[RoomSpawner]: The room containing the entity, or None if not found.
-        """
-        for room in self.rooms:
-            if (
-                room.min_x <= entity.x < room.max_x
-                and room.min_y <= entity.y < room.max_y
-            ):
-                return room
-        return None
 
     def find_matching_room(
         self, entrance_group
