@@ -45,7 +45,7 @@ class Camera(Entity):
 
         # Set camera current configuration
         self.speed = 100  # The higher the speed, the slower the camera
-        self.zoom = 10  # The higher the zoom, the closer the camera
+        self.zoom = 3  # The higher the zoom, the closer the camera
 
         # Indicates the entity to be followed
         self.following_id = following_id
@@ -142,7 +142,7 @@ class Camera(Entity):
                 animated_entity.mask = pygame.mask.from_surface(image)
 
             # Debug: Affichage des contours
-            if animated_entity.rect:
-                pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
-            pygame.draw.rect(self.game.screen, (0, 255, 0), image_rect, 1)
-            pygame.draw.circle(self.game.screen, (0, 0, 255), (screen_x, screen_y), 2)
+            # if animated_entity.rect:
+            #     pygame.draw.rect(self.game.screen, (255, 0, 0), animated_entity.rect, 1)
+            # pygame.draw.rect(self.game.screen, (0, 255, 0), image_rect, 1)
+            # pygame.draw.circle(self.game.screen, (0, 0, 255), (screen_x, screen_y), 2)

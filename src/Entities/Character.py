@@ -166,8 +166,8 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Add minor random noise to the mouse position
         mouse_pos = (
-            mouse_pos[0] + np.random.randint(-10, 10),
-            mouse_pos[1] + np.random.randint(-10, 10),
+            mouse_pos[0] + np.random.randint(-20, 20),
+            mouse_pos[1] + np.random.randint(-20, 20),
         )
 
         camera = self.entity_manager.get_camera()
