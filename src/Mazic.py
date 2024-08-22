@@ -84,8 +84,6 @@ class Mazic:
 
         # Spawn room
         self.maze_manager = MazeManager(1)
-        for entity in self.maze_manager.get_all_entities():
-            self.entity_manager.add(entity)
 
         # Spawn Camera
         self.camera = Camera(

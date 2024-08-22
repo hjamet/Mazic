@@ -43,17 +43,7 @@ class MazeManager:
         # Mettre à jour la grille
         self._write_room_to_grid(0)
 
-        # Obtenir les groupes d'entrées de la première salle
-        start_room_entrances = self.rooms[0].get_entrances()
-
-        # Ajouter des salles voisines pour chaque groupe d'entrées
-        for entrance_group in start_room_entrances:
-            new_room = self.find_matching_room(entrance_group)
-            if new_room:
-                new_room_spawner, position = new_room
-                self.add_room(new_room_spawner.room_nbr, position)
-
-        self.loaded_rooms = list(range(len(self.rooms)))
+        self.loaded_rooms = []
 
     def _write_room_to_grid(self, room_index: int) -> None:
         """
@@ -122,6 +112,9 @@ class MazeManager:
 
         # Mettre à jour la grille avec la nouvelle salle
         self._write_room_to_grid(room_index)
+
+        # Save grid to file
+        np.savetxt("logs/grid.csv", self.grid, delimiter=" ", fmt="%d")
 
         return True
 
@@ -212,20 +205,21 @@ class MazeManager:
 
     def load_unload_rooms(self, entity: Entity) -> LoadUnloadResult:
         """
-        Charge et décharge les assets des salles en fonction de la position de l'entité.
+        Charge et décharge les salles en fonction de la position de l'entité.
+        Crée également les salles voisines lors du chargement d'une nouvelle salle.
 
         Args:
-            entity (Entity): L'entité (généralement le joueur) dont la position est utilisée pour déterminer quelles salles charger/décharger.
+            entity (Entity): L'entité dont la position est utilisée pour déterminer les salles à charger/décharger.
 
         Returns:
-            LoadUnloadResult: Un named tuple contenant les listes des entités chargées et déchargées.
+            LoadUnloadResult: Named tuple contenant les listes des entités chargées et déchargées.
         """
-        # Obtenir la position de l'entité sur la grille
+        # Calcul de la position de l'entité sur la grille
         entity_grid_x = (entity.x // 16) - self.grid_origin[0]
         entity_grid_y = (entity.y // 16) - self.grid_origin[1]
 
-        # Trouver les salles voisines dans un rayon de 30 tuiles
-        radius = 15
+        # Détermination des salles voisines
+        radius = 3
         min_x, max_x = max(0, entity_grid_x - radius), min(
             self.grid.shape[1], entity_grid_x + radius + 1
         )
@@ -237,9 +231,8 @@ class MazeManager:
         ) - {0}
         neighboring_room_indices = {index - 1 for index in neighboring_room_indices}
 
-        # Charger les assets des nouvelles salles
         newly_loaded_entities = []
-        for room_index in neighboring_room_indices:
+        for room_index in neighboring_room_indices.copy():
             if (
                 room_index >= 0
                 and room_index < len(self.rooms)
@@ -250,7 +243,10 @@ class MazeManager:
                 self.loaded_rooms.append(room_index)
                 self.logger.info(f"Chargement de la salle {room.room_nbr}.")
 
-        # Décharger les assets des salles qui ne sont plus nécessaires
+                # Création des salles voisines
+                self._create_neighboring_rooms(room)
+
+        # Déchargement des salles non nécessaires
         unloaded_entities = []
         rooms_to_unload = set(self.loaded_rooms) - neighboring_room_indices
         for room_index in rooms_to_unload:
@@ -259,5 +255,21 @@ class MazeManager:
             self.loaded_rooms.remove(room_index)
             self.logger.info(f"Déchargement de la salle {room.room_nbr}.")
 
-        # Retourner le named tuple avec les entités chargées et déchargées
         return LoadUnloadResult(newly_loaded_entities, unloaded_entities)
+
+    def _create_neighboring_rooms(self, room: RoomSpawner) -> None:
+        """
+        Crée les salles voisines pour une salle donnée.
+
+        Args:
+            room (RoomSpawner): La salle pour laquelle créer les voisines.
+        """
+        entrances = room.get_entrances()
+        for entrance_group in entrances:
+            new_room = self.find_matching_room(entrance_group)
+            if new_room:
+                new_room_spawner, position = new_room
+                if self.add_room(new_room_spawner.room_nbr, position):
+                    self.logger.info(
+                        f"Nouvelle salle créée: {new_room_spawner.room_nbr}"
+                    )
