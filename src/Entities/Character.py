@@ -163,6 +163,13 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
     def __vision(self):
         """Detect entities in line of sight based on mouse position."""
         mouse_pos = pygame.mouse.get_pos()
+
+        # Add minor random noise to the mouse position
+        mouse_pos = (
+            mouse_pos[0] + np.random.randint(-10, 10),
+            mouse_pos[1] + np.random.randint(-10, 10),
+        )
+
         camera = self.entity_manager.get_camera()
         x_mouse, y_mouse = self._get_world_mouse_pos(mouse_pos, camera)
 
@@ -244,6 +251,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         return any(
             blocking_entity != entity
             and blocking_entity.block_vision
+            and (blocking_entity.x != entity.x or blocking_entity.y != entity.y)
             and line_intersects_rect(
                 self.x,
                 self.y,
