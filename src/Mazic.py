@@ -7,14 +7,11 @@ pygame.init()
 
 import EntityManager
 from Camera import Camera
-from Config import Config
 from Entities.Character import Character
-from Entities.Maze.Floor import Floor
-from Entities.Maze.Wall import Wall
 from Logger import Logger
 
 # Test
-from RoomSpawner import RoomSpawner
+from MazeGenerator.RoomSpawner import RoomSpawner
 
 
 class Mazic:

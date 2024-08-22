@@ -1,5 +1,4 @@
 from collections import namedtuple
-from typing import Dict
 import json
 import os
 from Entities.Maze.Floor import Floor
@@ -78,6 +77,43 @@ class RoomSpawner:
                     self.entities.append(Decoration(**tile_args))
                 else:
                     raise ValueError(f"Unknown layer name: {layer['name']}")
+
+        # Calculer les coins du carré englobant
+        self.min_x = float("inf")
+        self.min_y = float("inf")
+        self.max_x = float("-inf")
+        self.max_y = float("-inf")
+
+        for entity in self.entities:
+            self.min_x = min(self.min_x, entity.x)
+            self.min_y = min(self.min_y, entity.y)
+            self.max_x = max(self.max_x, entity.x + 16)  # Assuming tile size is 16
+            self.max_y = max(self.max_y, entity.y + 16)
+
+    def overlaps_with(self, other_room: "RoomSpawner") -> bool:
+        """
+        Check if this room overlaps with another room.
+
+        Args:
+            other_room (RoomSpawner): The other room to check for overlap.
+
+        Returns:
+            bool: True if the rooms overlap, False otherwise.
+        """
+        # Vérifier si les carrés englobants se chevauchent
+        if (
+            self.max_x <= other_room.min_x
+            or other_room.max_x <= self.min_x
+            or self.max_y <= other_room.min_y
+            or other_room.max_y <= self.min_y
+        ):
+            return False
+
+        # Si les carrés englobants se chevauchent, vérifier les tuiles individuelles
+        self_tiles = set((entity.x, entity.y) for entity in self.entities)
+        other_tiles = set((entity.x, entity.y) for entity in other_room.entities)
+
+        return bool(self_tiles.intersection(other_tiles))
 
     def _decode_asset(self, asset_number: int) -> AssetInfo:
         """
