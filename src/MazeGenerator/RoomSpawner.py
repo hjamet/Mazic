@@ -50,10 +50,11 @@ class RoomSpawner:
 
         Args:
             room_nbr (int): Le numéro de la salle à générer.
-            x (int): La coordonnée x de l'entité en haut à gauche de la salle. Par défaut 0.
-            y (int): La coordonnée y de l'entité en haut à gauche de la salle. Par défaut 0.
+            x (int): La coordonnée x du coin supérieur gauche du plus petit rectangle contenant la salle. Par défaut 0.
+            y (int): La coordonnée y du coin supérieur gauche du plus petit rectangle contenant la salle. Par défaut 0.
         """
         self.logger = Logger(self.__class__.__name__)
+        self.room_nbr = room_nbr
         self.x = x
         self.y = y
 
@@ -101,10 +102,10 @@ class RoomSpawner:
         """
         # Vérifier si les boîtes englobantes se chevauchent
         if (
-            self.max_x <= other_room.min_x
-            or other_room.max_x <= self.min_x
-            or self.max_y <= other_room.min_y
-            or other_room.max_y <= self.min_y
+            self.top_left_x > other_room.bottom_right_x
+            or self.bottom_right_x < other_room.top_left_x
+            or self.top_left_y > other_room.bottom_right_y
+            or self.bottom_right_y < other_room.top_left_y
         ):
             return False
 
@@ -153,42 +154,56 @@ class RoomSpawner:
 
     def get_entrances(self) -> Tuple[Tuple[Tuple[int, int], ...], ...]:
         """
-        Identifie et regroupe les entrées (floors adjacents à des cases vides).
+        Identifie et regroupe les cases vides adjacentes aux entrées (floors adjacents à des cases vides).
 
         Returns:
-            Tuple[Tuple[Tuple[int, int], ...]]: Groupes d'entrées coordonnées.
+            Tuple[Tuple[Tuple[int, int], ...]]: Groupes uniques de coordonnées des cases vides adjacentes aux entrées.
         """
-        all_tiles = {(e.x, e.y) for e in self.entities}
         floor_tiles = {(e.x, e.y) for e in self.entities if isinstance(e, Floor)}
+        wall_tiles = {(e.x, e.y) for e in self.entities if isinstance(e, Wall)}
         directions = [(0, -16), (0, 16), (-16, 0), (16, 0)]
 
-        def is_entrance(x: int, y: int) -> bool:
-            """Vérifie si une tuile est une entrée."""
-            return any((x + dx, y + dy) not in all_tiles for dx, dy in directions)
+        def get_empty_adjacent(x: int, y: int) -> Tuple[int, int]:
+            """Trouve la case vide adjacente à une entrée."""
+            for dx, dy in directions:
+                adj_tile = (x + dx, y + dy)
+                if adj_tile not in floor_tiles and adj_tile not in wall_tiles:
+                    return adj_tile
+            return None
 
         def get_entrance_group(x: int, y: int) -> Set[Tuple[int, int]]:
-            """Trouve récursivement les tuiles d'entrée adjacentes."""
+            """Trouve récursivement les cases vides adjacentes aux entrées connectées."""
             group = set()
             stack = [(x, y)]
             while stack:
                 cx, cy = stack.pop()
-                if (
-                    (cx, cy) not in group
-                    and (cx, cy) in floor_tiles
-                    and is_entrance(cx, cy)
-                ):
-                    group.add((cx, cy))
-                    stack.extend((cx + dx, cy + dy) for dx, dy in directions)
+                empty_adj = get_empty_adjacent(cx, cy)
+                if empty_adj and empty_adj not in group:
+                    group.add(empty_adj)
+                    stack.extend(
+                        (cx + dx, cy + dy)
+                        for dx, dy in directions
+                        if (cx + dx, cy + dy) in floor_tiles
+                        and (cx + dx, cy + dy) not in wall_tiles
+                    )
             return group
 
-        entrances = []
+        entrances = set()
         processed = set()
         for tile in floor_tiles:
-            if tile not in processed and is_entrance(*tile):
-                group = get_entrance_group(*tile)
-                if group:
-                    entrances.append(tuple(sorted(group)))
-                    processed.update(group)
+            if tile not in wall_tiles:
+                empty_adj = get_empty_adjacent(*tile)
+                if empty_adj and tile not in processed:
+                    group = get_entrance_group(*tile)
+                    if group:
+                        entrances.add(tuple(sorted(group)))
+                        processed.update(
+                            tile
+                            for x, y in group
+                            for dx, dy in directions
+                            if (x - dx, y - dy) in floor_tiles
+                            and (x - dx, y - dy) not in wall_tiles
+                        )
 
         return tuple(entrances)
 
@@ -196,17 +211,19 @@ class RoomSpawner:
         """
         Calcule la boîte englobante de la salle basée sur ses entités.
 
-        Cette méthode met à jour les attributs min_x, max_x, min_y et max_y de la salle.
+        Cette méthode met à jour les attributs top_left_x, top_left_y, bottom_right_x et bottom_right_y.
         """
         if not self.entities:
-            self.min_x = self.max_x = self.min_y = self.max_y = 0
+            self.top_left_x = self.top_left_y = self.bottom_right_x = (
+                self.bottom_right_y
+            ) = 0
             return
 
-        self.min_x = min(entity.x for entity in self.entities)
-        self.max_x = (
-            max(entity.x for entity in self.entities) + 16
-        )  # +16 pour la largeur de la tuile
-        self.min_y = min(entity.y for entity in self.entities)
-        self.max_y = (
-            max(entity.y for entity in self.entities) + 16
-        )  # +16 pour la hauteur de la tuile
+        for entity in self.entities:
+            entity.x += self.x
+            entity.y += self.y
+
+        self.top_left_x = min(entity.x for entity in self.entities)
+        self.top_left_y = min(entity.y for entity in self.entities)
+        self.bottom_right_x = max(entity.x for entity in self.entities)
+        self.bottom_right_y = max(entity.y for entity in self.entities)

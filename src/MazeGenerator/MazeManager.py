@@ -51,9 +51,6 @@ class MazeManager:
         """
         x, y = position
         new_room = RoomSpawner(room_nbr, x * 16, y * 16)  # Multiply by 16 for tile size
-        for i, existing_room in enumerate(self.rooms):
-            if self._rooms_overlap(new_room, existing_room):
-                return False
 
         self.rooms.append(new_room)
         self.room_positions.append(position)
@@ -76,24 +73,6 @@ class MazeManager:
             ):
                 return room
         return None
-
-    def _rooms_overlap(self, room1: RoomSpawner, room2: RoomSpawner) -> bool:
-        """
-        Check if two rooms overlap.
-
-        Args:
-            room1 (RoomSpawner): First room to check.
-            room2 (RoomSpawner): Second room to check.
-
-        Returns:
-            bool: True if the rooms overlap, False otherwise.
-        """
-        return not (
-            room1.max_x <= room2.min_x
-            or room2.max_x <= room1.min_x
-            or room1.max_y <= room2.min_y
-            or room2.max_y <= room1.min_y
-        )
 
     def find_matching_room(
         self, exits: List[Tuple[Tuple[int, int], ...]]
@@ -135,12 +114,11 @@ class MazeManager:
                     if self.can_place_room(temp_room, (rel_x, rel_y)):
                         # Vérifier si toutes les entrées correspondent aux sorties
                         if all(
-                            (
-                                ex - entrance_x + rel_x * 16,
-                                ey - entrance_y + rel_y * 16,
+                            (exit_x - entrance_x) // 16 == rel_x
+                            and (exit_y - entrance_y) // 16 == rel_y
+                            for (exit_x, exit_y), (entrance_x, entrance_y) in zip(
+                                exits, entrance_group
                             )
-                            in exits
-                            for ex, ey in entrance_group
                         ):
                             return temp_room, (rel_x, rel_y)
 
