@@ -32,7 +32,7 @@ class Decoration(Entity, AnimatedEntity):
         Entity.__init__(self)
         AnimatedEntity.__init__(
             self,
-            camera_lvl=3,  # Higher value to ensure it's in the foreground
+            camera_lvl=4,  # Higher value to ensure it's in the foreground
             has_hitbox=False,  # Intangible
             has_mask=False,
             block_vision=False,

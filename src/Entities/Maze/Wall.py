@@ -32,7 +32,7 @@ class Wall(Entity, AnimatedEntity):
         Entity.__init__(self)
         AnimatedEntity.__init__(
             self,
-            camera_lvl=1,
+            camera_lvl=2,
             has_hitbox=True,
             has_mask=False,
             block_vision=True,

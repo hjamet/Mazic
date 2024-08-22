@@ -66,7 +66,7 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
         Entity.__init__(self)
         AnimatedEntity.__init__(
             self,
-            camera_lvl=2,
+            camera_lvl=3,
             has_hitbox=True,
             has_mask=True,
             is_tangible=True,

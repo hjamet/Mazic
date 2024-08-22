@@ -413,22 +413,22 @@ class AnimatedEntity(pygame.sprite.Sprite):
             self.current_animation_type = animation
         return self
 
-    def move_with_collisions(self, direction: str, speed: int) -> List[Tuple]:
+    def move_with_collisions(self, direction: str, speed: int) -> List[Entity]:
         """
-        Déplace l'entité dans la direction spécifiée en tenant compte des collisions.
+        Moves the entity in the specified direction, taking collisions into account.
 
         Args:
-            direction (str): Direction du mouvement ('up', 'down', 'right', 'left').
-            speed (int): Vitesse du mouvement.
+            direction (str): Direction of movement ('up', 'down', 'right', 'left').
+            speed (int): Speed of movement.
 
         Returns:
-            List[Tuple]: Liste des entités en collision après le mouvement.
+            List[Entity]: List of entities collided with after movement.
         """
-        # Obtenir la caméra
+        # 1. Get the camera and zoom
         camera = self.entity_manager.get_camera()
         zoom = camera.zoom
 
-        # Calcul du déplacement
+        # 2. Calculate displacement
         dx, dy = 0, 0
         if direction == "up":
             dy = -speed
@@ -439,102 +439,72 @@ class AnimatedEntity(pygame.sprite.Sprite):
         elif direction == "left":
             dx = -speed
         else:
-            return []  # Direction invalide
+            return []  # Invalid direction
 
-        # Déplacer la hitbox et l'entité
-        original_pos = (self.x, self.y)
+        # 3. Move the entity and its hitbox
         self.x += dx
         self.y += dy
         self.rect.x += dx
         self.rect.y += dy
 
-        # Obtenir les entités tangibles
-        entities = self.entity_manager.get_tangible_entities()
-        entities = [e for e in entities if e != self]
+        # 4. Get tangible entities and check for collisions
+        entities = [e for e in self.entity_manager.get_tangible_entities() if e != self]
+        collisions = [
+            entity for entity in entities if self.rect.colliderect(entity.rect)
+        ]
 
-        collisions = []
-        for entity in entities:
-            if self.rect.colliderect(entity.rect):
-                collisions.append(entity)
-
-        # Ajuster la position en cas de collision
+        # 5. Adjust position in case of collision
         if collisions:
-            if direction == "up":
+            adjustment = 0
+            if direction in ["up", "down"]:
+                # Calculate vertical adjustment
+                adjustment = max(
+                    int(
+                        max(
+                            0,
+                            (
+                                min(self.rect.bottom, c.rect.bottom)
+                                - max(self.rect.top, c.rect.top)
+                            )
+                            / zoom,
+                        )
+                    )
+                    for c in collisions
+                )
+                # Apply vertical adjustment
                 self.y += (
-                    max(
-                        int(
-                            max(
-                                0,
-                                (
-                                    min(self.rect.bottom, collision.rect.bottom)
-                                    - max(self.rect.top, collision.rect.top)
-                                )
-                                / zoom,
-                            )
-                        )
-                        for collision in collisions
-                    )
-                    + speed
+                    (adjustment + speed) if direction == "up" else -(adjustment + speed)
                 )
-            elif direction == "down":
-                self.y -= (
-                    max(
-                        int(
-                            max(
-                                0,
-                                (
-                                    min(self.rect.bottom, collision.rect.bottom)
-                                    - max(self.rect.top, collision.rect.top)
-                                )
-                                / zoom,
+            else:  # "left" or "right"
+                # Calculate horizontal adjustment
+                adjustment = max(
+                    int(
+                        max(
+                            0,
+                            (
+                                min(self.rect.right, c.rect.right)
+                                - max(self.rect.left, c.rect.left)
                             )
+                            / zoom,
                         )
-                        for collision in collisions
                     )
-                    + speed
+                    for c in collisions
                 )
-            elif direction == "right":
-                self.x -= (
-                    max(
-                        int(
-                            max(
-                                0,
-                                (
-                                    min(self.rect.right, collision.rect.right)
-                                    - max(self.rect.left, collision.rect.left)
-                                )
-                                / zoom,
-                            )
-                        )
-                        for collision in collisions
-                    )
-                    + speed
-                )
-            elif direction == "left":
+                # Apply horizontal adjustment
                 self.x += (
-                    max(
-                        int(
-                            max(
-                                0,
-                                (
-                                    min(self.rect.right, collision.rect.right)
-                                    - max(self.rect.left, collision.rect.left)
-                                )
-                                / zoom,
-                            )
-                        )
-                        for collision in collisions
-                    )
-                    + speed
+                    (adjustment + speed)
+                    if direction == "left"
+                    else -(adjustment + speed)
                 )
 
-        # Ajuster la position de la hitbox
+        # 6. Update hitbox position and size
         self.rect.x = (self.x - camera.x) * zoom
         self.rect.y = (self.y - camera.y) * zoom
-        self.rect.width = self.rect.width * zoom
-        self.rect.height = self.rect.height * zoom * self.hitbox_height_ratio
+        self.rect.width *= zoom
+        self.rect.height *= zoom * self.hitbox_height_ratio
         self.rect.bottom = self.rect.y + self.rect.height
 
+        # 7. Return the list of collisions
         return collisions
 
     def get_collisions(self) -> List[Tuple]:
