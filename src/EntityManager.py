@@ -453,6 +453,9 @@ class AnimatedEntity(pygame.sprite.Sprite):
             entity for entity in entities if self.rect.colliderect(entity.rect)
         ]
 
+        self.rect.x -= dx
+        self.rect.y -= dy
+
         # 5. Adjust position in case of collision
         if collisions:
             adjustment = 0
