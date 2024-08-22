@@ -67,9 +67,11 @@ class Mazic:
         """Spawns the initial entities."""
 
         # Spawn main character
-        main_character = Character(name="Alice", is_main_character=True, x=-32, y=32)
+        self.main_character = Character(
+            name="Alice", is_main_character=True, x=-32, y=32
+        )
         self.main_character_id = self.entity_manager.add(
-            main_character,
+            self.main_character,
         )
 
         # Spawn Another character
@@ -81,8 +83,8 @@ class Mazic:
         self.entity_manager.add(another_character)
 
         # Spawn room
-        maze_manager = MazeManager(1)
-        for entity in maze_manager.get_all_entities():
+        self.maze_manager = MazeManager(1)
+        for entity in self.maze_manager.get_all_entities():
             self.entity_manager.add(entity)
 
         # Spawn Camera
@@ -107,6 +109,15 @@ class Mazic:
             # Log FPS every 1 second
             if (time.time() - self.start_time) % 1 < 2 / (self.config.fps):
                 print(f"FPS: {self.clock.get_fps()}")
+            # Refresh Maze entities
+            if (time.time() - self.start_time) % 1 < 2 / (self.config.fps):
+                load_anload_entities = self.maze_manager.load_unload_rooms(
+                    self.main_character
+                )
+                for entity in load_anload_entities.to_load:
+                    self.entity_manager.add(entity)
+                for entity in load_anload_entities.to_unload:
+                    self.entity_manager.remove(entity)
 
             # Capture events
             external_events = self.events()

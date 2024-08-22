@@ -1,16 +1,20 @@
 import os
 import random
-from typing import List, Optional, Tuple, Set
+from collections import namedtuple
+from typing import List, NamedTuple, Optional, Set, Tuple
 
-from EntityManager import Entity
+import numpy as np
+
 from Entities.Maze.Floor import Floor
+from EntityManager import Entity
+from Logger import Logger
 
 from .RoomSpawner import RoomSpawner
-from typing import List, Tuple, Optional
-import numpy as np
 
-import numpy as np
-from typing import List, Tuple, Optional
+
+class LoadUnloadResult(NamedTuple):
+    to_load: List[Entity]
+    to_unload: List[Entity]
 
 
 class MazeManager:
@@ -21,6 +25,8 @@ class MazeManager:
         Args:
             start_room_nbr (int, optional): Number of the starting room. If None, a random room is chosen.
         """
+        self.logger = Logger(self.__class__.__name__)
+
         # Initialiser la grille
         self.grid = np.array([[0]], dtype=int)
         self.grid_origin = (0, 0)
@@ -47,8 +53,7 @@ class MazeManager:
                 new_room_spawner, position = new_room
                 self.add_room(new_room_spawner.room_nbr, position)
 
-        # To csv
-        np.savetxt("maze.csv", self.grid, delimiter=" ", fmt="%d")
+        self.loaded_rooms = list(range(len(self.rooms)))
 
     def _write_room_to_grid(self, room_index: int) -> None:
         """
@@ -204,3 +209,55 @@ class MazeManager:
         for room in self.rooms:
             all_entities.extend(room.entities)
         return list(set(all_entities))
+
+    def load_unload_rooms(self, entity: Entity) -> LoadUnloadResult:
+        """
+        Charge et décharge les assets des salles en fonction de la position de l'entité.
+
+        Args:
+            entity (Entity): L'entité (généralement le joueur) dont la position est utilisée pour déterminer quelles salles charger/décharger.
+
+        Returns:
+            LoadUnloadResult: Un named tuple contenant les listes des entités chargées et déchargées.
+        """
+        # Obtenir la position de l'entité sur la grille
+        entity_grid_x = (entity.x // 16) - self.grid_origin[0]
+        entity_grid_y = (entity.y // 16) - self.grid_origin[1]
+
+        # Trouver les salles voisines dans un rayon de 30 tuiles
+        radius = 15
+        min_x, max_x = max(0, entity_grid_x - radius), min(
+            self.grid.shape[1], entity_grid_x + radius + 1
+        )
+        min_y, max_y = max(0, entity_grid_y - radius), min(
+            self.grid.shape[0], entity_grid_y + radius + 1
+        )
+        neighboring_room_indices = set(
+            self.grid[min_y:max_y, min_x:max_x].flatten()
+        ) - {0}
+        neighboring_room_indices = {index - 1 for index in neighboring_room_indices}
+
+        # Charger les assets des nouvelles salles
+        newly_loaded_entities = []
+        for room_index in neighboring_room_indices:
+            if (
+                room_index >= 0
+                and room_index < len(self.rooms)
+                and room_index not in self.loaded_rooms
+            ):
+                room = self.rooms[room_index]
+                newly_loaded_entities.extend(room.entities)
+                self.loaded_rooms.append(room_index)
+                self.logger.info(f"Chargement de la salle {room.room_nbr}.")
+
+        # Décharger les assets des salles qui ne sont plus nécessaires
+        unloaded_entities = []
+        rooms_to_unload = set(self.loaded_rooms) - neighboring_room_indices
+        for room_index in rooms_to_unload:
+            room = self.rooms[room_index]
+            unloaded_entities.extend(room.entities)
+            self.loaded_rooms.remove(room_index)
+            self.logger.info(f"Déchargement de la salle {room.room_nbr}.")
+
+        # Retourner le named tuple avec les entités chargées et déchargées
+        return LoadUnloadResult(newly_loaded_entities, unloaded_entities)
