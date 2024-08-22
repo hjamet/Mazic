@@ -460,60 +460,72 @@ class AnimatedEntity(pygame.sprite.Sprite):
         # Ajuster la position en cas de collision
         if collisions:
             if direction == "up":
-                self.y += max(
-                    int(
-                        max(
-                            0,
-                            (
-                                min(self.rect.bottom, collision.rect.bottom)
-                                - max(self.rect.top, collision.rect.top)
+                self.y += (
+                    max(
+                        int(
+                            max(
+                                0,
+                                (
+                                    min(self.rect.bottom, collision.rect.bottom)
+                                    - max(self.rect.top, collision.rect.top)
+                                )
+                                / zoom,
                             )
-                            / zoom,
                         )
+                        for collision in collisions
                     )
-                    for collision in collisions
+                    + speed
                 )
             elif direction == "down":
-                self.y -= max(
-                    int(
-                        max(
-                            0,
-                            (
-                                min(self.rect.bottom, collision.rect.bottom)
-                                - max(self.rect.top, collision.rect.top)
+                self.y -= (
+                    max(
+                        int(
+                            max(
+                                0,
+                                (
+                                    min(self.rect.bottom, collision.rect.bottom)
+                                    - max(self.rect.top, collision.rect.top)
+                                )
+                                / zoom,
                             )
-                            / zoom,
                         )
+                        for collision in collisions
                     )
-                    for collision in collisions
+                    + speed
                 )
             elif direction == "right":
-                self.x -= max(
-                    int(
-                        max(
-                            0,
-                            (
-                                min(self.rect.right, collision.rect.right)
-                                - max(self.rect.left, collision.rect.left)
+                self.x -= (
+                    max(
+                        int(
+                            max(
+                                0,
+                                (
+                                    min(self.rect.right, collision.rect.right)
+                                    - max(self.rect.left, collision.rect.left)
+                                )
+                                / zoom,
                             )
-                            / zoom,
                         )
+                        for collision in collisions
                     )
-                    for collision in collisions
+                    + speed
                 )
             elif direction == "left":
-                self.x += max(
-                    int(
-                        max(
-                            0,
-                            (
-                                min(self.rect.right, collision.rect.right)
-                                - max(self.rect.left, collision.rect.left)
+                self.x += (
+                    max(
+                        int(
+                            max(
+                                0,
+                                (
+                                    min(self.rect.right, collision.rect.right)
+                                    - max(self.rect.left, collision.rect.left)
+                                )
+                                / zoom,
                             )
-                            / zoom,
                         )
+                        for collision in collisions
                     )
-                    for collision in collisions
+                    + speed
                 )
 
         # Ajuster la position de la hitbox

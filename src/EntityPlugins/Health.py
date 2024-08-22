@@ -69,7 +69,7 @@ class HealthBar(Entity, AnimatedEntity):
         """
         # Call parent constructors
         Entity.__init__(self)
-        AnimatedEntity.__init__(self, camera_lvl=3, is_tangible=False)
+        AnimatedEntity.__init__(self, camera_lvl=4, is_tangible=False)
 
         # Set attributes
         self.entity = entity
