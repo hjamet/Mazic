@@ -111,6 +111,15 @@ class MazeManager:
                                 temp_entrance_group.coordinates,
                             )
                         ):
+                            # Remove empty columns and rows between the rooms
+                            if entrance_group.direction == "up":
+                                rel_y += 2
+                            elif entrance_group.direction == "down":
+                                rel_y -= 2
+                            elif entrance_group.direction == "left":
+                                rel_x += 1
+                            elif entrance_group.direction == "right":
+                                rel_x -= 1
                             return temp_room, (rel_x, rel_y)
 
         return None
