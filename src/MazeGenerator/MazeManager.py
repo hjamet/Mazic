@@ -142,6 +142,8 @@ class MazeManager:
             for temp_entrance_group in temp_entrances:
                 if len(entrance_group.coordinates) == len(
                     temp_entrance_group.coordinates
+                ) and self.__exit_entrance_direction_match(
+                    entrance_group.direction, temp_entrance_group.direction
                 ):
                     exit_x, exit_y = entrance_group.coordinates[0]
                     entrance_x, entrance_y = temp_entrance_group.coordinates[0]
@@ -165,9 +167,33 @@ class MazeManager:
                                 rel_x += 1
                             elif entrance_group.direction == "right":
                                 rel_x -= 1
+                            print(entrance_group.direction)
                             return temp_room, (rel_x, rel_y)
 
         return None
+
+    def __exit_entrance_direction_match(
+        self, entrance_direction: str, exit_direction: str
+    ) -> bool:
+        """
+        Vérifie si la direction de l'entrée correspond à la direction de la sortie.
+
+        Args:
+            entrance_direction (str): Direction de l'entrée.
+            exit_direction (str): Direction de la sortie.
+
+        Returns:
+            bool: True si les directions correspondent, False sinon.
+        """
+        if entrance_direction == "up":
+            return exit_direction == "down"
+        elif entrance_direction == "down":
+            return exit_direction == "up"
+        elif entrance_direction == "left":
+            return exit_direction == "right"
+        elif entrance_direction == "right":
+            return exit_direction == "left"
+        return False
 
     def can_place_room(self, room: RoomSpawner, position: Tuple[int, int]) -> bool:
         """
@@ -219,7 +245,7 @@ class MazeManager:
         entity_grid_y = (entity.y // 16) - self.grid_origin[1]
 
         # Détermination des salles voisines
-        radius = 3
+        radius = 10
         min_x, max_x = max(0, entity_grid_x - radius), min(
             self.grid.shape[1], entity_grid_x + radius + 1
         )
@@ -265,6 +291,10 @@ class MazeManager:
             room (RoomSpawner): La salle pour laquelle créer les voisines.
         """
         entrances = room.get_entrances()
+        # Find id of the room in the list
+        room_index = self.rooms.index(room)
+        print(f"Création des salles voisines pour la salle {room_index}.")
+        new_rooms = []
         for entrance_group in entrances:
             new_room = self.find_matching_room(entrance_group)
             if new_room:
@@ -273,3 +303,5 @@ class MazeManager:
                     self.logger.info(
                         f"Nouvelle salle créée: {new_room_spawner.room_nbr}"
                     )
+                    new_rooms.append(len(self.rooms) - 1)
+        return new_rooms

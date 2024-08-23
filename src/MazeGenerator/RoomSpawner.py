@@ -88,8 +88,12 @@ class RoomSpawner:
                 else:
                     raise ValueError(f"Nom de couche inconnu : {layer['name']}")
 
+        # Calculer la boîte englobante de la salle
+        self.top_left_x = self.top_left_y = self.bottom_right_x = (
+            self.bottom_right_y
+        ) = None
+        self.width = self.height = None
         self._calculate_bounding_box()
-        self.logger.info(f"{self.get_entrances()}")
 
     def overlaps_with(self, other_room: "RoomSpawner") -> bool:
         """
@@ -236,3 +240,6 @@ class RoomSpawner:
         self.top_left_y = min(entity.y for entity in self.entities)
         self.bottom_right_x = max(entity.x for entity in self.entities)
         self.bottom_right_y = max(entity.y for entity in self.entities)
+
+        self.width = self.bottom_right_x - self.top_left_x + 16
+        self.height = self.bottom_right_y - self.top_left_y + 16
