@@ -83,7 +83,7 @@ class Mazic:
         self.entity_manager.add(another_character)
 
         # Spawn room
-        self.maze_manager = MazeManager(1)
+        self.maze_manager = MazeManager(self.entity_manager, 1)
 
         # Spawn Camera
         self.camera = Camera(

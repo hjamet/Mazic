@@ -95,6 +95,8 @@ class RoomSpawner:
         self.width = self.height = None
         self._calculate_bounding_box()
 
+        self.has_neighbours = False
+
     def overlaps_with(self, other_room: "RoomSpawner") -> bool:
         """
         Vérifie si cette salle chevauche une autre salle.
@@ -157,9 +159,12 @@ class RoomSpawner:
         """Return the list of generated entities."""
         return self.entities
 
-    def get_entrances(self) -> Tuple[EntranceGroup, ...]:
+    def get_entrances(self, no_neighbors: bool = False) -> Tuple[EntranceGroup, ...]:
         """
         Identifie et regroupe les cases vides adjacentes aux entrées (floors adjacents à des cases vides).
+
+        Args:
+            no_neighbors (bool): Si True, ne pas inclure les entrées connectées à d'autres salles. Par défaut False.
 
         Returns:
             Tuple[EntranceGroup, ...]: Groupes uniques d'entrées avec leurs coordonnées et directions.
@@ -199,6 +204,7 @@ class RoomSpawner:
                             if (cx + dx, cy + dy) in floor_tiles
                             and (cx + dx, cy + dy) not in wall_tiles
                         )
+
             return group, direction
 
         entrances = set()

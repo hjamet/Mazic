@@ -18,14 +18,16 @@ class LoadUnloadResult(NamedTuple):
 
 
 class MazeManager:
-    def __init__(self, start_room_nbr: int = None):
+    def __init__(self, entity_manager, start_room_nbr: Optional[int] = None) -> None:
         """
         Initialize the maze manager with a starting room and its neighbors.
 
         Args:
+            entity_manager (EntityManager): The entity manager instance.
             start_room_nbr (int, optional): Number of the starting room. If None, a random room is chosen.
         """
         self.logger = Logger(self.__class__.__name__)
+        self.entity_manager = entity_manager
 
         # Initialiser la grille
         self.grid = np.array([[0]], dtype=int)
@@ -290,18 +292,16 @@ class MazeManager:
         Args:
             room (RoomSpawner): La salle pour laquelle créer les voisines.
         """
-        entrances = room.get_entrances()
+        if room.has_neighbours:
+            return
+        entrances = room.get_entrances(no_neighbors=True)
         # Find id of the room in the list
         room_index = self.rooms.index(room)
         print(f"Création des salles voisines pour la salle {room_index}.")
-        new_rooms = []
         for entrance_group in entrances:
             new_room = self.find_matching_room(entrance_group)
             if new_room:
                 new_room_spawner, position = new_room
                 if self.add_room(new_room_spawner.room_nbr, position):
-                    self.logger.info(
-                        f"Nouvelle salle créée: {new_room_spawner.room_nbr}"
-                    )
-                    new_rooms.append(len(self.rooms) - 1)
-        return new_rooms
+                    self.logger.info(f"Nouvelle salle créée: {len(self.rooms) - 1}.")
+        room.has_neighbours = True

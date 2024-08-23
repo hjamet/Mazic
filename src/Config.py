@@ -17,5 +17,5 @@ class Config:
     }
     fps = 40
     max_hashed_assets = 10000
-    fullscreen = False
+    fullscreen = True
     log_level = "WARNING"
