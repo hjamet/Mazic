@@ -16,6 +16,22 @@ black = "^23.12.1"
 pandas = "^2.2.2"
 
 
+[project]
+name = "mazic"
+version = "1.0.0"
+description = "2D Multiplayer Roguelike Game in Python/Pygame"
+requires-python = ">=3.9"
+dependencies = [
+    "pygame>=2.5.2",
+    "numpy>=1.26.0",
+    "pandas>=2.2.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

@@ -71,22 +71,28 @@ class RoomSpawner:
                     continue
 
                 asset_info = self._decode_asset(asset_nbr)
+                local_x = (i % layer["chunks"][0]["width"]) * 16
+                local_y = (i // layer["chunks"][0]["width"]) * 16
                 tile_args = {
-                    "x": self.x + (i % layer["chunks"][0]["width"]) * 16,
-                    "y": self.y + (i // layer["chunks"][0]["width"]) * 16,
+                    "x": self.x + local_x,
+                    "y": self.y + local_y,
                     "assets_needed": {"idle": [asset_info.name]},
                     "rotation": asset_info.rotation,
                     "reverse": asset_info.reverse,
                 }
 
                 if layer["name"] == "floor":
-                    self.entities.append(Floor(**tile_args))
+                    entity = Floor(**tile_args)
                 elif layer["name"] == "wall":
-                    self.entities.append(Wall(**tile_args))
+                    entity = Wall(**tile_args)
                 elif layer["name"] == "decoration":
-                    self.entities.append(Decoration(**tile_args))
+                    entity = Decoration(**tile_args)
                 else:
                     raise ValueError(f"Nom de couche inconnu : {layer['name']}")
+
+                entity._local_x = local_x
+                entity._local_y = local_y
+                self.entities.append(entity)
 
         # Calculer la boîte englobante de la salle
         self.top_left_x = self.top_left_y = self.bottom_right_x = (
@@ -226,6 +232,17 @@ class RoomSpawner:
 
         return tuple(entrances)
 
+    def set_position(self, x: int, y: int) -> None:
+        """Met à jour la position de la salle et de toutes ses entités sans accumulation."""
+        self.x = x
+        self.y = y
+        for entity in self.entities:
+            local_x = getattr(entity, "_local_x", entity.x)
+            local_y = getattr(entity, "_local_y", entity.y)
+            entity.x = self.x + local_x
+            entity.y = self.y + local_y
+        self._calculate_bounding_box()
+
     def _calculate_bounding_box(self) -> None:
         """
         Calcule la boîte englobante de la salle basée sur ses entités.
@@ -236,11 +253,8 @@ class RoomSpawner:
             self.top_left_x = self.top_left_y = self.bottom_right_x = (
                 self.bottom_right_y
             ) = 0
+            self.width = self.height = 0
             return
-
-        for entity in self.entities:
-            entity.x += self.x
-            entity.y += self.y
 
         self.top_left_x = min(entity.x for entity in self.entities)
         self.top_left_y = min(entity.y for entity in self.entities)

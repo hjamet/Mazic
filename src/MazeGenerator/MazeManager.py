@@ -6,10 +6,11 @@ from typing import List, NamedTuple, Optional, Set, Tuple
 import numpy as np
 
 from Entities.Maze.Floor import Floor
+from Entities.Maze.Wall import Wall
 from EntityManager import Entity
 from Logger import Logger
 
-from .RoomSpawner import RoomSpawner
+from .RoomSpawner import RoomSpawner, EntranceGroup
 
 
 class LoadUnloadResult(NamedTuple):
@@ -105,7 +106,7 @@ class MazeManager:
             bool: True if the room was successfully added, False otherwise.
         """
         x, y = position
-        new_room = RoomSpawner(room_nbr, x * 8, y * 8)
+        new_room = RoomSpawner(room_nbr, x * 16, y * 16)
 
         # Ajouter la nouvelle salle
         room_index = len(self.rooms)
@@ -116,6 +117,7 @@ class MazeManager:
         self._write_room_to_grid(room_index)
 
         # Save grid to file
+        os.makedirs("logs", exist_ok=True)
         np.savetxt("logs/grid.csv", self.grid, delimiter=" ", fmt="%d")
 
         return True
@@ -160,16 +162,6 @@ class MazeManager:
                                 temp_entrance_group.coordinates,
                             )
                         ):
-                            # Remove empty columns and rows between the rooms
-                            if entrance_group.direction == "up":
-                                rel_y += 2
-                            elif entrance_group.direction == "down":
-                                rel_y -= 2
-                            elif entrance_group.direction == "left":
-                                rel_x += 1
-                            elif entrance_group.direction == "right":
-                                rel_x -= 1
-                            print(entrance_group.direction)
                             return temp_room, (rel_x, rel_y)
 
         return None
@@ -209,15 +201,80 @@ class MazeManager:
             bool: True si la salle peut être placée, False sinon.
         """
         x, y = position
-        room.x = x * 16
-        room.y = y * 16
-        room._calculate_bounding_box()
+        room.set_position(x * 16, y * 16)
 
         for existing_room in self.rooms:
             if room.overlaps_with(existing_room):
                 return False
 
         return True
+
+    def _is_entrance_already_connected(
+        self, entrance_group: EntranceGroup
+    ) -> bool:
+        """
+        Vérifie si une entrée est déjà connectée à une autre salle.
+        """
+        direction_offsets = {
+            "up": (0, -16),
+            "down": (0, 16),
+            "left": (-16, 0),
+            "right": (16, 0),
+        }
+        dx, dy = direction_offsets.get(entrance_group.direction, (0, 0))
+        target_positions = set()
+        for ex, ey in entrance_group.coordinates:
+            target_positions.add((ex, ey))
+            target_positions.add((ex + dx, ey + dy))
+
+        for room in self.rooms:
+            for entity in room.entities:
+                if isinstance(entity, Floor) and (entity.x, entity.y) in target_positions:
+                    return True
+        return False
+
+    def _seal_entrance_as_dead_end(
+        self, room: RoomSpawner, entrance_group: EntranceGroup
+    ) -> List[Wall]:
+        """
+        Ferme une entrée en impasse en y plaçant des murs.
+
+        Args:
+            room (RoomSpawner): La salle dont l'entrée doit être scellée.
+            entrance_group (EntranceGroup): Le groupe d'entrées à sceller.
+
+        Returns:
+            List[Wall]: La liste des murs créés.
+        """
+        created_walls = []
+        for wx, wy in entrance_group.coordinates:
+            wall = Wall(x=wx, y=wy, assets_needed={"idle": ["wall_mid"]})
+            wall._local_x = wx - room.x
+            wall._local_y = wy - room.y
+
+            floors_to_remove = [
+                e for e in room.entities if isinstance(e, Floor) and e.x == wx and e.y == wy
+            ]
+            for floor_entity in floors_to_remove:
+                room.entities.remove(floor_entity)
+                if self.entity_manager is not None and hasattr(self.entity_manager, "remove"):
+                    if floor_entity in getattr(self.entity_manager, "entities", []):
+                        self.entity_manager.remove(floor_entity)
+
+            room.entities.append(wall)
+            if self.entity_manager is not None and hasattr(self.entity_manager, "add"):
+                self.entity_manager.add(wall)
+
+            # Mettre à jour self.grid
+            grid_x = (wx // 16) - self.grid_origin[0]
+            grid_y = (wy // 16) - self.grid_origin[1]
+            if 0 <= grid_y < self.grid.shape[0] and 0 <= grid_x < self.grid.shape[1]:
+                self.grid[grid_y, grid_x] = 0
+
+            created_walls.append(wall)
+
+        room._calculate_bounding_box()
+        return created_walls
 
     def get_all_entities(self) -> List[Entity]:
         """
@@ -299,9 +356,13 @@ class MazeManager:
         room_index = self.rooms.index(room)
         print(f"Création des salles voisines pour la salle {room_index}.")
         for entrance_group in entrances:
+            if self._is_entrance_already_connected(entrance_group):
+                continue
             new_room = self.find_matching_room(entrance_group)
             if new_room:
                 new_room_spawner, position = new_room
                 if self.add_room(new_room_spawner.room_nbr, position):
                     self.logger.info(f"Nouvelle salle créée: {len(self.rooms) - 1}.")
+            else:
+                self._seal_entrance_as_dead_end(room, entrance_group)
         room.has_neighbours = True

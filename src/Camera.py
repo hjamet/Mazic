@@ -109,29 +109,32 @@ class Camera(Entity):
             screen_x = int(screen_x)
             screen_y = int(screen_y)
 
-            if animated_entity.hitbox_bounding:
-                bounding_rect = get_bounding_rect(image)
-                hitbox_height = int(
-                    bounding_rect.height * animated_entity.hitbox_height_ratio
-                )
-                hitbox_width = bounding_rect.width
-                new_rect = pygame.Rect(0, 0, hitbox_width, hitbox_height)
-                new_rect.centerx = (
-                    screen_x + bounding_rect.centerx - image.get_width() // 2
-                )
-                new_rect.bottom = (
-                    screen_y + bounding_rect.bottom - image.get_height() // 2
-                )
-            else:
-                hitbox_height = int(
-                    image.get_height() * animated_entity.hitbox_height_ratio
-                )
-                hitbox_width = image.get_width()
-                new_rect = pygame.Rect(0, 0, hitbox_width, hitbox_height)
-                new_rect.centerx = screen_x
-                new_rect.bottom = screen_y + image.get_height() // 2
+            if animated_entity.has_hitbox:
+                if animated_entity.hitbox_bounding:
+                    bounding_rect = get_bounding_rect(image)
+                    hitbox_height = int(
+                        bounding_rect.height * animated_entity.hitbox_height_ratio
+                    )
+                    hitbox_width = bounding_rect.width
+                    new_rect = pygame.Rect(0, 0, hitbox_width, hitbox_height)
+                    new_rect.centerx = (
+                        screen_x + bounding_rect.centerx - image.get_width() // 2
+                    )
+                    new_rect.bottom = (
+                        screen_y + bounding_rect.bottom - image.get_height() // 2
+                    )
+                else:
+                    hitbox_height = int(
+                        image.get_height() * animated_entity.hitbox_height_ratio
+                    )
+                    hitbox_width = image.get_width()
+                    new_rect = pygame.Rect(0, 0, hitbox_width, hitbox_height)
+                    new_rect.centerx = screen_x
+                    new_rect.bottom = screen_y + image.get_height() // 2
 
-            animated_entity.rect = new_rect
+                animated_entity.rect = new_rect
+            else:
+                animated_entity.rect = None
 
             # Affichage de l'image
             image_rect = image.get_rect(center=(screen_x, screen_y))

@@ -167,4 +167,5 @@ cython_debug/
 
 # Log files
 logs/
+*:Zone.Identifier
 
