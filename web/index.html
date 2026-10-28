@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mazic — Labyrinthe Vivant & Magie d'Arcane</title>
+  <style>
+    :root {
+      --bg-dark: #0a0b10;
+      --panel-bg: rgba(16, 19, 29, 0.92);
+      --panel-border: #2a3147;
+      --accent-gold: #f59e0b;
+      --accent-arcane: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --accent-crimson: #ef4444;
+      --hp-color: #10b981;
+      --mana-color: #3b82f6;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background: linear-gradient(180deg, #131722 0%, #0d1017 100%);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      z-index: 10;
+    }
+
+    .title-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title-area h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #fbbf24 0%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+    }
+
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid var(--accent-arcane);
+      color: #d8b4fe;
+      transition: all 0.3s ease;
+    }
+
+    .status-badge.monster {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--accent-crimson);
+      color: #fca5a5;
+      animation: pulse-crimson 2s infinite;
+    }
+
+    @keyframes pulse-crimson {
+      0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    button.btn-header {
+      background: #1e2433;
+      color: var(--text-main);
+      border: 1px solid var(--panel-border);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button.btn-header:hover {
+      background: #2a3349;
+      border-color: var(--accent-gold);
+    }
+
+    button.btn-curse {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    button.btn-curse:hover {
+      background: rgba(239, 68, 68, 0.3);
+      border-color: var(--accent-crimson);
+    }
+
+    /* Main Container */
+    .game-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 58px);
+      position: relative;
+    }
+
+    /* Canvas Viewport */
+    .canvas-viewport {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at center, #12151f 0%, #07080d 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #game-canvas {
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* Side HUD */
+    .side-hud {
+      width: 320px;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 16px;
+      overflow-y: auto;
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+      z-index: 5;
+    }
+
+    .hud-card {
+      background: rgba(13, 16, 26, 0.85);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .hud-card-header {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Bars */
+    .bar-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .bar-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .bar-bg {
+      height: 10px;
+      background: #1e2230;
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .bar-fill {
+      height: 100%;
+      width: 100%;
+      border-radius: 5px;
+      transition: width 0.2s ease-out;
+    }
+    .bar-fill.hp {
+      background: linear-gradient(90deg, #059669, #10b981);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    }
+    .bar-fill.mana {
+      background: linear-gradient(90deg, #2563eb, #3b82f6);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stat-box {
+      background: #141824;
+      border: 1px solid #232a3d;
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .stat-value {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #f1f5f9;
+    }
+
+    /* Minimap */
+    .minimap-wrapper {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #07090e;
+      border: 1px solid #252c3f;
+      border-radius: 6px;
+      padding: 4px;
+    }
+    #minimap-canvas {
+      background: #07090e;
+      border-radius: 4px;
+      display: block;
+    }
+
+    /* Spells Bar */
+    .spells-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .spell-btn {
+      background: #161b29;
+      border: 1px solid #28324a;
+      border-radius: 8px;
+      padding: 10px 8px;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+      position: relative;
+      text-align: center;
+    }
+    .spell-btn:hover:not(:disabled) {
+      background: #21283d;
+      border-color: var(--accent-gold);
+      transform: translateY(-1px);
+    }
+    .spell-btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    .spell-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .spell-key {
+      position: absolute;
+      top: 4px;
+      left: 6px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      background: #263047;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--accent-gold);
+    }
+    .spell-cost {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--mana-color);
+    }
+    .spell-icon {
+      font-size: 1.4rem;
+      margin-top: 4px;
+    }
+    .spell-name {
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    /* Inventory */
+    .inventory-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .crystal-counter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+    .crystal-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .crystal-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #1e2536;
+      border: 1px solid #334155;
+      transition: all 0.3s;
+    }
+    .crystal-dot.filled {
+      background: #06b6d4;
+      border-color: #67e8f9;
+      box-shadow: 0 0 10px #06b6d4;
+    }
+
+    /* Event Log */
+    .log-container {
+      flex: 1;
+      max-height: 130px;
+      background: #0c0f18;
+      border: 1px solid #20273a;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 0.75rem;
+      font-family: 'Consolas', monospace;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-entry {
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+    .log-entry.info { color: #93c5fd; }
+    .log-entry.magic { color: #c084fc; }
+    .log-entry.danger { color: #f87171; }
+    .log-entry.victory { color: #fde047; font-weight: bold; }
+
+    /* Victory Banner */
+    .modal-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(4, 6, 12, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .victory-card {
+      background: #111522;
+      border: 2px solid var(--accent-gold);
+      border-radius: 12px;
+      padding: 30px 40px;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(245, 158, 11, 0.4);
+      max-width: 480px;
+      animation: zoom-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes zoom-in {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .victory-card h2 {
+      font-size: 1.8rem;
+      color: #fbbf24;
+      margin-bottom: 12px;
+    }
+    .victory-card p {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .btn-restart {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0b0d14;
+      font-weight: 800;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    }
+    .btn-restart:hover {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    }
+
+    /* Onscreen Mobile Controls */
+    .touch-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(2, 44px);
+      gap: 6px;
+      opacity: 0.35;
+      transition: opacity 0.2s;
+    }
+    .touch-controls:hover { opacity: 0.85; }
+    .btn-touch {
+      background: rgba(26, 32, 48, 0.7);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      color: white;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-area">
+      <h1>MAZIC</h1>
+      <span id="player-form-badge" class="status-badge">Mage Explorateur</span>
+    </div>
+    <div class="header-actions">
+      <button id="btn-toggle-audio" class="btn-header" title="Activer / Désactiver les effets sonores">
+        🔊 Son : Activé
+      </button>
+      <button id="btn-curse-transform" class="btn-header btn-curse" title="Tester la mécanique signature : devenir Monstre Immortel">
+        ☠ Malédiction Immortelle
+      </button>
+    </div>
+  </header>
+
+  <div class="game-container">
+    <div class="canvas-viewport" id="viewport">
+      <canvas id="game-canvas"></canvas>
+
+      <!-- Touch / D-pad Controls -->
+      <div class="touch-controls">
+        <div></div>
+        <button class="btn-touch" id="btn-touch-up">▲</button>
+        <div></div>
+        <button class="btn-touch" id="btn-touch-left">◀</button>
+        <button class="btn-touch" id="btn-touch-down">▼</button>
+        <button class="btn-touch" id="btn-touch-right">▶</button>
+      </div>
+
+      <!-- Victory Modal -->
+      <div class="modal-overlay" id="victory-modal">
+        <div class="victory-card">
+          <h2>✦ ASCENSION DU LABYRINTHE ✦</h2>
+          <p>Vous avez triomphé des méandres du Labyrinthe Vivant ! Le Cœur d'Arcane a libéré sa puissance céleste et scellé votre légende.</p>
+          <button class="btn-restart" id="btn-restart">Recommencer l'Exploration</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Side HUD -->
+    <div class="side-hud">
+      <!-- Player Vitality -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Vitalité</span>
+          <span id="form-subtext" style="font-size: 0.7rem; color: #a855f7;">Voie de l'Arcane</span>
+        </div>
+        <div class="bar-container">
+          <div class="bar-label-row">
+            <span>Points de Vie</span>
+            <span id="hp-text">100 / 100</span>
+          </div>
+          <div class="bar-bg">
+            <div id="hp-bar" class="bar-fill hp" style="width: 100%;"></div>
+          </div>
+        </div>
+        <div class="bar-container">
+          <div class="bar-label-row">
+            <span>Mana Arcanique</span>
+            <span id="mana-text">100 / 100</span>
+          </div>
+          <div class="bar-bg">
+            <div id="mana-bar" class="bar-fill mana" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exploration Stats -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Labyrinthe Dynamique</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">Salles Créées</span>
+            <span id="rooms-count" class="stat-value">1</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Impasses Scellées</span>
+            <span id="deadends-count" class="stat-value">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Murs Altérés</span>
+            <span id="walls-altered-count" class="stat-value">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Ennemis Défaits</span>
+            <span id="monsters-killed-count" class="stat-value">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Minimap -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Mini-Carte Radar</span>
+          <span style="font-size:0.65rem; color:#64748b;">Temps Réel</span>
+        </div>
+        <div class="minimap-wrapper">
+          <canvas id="minimap-canvas" width="160" height="160"></canvas>
+        </div>
+      </div>
+
+      <!-- Spells -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Sortilèges Mazic</span>
+          <span style="font-size:0.65rem; color:#f59e0b;">Touches [1-4]</span>
+        </div>
+        <div class="spells-grid">
+          <button id="spell-1" class="spell-btn" title="Tir directionnel pyrique infligeant des dégâts">
+            <span class="spell-key">1</span>
+            <span class="spell-cost">10M</span>
+            <span class="spell-icon">🔥</span>
+            <span class="spell-name">Orbe Pyrique</span>
+          </button>
+          <button id="spell-2" class="spell-btn" title="Détruit un mur pour ouvrir un passage ou érige un mur protecteur">
+            <span class="spell-key">2</span>
+            <span class="spell-cost">25M</span>
+            <span class="spell-icon">⛏</span>
+            <span class="spell-name">Brise-Mur</span>
+          </button>
+          <button id="spell-3" class="spell-btn" title="Révèle les salles et monstres à travers les murs pendant 8s">
+            <span class="spell-key">3</span>
+            <span class="spell-cost">20M</span>
+            <span class="spell-icon">👁</span>
+            <span class="spell-name">Œil d'Arcane</span>
+          </button>
+          <button id="spell-4" class="spell-btn" title="Téléportation instantanée en avant avec onde de choc">
+            <span class="spell-key">4</span>
+            <span class="spell-cost">30M</span>
+            <span class="spell-icon">⚡</span>
+            <span class="spell-name">Pas Astral</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Inventory / Objectives -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Objectif d'Ascension</span>
+        </div>
+        <div class="inventory-container" id="inventory-list">
+          <div class="crystal-counter">
+            <span>Cristaux d'Arcane :</span>
+            <div class="crystal-dots">
+              <div class="crystal-dot" id="c-dot-1"></div>
+              <div class="crystal-dot" id="c-dot-2"></div>
+              <div class="crystal-dot" id="c-dot-3"></div>
+            </div>
+          </div>
+          <p style="font-size: 0.72rem; color: #94a3b8;">Rassemblez 3 cristaux d'arcane puis rejoignez l'Autel du Cœur pour triompher.</p>
+        </div>
+      </div>
+
+      <!-- Combat & Event Log -->
+      <div class="hud-card" style="flex:1;">
+        <div class="hud-card-header">
+          <span>Journal des Événements</span>
+        </div>
+        <div class="log-container" id="event-log">
+          <div class="log-entry info">[Système] Éveil dans la Salle Centrale du Labyrinthe.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       MAZIC PLAYABLE STANDALONE — MOTEUR DE JEU JAVASCRIPT / CANVAS / WEB AUDIO
+       ========================================================================== */
+
+    const TILE_SIZE = 32;
+    const FOV_BASE_RADIUS = 7;
+    const FOV_MONSTER_RADIUS = 10;
+    const FOV_ARCANE_RADIUS = 12;
+
+    const TILE_EMPTY = 0;
+    const TILE_FLOOR = 1;
+    const TILE_WALL = 2;
+    const TILE_RUNE_WALL = 3;
+    const TILE_ALTAR = 4;
+    const TILE_TORCH = 5;
+
+    /* --------------------------------------------------------------------------
+       1. SYNTHÉTISEUR SONORE PROCEDURAL (WEB AUDIO API)
+       -------------------------------------------------------------------------- */
+    class SoundEngine {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+      }
+
+      initContext() {
+        if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.1, decay = true) {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          if (decay) {
+            gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          }
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      }
+
+      playStep() {
+        this.playTone(80 + Math.random() * 30, 'triangle', 0.05, 0.04);
+      }
+
+      playFireball() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(380, now);
+          osc.frequency.exponentialRampToValueAtTime(60, now + 0.3);
+
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(now + 0.3);
+        } catch (e) {}
+      }
+
+      playWallAlter() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.setValueAtTime(70, now + 0.1);
+
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(now + 0.35);
+        } catch (e) {}
+      }
+
+      playArcaneSight() {
+        if (!this.enabled) return;
+        this.playTone(523.25, 'sine', 0.25, 0.12);
+        setTimeout(() => this.playTone(659.25, 'sine', 0.35, 0.12), 100);
+        setTimeout(() => this.playTone(783.99, 'sine', 0.5, 0.15), 200);
+      }
+
+      playBlink() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(200, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(now + 0.25);
+        } catch (e) {}
+      }
+
+      playRoar() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(95, now);
+          osc.frequency.linearRampToValueAtTime(50, now + 0.6);
+
+          gain.gain.setValueAtTime(0.28, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(now + 0.7);
+        } catch (e) {}
+      }
+
+      playVictory() {
+        if (!this.enabled) return;
+        const notes = [440, 554.37, 659.25, 880];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => this.playTone(freq, 'triangle', 0.6, 0.18), idx * 160);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    /* --------------------------------------------------------------------------
+       2. MODÈLES DE SALLES MODULAIRES 9x9 (ASSETS/ROOMS/*.JSON)
+       -------------------------------------------------------------------------- */
+    // 0 = void, 1 = floor, 2 = wall, 3 = rune wall, 4 = altar, 5 = torch
+    const ROOM_TEMPLATES = {
+      // Modèle 1 : Grande Salle Centrale (4 sorties)
+      squareHall: {
+        width: 9,
+        height: 9,
+        tiles: [
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,1,1, 1,1, 1,1,5,2],
+          [2,1,2, 1,1, 1,2,1,2],
+          [1,1,1, 1,1, 1,1,1,1],
+          [1,1,1, 1,1, 1,1,1,1],
+          [2,1,2, 1,1, 1,2,1,2],
+          [2,5,1, 1,1, 1,1,1,2],
+          [2,1,1, 1,1, 1,1,1,2],
+          [2,2,2, 1,1, 2,2,2,2]
+        ],
+        exits: [
+          { x: 3, y: 0, dir: 'up', width: 2 },
+          { x: 3, y: 8, dir: 'down', width: 2 },
+          { x: 0, y: 3, dir: 'left', width: 2 },
+          { x: 8, y: 3, dir: 'right', width: 2 }
+        ]
+      },
+      // Modèle 2 : Couloir Droit Vertical (2 sorties : Haut / Bas)
+      corridorV: {
+        width: 9,
+        height: 9,
+        tiles: [
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 5,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 5,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2]
+        ],
+        exits: [
+          { x: 3, y: 0, dir: 'up', width: 2 },
+          { x: 3, y: 8, dir: 'down', width: 2 }
+        ]
+      },
+      // Modèle 3 : Couloir Droit Horizontal (2 sorties : Gauche / Droite)
+      corridorH: {
+        width: 9,
+        height: 9,
+        tiles: [
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2],
+          [1,1,1, 1,1, 1,1,1,1],
+          [1,1,1, 1,1, 1,1,1,1],
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 5,2, 5,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2]
+        ],
+        exits: [
+          { x: 0, y: 3, dir: 'left', width: 2 },
+          { x: 8, y: 3, dir: 'right', width: 2 }
+        ]
+      },
+      // Modèle 4 : Carrefour en T (3 sorties : Haut, Gauche, Droite)
+      tJunction: {
+        width: 9,
+        height: 9,
+        tiles: [
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [1,1,1, 1,1, 1,1,1,1],
+          [1,1,1, 1,1, 1,1,1,1],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2]
+        ],
+        exits: [
+          { x: 3, y: 0, dir: 'up', width: 2 },
+          { x: 0, y: 3, dir: 'left', width: 2 },
+          { x: 8, y: 3, dir: 'right', width: 2 }
+        ]
+      },
+      // Modèle 5 : Coude en L (2 sorties : Bas et Droite)
+      lBend: {
+        width: 9,
+        height: 9,
+        tiles: [
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 2,2, 2,2,2,2],
+          [2,2,2, 1,1, 1,1,1,1],
+          [2,2,2, 1,1, 1,1,1,1],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,2,2, 1,1, 2,2,2,2]
+        ],
+        exits: [
+          { x: 3, y: 8, dir: 'down', width: 2 },
+          { x: 8, y: 3, dir: 'right', width: 2 }
+        ]
+      },
+      // Modèle 6 : Sanctuaire d'Arcane (4 sorties avec Autel du Cœur)
+      arcaneSanctuary: {
+        width: 9,
+        height: 9,
+        tiles: [
+          [2,2,2, 1,1, 2,2,2,2],
+          [2,1,1, 1,1, 1,1,5,2],
+          [2,1,3, 1,1, 3,1,1,2],
+          [1,1,1, 1,4, 1,1,1,1],
+          [1,1,1, 4,4, 1,1,1,1],
+          [2,1,3, 1,1, 3,1,1,2],
+          [2,5,1, 1,1, 1,1,5,2],
+          [2,1,1, 1,1, 1,1,1,2],
+          [2,2,2, 1,1, 2,2,2,2]
+        ],
+        exits: [
+          { x: 3, y: 0, dir: 'up', width: 2 },
+          { x: 3, y: 8, dir: 'down', width: 2 },
+          { x: 0, y: 3, dir: 'left', width: 2 },
+          { x: 8, y: 3, dir: 'right', width: 2 }
+        ]
+      }
+    };
+
+    /* --------------------------------------------------------------------------
+       3. MOTEUR DU LABYRINTHE EN TEMPS RÉEL (MAZEMANAGER)
+       -------------------------------------------------------------------------- */
+    class MazeManager {
+      constructor() {
+        this.tiles = new Map();
+        this.rooms = [];
+        this.openExits = [];
+        this.roomsCount = 0;
+        this.deadEndsSealed = 0;
+        this.wallsAltered = 0;
+        this.altarPlaced = false;
+        this.initStartRoom();
+      }
+
+      tileKey(gx, gy) {
+        return `${gx},${gy}`;
+      }
+
+      getTile(gx, gy) {
+        return this.tiles.get(this.tileKey(gx, gy)) || { type: TILE_EMPTY, gx, gy };
+      }
+
+      setTile(gx, gy, type, meta = {}) {
+        const key = this.tileKey(gx, gy);
+        this.tiles.set(key, { type, gx, gy, ...meta });
+      }
+
+      initStartRoom() {
+        const startTemplate = ROOM_TEMPLATES.squareHall;
+        this.placeRoomAt(startTemplate, 0, 0, 'Salle Centrale de Départ');
+      }
+
+      placeRoomAt(template, originGx, originGy, roomName = 'Salle d\'Arcane') {
+        const room = {
+          id: this.roomsCount + 1,
+          name: roomName,
+          x: originGx,
+          y: originGy,
+          width: template.width,
+          height: template.height,
+          exits: []
+        };
+
+        for (let ly = 0; ly < template.height; ly++) {
+          for (let lx = 0; lx < template.width; lx++) {
+            const rawType = template.tiles[ly] ? template.tiles[ly][lx] : 0;
+            if (rawType !== TILE_EMPTY) {
+              const gx = originGx + lx;
+              const gy = originGy + ly;
+              let finalType = rawType;
+
+              // Autel du Cœur : uniquement après salle 3
+              if (rawType === TILE_ALTAR) {
+                if (this.roomsCount >= 3 && !this.altarPlaced) {
+                  this.altarPlaced = true;
+                  finalType = TILE_ALTAR;
+                } else {
+                  finalType = TILE_FLOOR;
+                }
+              }
+
+              this.setTile(gx, gy, finalType, { roomId: room.id });
+            }
+          }
+        }
+
+        template.exits.forEach(exit => {
+          const globalExit = {
+            gx: originGx + exit.x,
+            gy: originGy + exit.y,
+            dir: exit.dir,
+            width: exit.width || 2,
+            roomId: room.id,
+            connected: false
+          };
+          this.openExits.push(globalExit);
+          room.exits.push(globalExit);
+        });
+
+        this.rooms.push(room);
+        this.roomsCount++;
+
+        if (this.roomsCount > 1 && window.game) {
+          this.populateRoomEntities(room);
+        }
+
+        return room;
+      }
+
+      populateRoomEntities(room) {
+        if (!window.game) return;
+        const monsterCount = Math.floor(Math.random() * 2) + 1;
+        for (let i = 0; i < monsterCount; i++) {
+          const rx = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
+          const ry = room.y + 2 + Math.floor(Math.random() * (room.height - 4));
+          if (this.getTile(rx, ry).type === TILE_FLOOR) {
+            game.monsters.push(new Monster(rx * TILE_SIZE + 16, ry * TILE_SIZE + 16, 'Traqueur d\'Ombre'));
+          }
+        }
+
+        if (Math.random() < 0.35) {
+          const rx = room.x + 2;
+          const ry = room.y + 2;
+          if (this.getTile(rx, ry).type === TILE_FLOOR) {
+            game.rivalMages.push(new RivalMage(rx * TILE_SIZE + 16, ry * TILE_SIZE + 16));
+          }
+        }
+
+        if (game.crystalPickups.length + game.player.arcaneCrystals < 3) {
+          const cx = room.x + Math.floor(room.width / 2);
+          const cy = room.y + Math.floor(room.height / 2);
+          if (this.getTile(cx, cy).type === TILE_FLOOR) {
+            game.crystalPickups.push({ gx: cx, gy: cy, collected: false });
+          }
+        }
+      }
+
+      getOppositeDirection(dir) {
+        if (dir === 'up') return 'down';
+        if (dir === 'down') return 'up';
+        if (dir === 'left') return 'right';
+        if (dir === 'right') return 'left';
+        return '';
+      }
+
+      canPlaceRoom(template, originGx, originGy) {
+        for (let ly = 0; ly < template.height; ly++) {
+          for (let lx = 0; lx < template.width; lx++) {
+            const rawType = template.tiles[ly] ? template.tiles[ly][lx] : 0;
+            if (rawType !== TILE_EMPTY) {
+              const gx = originGx + lx;
+              const gy = originGy + ly;
+              const existing = this.getTile(gx, gy);
+              if (existing.type !== TILE_EMPTY) {
+                // Sols communs (passage de jonction)
+                if (existing.type === TILE_FLOOR && rawType === TILE_FLOOR) {
+                  continue;
+                }
+                // Murs d'enceinte communs partagés
+                if ((existing.type === TILE_WALL || existing.type === TILE_RUNE_WALL) &&
+                    (rawType === TILE_WALL || rawType === TILE_RUNE_WALL)) {
+                  continue;
+                }
+                // Collision
+                return false;
+              }
+            }
+          }
+        }
+        return true;
+      }
+
+      attemptExpandAtExit(exit) {
+        if (exit.connected) return false;
+
+        const neededDir = this.getOppositeDirection(exit.dir);
+        const templateKeys = Object.keys(ROOM_TEMPLATES);
+        templateKeys.sort(() => Math.random() - 0.5);
+
+        for (const tKey of templateKeys) {
+          const tmpl = ROOM_TEMPLATES[tKey];
+          const matchingEntry = tmpl.exits.find(e => e.dir === neededDir);
+          if (!matchingEntry) continue;
+
+          const targetOriginGx = exit.gx - matchingEntry.x;
+          const targetOriginGy = exit.gy - matchingEntry.y;
+
+          if (this.canPlaceRoom(tmpl, targetOriginGx, targetOriginGy)) {
+            const newRoom = this.placeRoomAt(tmpl, targetOriginGx, targetOriginGy, `Salle ${this.roomsCount + 1}`);
+            exit.connected = true;
+
+            const newMatchingExit = newRoom.exits.find(e => e.dir === neededDir);
+            if (newMatchingExit) newMatchingExit.connected = true;
+
+            if (window.game) {
+              game.log(`✦ Nouvelle salle explorée ! (${newRoom.name})`, 'magic');
+            }
+            sound.playArcaneSight();
+            return true;
+          }
+        }
+
+        // Si bloqué, sceller en impasse
+        this.sealExitAsDeadEnd(exit);
+        return false;
+      }
+
+      sealExitAsDeadEnd(exit) {
+        exit.connected = true;
+        this.deadEndsSealed++;
+        for (let i = 0; i < (exit.width || 2); i++) {
+          const wx = exit.dir === 'up' || exit.dir === 'down' ? exit.gx + i : exit.gx;
+          const wy = exit.dir === 'left' || exit.dir === 'right' ? exit.gy + i : exit.gy;
+          this.setTile(wx, wy, TILE_WALL, { sealed: true });
+        }
+        if (window.game) {
+          game.log(`⚡ L'ouverture s'est effondrée en impasse runique !`, 'danger');
+        }
+        sound.playWallAlter();
+      }
+
+      checkPlayerProximity(player) {
+        const pgx = Math.floor(player.x / TILE_SIZE);
+        const pgy = Math.floor(player.y / TILE_SIZE);
+
+        for (const exit of this.openExits) {
+          if (exit.connected) continue;
+          const dist = Math.hypot(pgx - exit.gx, pgy - exit.gy);
+          if (dist <= 3.8) {
+            this.attemptExpandAtExit(exit);
+          }
+        }
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       4. BROUILLARD DE GUERRE RAYCASTING 360° & MÉMOIRE DES LIEUX
+       -------------------------------------------------------------------------- */
+    class FogOfWar {
+      constructor(maze) {
+        this.maze = maze;
+        this.visibleTiles = new Set();
+        this.exploredTiles = new Set();
+        this.arcaneSightTimer = 0;
+      }
+
+      update(player, dt) {
+        if (this.arcaneSightTimer > 0) {
+          this.arcaneSightTimer -= dt;
+        }
+
+        this.visibleTiles.clear();
+
+        const pgx = player.x / TILE_SIZE;
+        const pgy = player.y / TILE_SIZE;
+
+        let radius = FOV_BASE_RADIUS;
+        if (player.isImmortalMonster) radius = FOV_MONSTER_RADIUS;
+        if (this.arcaneSightTimer > 0) radius = FOV_ARCANE_RADIUS;
+
+        const rayCount = 180;
+        const stepSize = 0.25;
+
+        for (let i = 0; i < rayCount; i++) {
+          const angle = (i * 2 * Math.PI) / rayCount;
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+
+          for (let dist = 0; dist <= radius; dist += stepSize) {
+            const cx = Math.floor(pgx + cos * dist);
+            const cy = Math.floor(pgy + sin * dist);
+            const key = this.maze.tileKey(cx, cy);
+
+            this.visibleTiles.add(key);
+            this.exploredTiles.add(key);
+
+            const tile = this.maze.getTile(cx, cy);
+            if ((tile.type === TILE_WALL || tile.type === TILE_RUNE_WALL) && this.arcaneSightTimer <= 0) {
+              break;
+            }
+          }
+        }
+      }
+
+      getVisibility(gx, gy) {
+        const key = this.maze.tileKey(gx, gy);
+        if (this.visibleTiles.has(key)) return 'VISIBLE';
+        if (this.exploredTiles.has(key)) return 'EXPLORED';
+        return 'UNEXPLORED';
+      }
+
+      get visibleCount() {
+        return this.visibleTiles.size;
+      }
+      get exploredCount() {
+        return this.exploredTiles.size;
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       5. JOUEUR, COMBAT, SORTILÈGES ET MONSTRE IMMORTEL
+       -------------------------------------------------------------------------- */
+    class Player {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = 12;
+        this.hp = 100;
+        this.maxHp = 100;
+        this.mana = 100;
+        this.maxMana = 100;
+        this.speed = 130;
+        this.manaRegen = 8;
+        this.isImmortalMonster = false;
+        this.spellsCast = 0;
+        this.arcaneCrystals = 0;
+        this.facingAngle = 0;
+      }
+
+      takeDamage(amount) {
+        this.hp = Math.max(0, this.hp - amount);
+        if (this.hp <= 0 && !this.isImmortalMonster) {
+          this.transformIntoImmortalMonster();
+        }
+      }
+
+      transformIntoImmortalMonster() {
+        if (this.isImmortalMonster) return;
+        this.isImmortalMonster = true;
+        this.hp = 150;
+        this.maxHp = 150;
+        this.speed = 175;
+        sound.playRoar();
+        if (window.game) {
+          game.log("☠ MALÉDICTION ! Vous êtes devenu un MONSTRE IMMORTEL !", "danger");
+          game.log("Traquez et dévorez les mages explorateurs survivants !", "danger");
+        }
+
+        const badge = document.getElementById('player-form-badge');
+        if (badge) {
+          badge.textContent = "Monstre Immortel";
+          badge.classList.add('monster');
+        }
+        const sub = document.getElementById('form-subtext');
+        if (sub) {
+          sub.textContent = "Pacte du Sang & Ombre";
+          sub.style.color = "#ef4444";
+        }
+      }
+
+      heal(amount) {
+        this.hp = Math.min(this.maxHp, this.hp + amount);
+      }
+
+      update(dt, maze, input) {
+        this.mana = Math.min(this.maxMana, this.mana + this.manaRegen * dt);
+
+        let dx = 0;
+        let dy = 0;
+        if (input.keys['KeyW'] || input.keys['KeyZ'] || input.keys['ArrowUp']) dy -= 1;
+        if (input.keys['KeyS'] || input.keys['ArrowDown']) dy += 1;
+        if (input.keys['KeyA'] || input.keys['KeyQ'] || input.keys['ArrowLeft']) dx -= 1;
+        if (input.keys['KeyD'] || input.keys['ArrowRight']) dx += 1;
+
+        if (dx !== 0 || dy !== 0) {
+          const len = Math.hypot(dx, dy);
+          const vx = (dx / len) * this.speed * dt;
+          const vy = (dy / len) * this.speed * dt;
+
+          this.moveWithCollision(vx, vy, maze);
+          this.facingAngle = Math.atan2(dy, dx);
+
+          if (Math.random() < 0.05) sound.playStep();
+        }
+      }
+
+      moveWithCollision(vx, vy, maze) {
+        const nextX = this.x + vx;
+        if (!this.checkWallCollision(nextX, this.y, maze)) {
+          this.x = nextX;
+        }
+
+        const nextY = this.y + vy;
+        if (!this.checkWallCollision(this.x, nextY, maze)) {
+          this.y = nextY;
+        }
+      }
+
+      checkWallCollision(px, py, maze) {
+        const padding = 8;
+        const corners = [
+          { x: px - padding, y: py - padding },
+          { x: px + padding, y: py - padding },
+          { x: px - padding, y: py + padding },
+          { x: px + padding, y: py + padding }
+        ];
+
+        for (const pt of corners) {
+          const gx = Math.floor(pt.x / TILE_SIZE);
+          const gy = Math.floor(pt.y / TILE_SIZE);
+          const tile = maze.getTile(gx, gy);
+          if (tile.type === TILE_WALL || tile.type === TILE_RUNE_WALL) {
+            return true;
+          }
+        }
+        return false;
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       6. MONSTRES GARDIENS ET MAGES RIVAUX
+       -------------------------------------------------------------------------- */
+    class Monster {
+      constructor(x, y, name = 'Traqueur d\'Ombre') {
+        this.x = x;
+        this.y = y;
+        this.name = name;
+        this.hp = 40;
+        this.maxHp = 40;
+        this.speed = 65;
+        this.damage = 18;
+        this.attackCooldown = 0;
+      }
+
+      update(dt, player, maze) {
+        if (this.attackCooldown > 0) this.attackCooldown -= dt;
+
+        const distToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
+
+        if (player.isImmortalMonster) {
+          if (distToPlayer < 140) {
+            const angle = Math.atan2(this.y - player.y, this.x - player.x);
+            this.x += Math.cos(angle) * this.speed * dt;
+            this.y += Math.sin(angle) * this.speed * dt;
+          }
+          return;
+        }
+
+        if (distToPlayer < 180 && distToPlayer > 18) {
+          const angle = Math.atan2(player.y - this.y, player.x - this.x);
+          const nextX = this.x + Math.cos(angle) * this.speed * dt;
+          const nextY = this.y + Math.sin(angle) * this.speed * dt;
+
+          const tgx = Math.floor(nextX / TILE_SIZE);
+          const tgy = Math.floor(nextY / TILE_SIZE);
+          if (maze.getTile(tgx, tgy).type === TILE_FLOOR) {
+            this.x = nextX;
+            this.y = nextY;
+          }
+        } else if (distToPlayer <= 22 && this.attackCooldown <= 0) {
+          player.takeDamage(this.damage);
+          this.attackCooldown = 1.0;
+          if (window.game) {
+            game.log(`💥 Le ${this.name} vous mord férocement ! (-${this.damage} PV)`, 'danger');
+          }
+          sound.playTone(110, 'sawtooth', 0.15, 0.2);
+        }
+      }
+    }
+
+    class RivalMage {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.hp = 50;
+        this.speed = 55;
+        this.alive = true;
+      }
+
+      update(dt, player, maze) {
+        if (!this.alive) return;
+        const dist = Math.hypot(player.x - this.x, player.y - this.y);
+
+        if (player.isImmortalMonster && dist < 180) {
+          const angle = Math.atan2(this.y - player.y, this.x - player.x);
+          this.x += Math.cos(angle) * this.speed * dt;
+          this.y += Math.sin(angle) * this.speed * dt;
+
+          if (dist < 26) {
+            this.alive = false;
+            player.heal(50);
+            if (window.game) {
+              game.monstersKilled++;
+              game.log(`🩸 Vous dévorez le mage explorateur ! (+50 PV)`, 'danger');
+            }
+            sound.playRoar();
+          }
+        }
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       7. PROJECTILES ET PARTICULES
+       -------------------------------------------------------------------------- */
+    class Projectile {
+      constructor(x, y, vx, vy, damage = 35) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.damage = damage;
+        this.life = 1.4;
+      }
+
+      update(dt, game) {
+        this.life -= dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        game.particles.push({
+          x: this.x + (Math.random() - 0.5) * 6,
+          y: this.y + (Math.random() - 0.5) * 6,
+          vx: (Math.random() - 0.5) * 20,
+          vy: (Math.random() - 0.5) * 20,
+          color: Math.random() < 0.5 ? '#f97316' : '#fbbf24',
+          life: 0.25,
+          maxLife: 0.25,
+          size: 3
+        });
+
+        const tgx = Math.floor(this.x / TILE_SIZE);
+        const tgy = Math.floor(this.y / TILE_SIZE);
+        const tile = game.maze.getTile(tgx, tgy);
+        if (tile.type === TILE_WALL || tile.type === TILE_RUNE_WALL) {
+          this.life = 0;
+          this.explode(game);
+          return;
+        }
+
+        for (let i = game.monsters.length - 1; i >= 0; i--) {
+          const m = game.monsters[i];
+          if (Math.hypot(m.x - this.x, m.y - this.y) < 18) {
+            m.hp -= this.damage;
+            this.life = 0;
+            this.explode(game);
+            game.log(`🔥 Orbe Pyrique consume ${m.name} ! (-${this.damage} PV)`, 'magic');
+            if (m.hp <= 0) {
+              game.monsters.splice(i, 1);
+              game.monstersKilled++;
+              game.log(`💀 ${m.name} vaincu !`, 'info');
+            }
+            break;
+          }
+        }
+      }
+
+      explode(game) {
+        sound.playTone(160, 'sine', 0.2, 0.15);
+        for (let i = 0; i < 16; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const spd = 40 + Math.random() * 80;
+          game.particles.push({
+            x: this.x,
+            y: this.y,
+            vx: Math.cos(angle) * spd,
+            vy: Math.sin(angle) * spd,
+            color: '#f97316',
+            life: 0.35,
+            maxLife: 0.35,
+            size: 4
+          });
+        }
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       8. MOTEUR DU JEU PRINCIPAL (GAMEENGINE)
+       -------------------------------------------------------------------------- */
+    class GameEngine {
+      constructor() {
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
+        this.minimapCanvas = document.getElementById('minimap-canvas');
+        this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
+
+        this.maze = new MazeManager();
+        this.player = new Player(4 * TILE_SIZE + 16, 4 * TILE_SIZE + 16);
+        this.fov = new FogOfWar(this.maze);
+
+        this.monsters = [];
+        this.rivalMages = [];
+        this.projectiles = [];
+        this.particles = [];
+        this.crystalPickups = [];
+
+        this.monstersKilled = 0;
+        this.victory = false;
+        this.gameOver = false;
+
+        this.input = {
+          keys: {},
+          mouseX: 0,
+          mouseY: 0
+        };
+
+        this.lastTime = performance.now();
+        this.initInputListeners();
+        this.resizeCanvas();
+        if (typeof window !== 'undefined' && window.addEventListener) {
+          window.addEventListener('resize', () => this.resizeCanvas());
+        }
+
+        this.fov.update(this.player, 0.016);
+      }
+
+      resizeCanvas() {
+        const viewport = document.getElementById('viewport');
+        if (viewport && this.canvas) {
+          this.canvas.width = viewport.clientWidth;
+          this.canvas.height = viewport.clientHeight;
+        }
+      }
+
+      log(msg, type = 'info') {
+        const logBox = document.getElementById('event-log');
+        if (!logBox) return;
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.textContent = msg;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+
+      initInputListeners() {
+        if (typeof window === 'undefined') return;
+
+        window.addEventListener('keydown', e => {
+          this.input.keys[e.code] = true;
+          if (e.key === '1') this.castSpell(1);
+          if (e.key === '2') this.castSpell(2);
+          if (e.key === '3') this.castSpell(3);
+          if (e.key === '4') this.castSpell(4);
+        });
+
+        window.addEventListener('keyup', e => {
+          this.input.keys[e.code] = false;
+        });
+
+        if (this.canvas) {
+          this.canvas.addEventListener('mousemove', e => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.input.mouseX = e.clientX - rect.left;
+            this.input.mouseY = e.clientY - rect.top;
+          });
+
+          this.canvas.addEventListener('mousedown', e => {
+            if (e.button === 0) {
+              this.castSpell(1);
+            }
+          });
+        }
+
+        const el1 = document.getElementById('spell-1'); if (el1) el1.addEventListener('click', () => this.castSpell(1));
+        const el2 = document.getElementById('spell-2'); if (el2) el2.addEventListener('click', () => this.castSpell(2));
+        const el3 = document.getElementById('spell-3'); if (el3) el3.addEventListener('click', () => this.castSpell(3));
+        const el4 = document.getElementById('spell-4'); if (el4) el4.addEventListener('click', () => this.castSpell(4));
+
+        const btnCurse = document.getElementById('btn-curse-transform');
+        if (btnCurse) btnCurse.addEventListener('click', () => this.player.transformIntoImmortalMonster());
+
+        const btnAudio = document.getElementById('btn-toggle-audio');
+        if (btnAudio) btnAudio.addEventListener('click', () => {
+          sound.enabled = !sound.enabled;
+          btnAudio.textContent = sound.enabled ? "🔊 Son : Activé" : "🔇 Son : Muet";
+        });
+
+        const btnRestart = document.getElementById('btn-restart');
+        if (btnRestart) btnRestart.addEventListener('click', () => window.location.reload());
+
+        const bindTouch = (id, code) => {
+          const btn = document.getElementById(id);
+          if (!btn) return;
+          btn.addEventListener('touchstart', (e) => { e.preventDefault(); this.input.keys[code] = true; });
+          btn.addEventListener('touchend', (e) => { e.preventDefault(); this.input.keys[code] = false; });
+          btn.addEventListener('mousedown', () => { this.input.keys[code] = true; });
+          btn.addEventListener('mouseup', () => { this.input.keys[code] = false; });
+        };
+        bindTouch('btn-touch-up', 'KeyW');
+        bindTouch('btn-touch-down', 'KeyS');
+        bindTouch('btn-touch-left', 'KeyA');
+        bindTouch('btn-touch-right', 'KeyD');
+      }
+
+      castSpell(slot) {
+        if (this.gameOver || this.victory) return false;
+
+        // 1. Orbe Pyrique (10 Mana)
+        if (slot === 1) {
+          if (this.player.mana < 10) {
+            this.log("Mana insuffisant pour l'Orbe Pyrique (10)", "danger");
+            return false;
+          }
+          this.player.mana -= 10;
+          this.player.spellsCast++;
+
+          const screenCenterX = this.canvas ? this.canvas.width / 2 : 400;
+          const screenCenterY = this.canvas ? this.canvas.height / 2 : 300;
+          let angle = Math.atan2(this.input.mouseY - screenCenterY, this.input.mouseX - screenCenterX);
+          if (this.input.mouseX === 0 && this.input.mouseY === 0) {
+            angle = this.player.facingAngle;
+          }
+
+          const speed = 280;
+          this.projectiles.push(new Projectile(
+            this.player.x,
+            this.player.y,
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            35
+          ));
+
+          sound.playFireball();
+          return true;
+        }
+
+        // 2. Brise-Mur Runique (25 Mana)
+        if (slot === 2) {
+          if (this.player.mana < 25) {
+            this.log("Mana insuffisant pour le Brise-Mur (25)", "danger");
+            return false;
+          }
+
+          const lookDist = 1.3;
+          const tgx = Math.round((this.player.x / TILE_SIZE) + Math.cos(this.player.facingAngle) * lookDist);
+          const tgy = Math.round((this.player.y / TILE_SIZE) + Math.sin(this.player.facingAngle) * lookDist);
+          const tile = this.maze.getTile(tgx, tgy);
+
+          this.player.mana -= 25;
+          this.player.spellsCast++;
+          this.maze.wallsAltered++;
+
+          if (tile.type === TILE_WALL || tile.type === TILE_RUNE_WALL) {
+            this.maze.setTile(tgx, tgy, TILE_FLOOR);
+            this.log(`⛏ Brise-Mur : Passage ouvert en [${tgx}, ${tgy}] !`, 'magic');
+            sound.playWallAlter();
+          } else {
+            this.maze.setTile(tgx, tgy, TILE_RUNE_WALL);
+            this.log(`✦ Mur Runique protecteur érigé en [${tgx}, ${tgy}] !`, 'info');
+            sound.playWallAlter();
+          }
+          return true;
+        }
+
+        // 3. Œil d'Arcane (20 Mana)
+        if (slot === 3) {
+          if (this.player.mana < 20) {
+            this.log("Mana insuffisant pour l'Œil d'Arcane (20)", "danger");
+            return false;
+          }
+          this.player.mana -= 20;
+          this.player.spellsCast++;
+          this.fov.arcaneSightTimer = 8.0;
+          this.log("👁 Vision Astrale activée : les murs deviennent transparents !", 'magic');
+          sound.playArcaneSight();
+          return true;
+        }
+
+        // 4. Pas Astral (30 Mana)
+        if (slot === 4) {
+          if (this.player.mana < 30) {
+            this.log("Mana insuffisant pour le Pas Astral (30)", "danger");
+            return false;
+          }
+
+          let finalTargetX = this.player.x;
+          let finalTargetY = this.player.y;
+          let found = false;
+
+          // Recherche de la case de sol valide la plus éloignée (de 4 à 1 tuile)
+          for (let step = 4; step >= 1; step--) {
+            const tx = this.player.x + Math.cos(this.player.facingAngle) * step * TILE_SIZE;
+            const ty = this.player.y + Math.sin(this.player.facingAngle) * step * TILE_SIZE;
+            const tgx = Math.floor(tx / TILE_SIZE);
+            const tgy = Math.floor(ty / TILE_SIZE);
+            const targetTile = this.maze.getTile(tgx, tgy);
+
+            if (targetTile.type === TILE_FLOOR) {
+              finalTargetX = tx;
+              finalTargetY = ty;
+              found = true;
+              break;
+            }
+          }
+
+          if (found) {
+            this.player.mana -= 30;
+            this.player.spellsCast++;
+
+            for (let i = 0; i < 20; i++) {
+              this.particles.push({
+                x: this.player.x, y: this.player.y,
+                vx: (Math.random() - 0.5) * 120, vy: (Math.random() - 0.5) * 120,
+                color: '#8b5cf6', life: 0.3, maxLife: 0.3, size: 3
+              });
+            }
+
+            this.player.x = finalTargetX;
+            this.player.y = finalTargetY;
+
+            sound.playBlink();
+            this.log("⚡ Pas Astral : bond à travers l'espace arcanique !", 'magic');
+            return true;
+          } else {
+            this.log("Destination bloquée par la roche !", "danger");
+            return false;
+          }
+        }
+        return false;
+      }
+
+      checkObjectives() {
+        const pgx = Math.floor(this.player.x / TILE_SIZE);
+        const pgy = Math.floor(this.player.y / TILE_SIZE);
+
+        for (const c of this.crystalPickups) {
+          if (!c.collected && c.gx === pgx && c.gy === pgy) {
+            c.collected = true;
+            this.player.arcaneCrystals++;
+            this.log(`💎 Cristal d'Arcane acquis (${this.player.arcaneCrystals}/3) !`, 'magic');
+            sound.playTone(880, 'sine', 0.3, 0.2);
+          }
+        }
+
+        const currentTile = this.maze.getTile(pgx, pgy);
+        if (currentTile.type === TILE_ALTAR) {
+          if (this.player.arcaneCrystals >= 3 || this.player.isImmortalMonster) {
+            this.triggerVictory();
+          } else {
+            if (!this._lastAltarAlert || performance.now() - this._lastAltarAlert > 4000) {
+              this.log("✦ Autel du Cœur détecté ! Il vous faut 3 Cristaux pour l'activer.", 'info');
+              this._lastAltarAlert = performance.now();
+            }
+          }
+        }
+      }
+
+      triggerVictory() {
+        if (this.victory) return;
+        this.victory = true;
+        sound.playVictory();
+        this.log("✦ VICTOIRE ! Le Cœur du Labyrinthe s'embrase d'une lumière éternelle !", 'victory');
+        const modal = document.getElementById('victory-modal');
+        if (modal) modal.classList.add('active');
+      }
+
+      update(dt) {
+        if (this.victory) return;
+
+        this.player.update(dt, this.maze, this.input);
+        this.maze.checkPlayerProximity(this.player);
+        this.fov.update(this.player, dt);
+
+        for (const m of this.monsters) m.update(dt, this.player, this.maze);
+        for (const r of this.rivalMages) r.update(dt, this.player, this.maze);
+
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const p = this.projectiles[i];
+          p.update(dt, this);
+          if (p.life <= 0) this.projectiles.splice(i, 1);
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const part = this.particles[i];
+          part.life -= dt;
+          part.x += part.vx * dt;
+          part.y += part.vy * dt;
+          if (part.life <= 0) this.particles.splice(i, 1);
+        }
+
+        this.checkObjectives();
+        this.updateHUD();
+      }
+
+      updateHUD() {
+        const hpBar = document.getElementById('hp-bar'); if (hpBar) hpBar.style.width = `${(this.player.hp / this.player.maxHp) * 100}%`;
+        const hpTxt = document.getElementById('hp-text'); if (hpTxt) hpTxt.textContent = `${Math.ceil(this.player.hp)} / ${this.player.maxHp}`;
+
+        const mBar = document.getElementById('mana-bar'); if (mBar) mBar.style.width = `${(this.player.mana / this.player.maxMana) * 100}%`;
+        const mTxt = document.getElementById('mana-text'); if (mTxt) mTxt.textContent = `${Math.floor(this.player.mana)} / ${this.player.maxMana}`;
+
+        const rc = document.getElementById('rooms-count'); if (rc) rc.textContent = this.maze.roomsCount;
+        const dc = document.getElementById('deadends-count'); if (dc) dc.textContent = this.maze.deadEndsSealed;
+        const wc = document.getElementById('walls-altered-count'); if (wc) wc.textContent = this.maze.wallsAltered;
+        const mc = document.getElementById('monsters-killed-count'); if (mc) mc.textContent = this.monstersKilled;
+
+        const s1 = document.getElementById('spell-1'); if (s1) s1.disabled = this.player.mana < 10;
+        const s2 = document.getElementById('spell-2'); if (s2) s2.disabled = this.player.mana < 25;
+        const s3 = document.getElementById('spell-3'); if (s3) s3.disabled = this.player.mana < 20;
+        const s4 = document.getElementById('spell-4'); if (s4) s4.disabled = this.player.mana < 30;
+
+        for (let i = 1; i <= 3; i++) {
+          const dot = document.getElementById(`c-dot-${i}`);
+          if (dot) {
+            if (this.player.arcaneCrystals >= i) dot.classList.add('filled');
+            else dot.classList.remove('filled');
+          }
+        }
+      }
+
+      render() {
+        if (!this.ctx) return;
+        const ctx = this.ctx;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+
+        ctx.clearRect(0, 0, width, height);
+
+        const camX = Math.round(this.player.x - width / 2);
+        const camY = Math.round(this.player.y - height / 2);
+
+        ctx.save();
+        ctx.translate(-camX, -camY);
+
+        const startGx = Math.floor(camX / TILE_SIZE) - 1;
+        const endGx = Math.ceil((camX + width) / TILE_SIZE) + 1;
+        const startGy = Math.floor(camY / TILE_SIZE) - 1;
+        const endGy = Math.ceil((camY + height) / TILE_SIZE) + 1;
+
+        for (let gy = startGy; gy <= endGy; gy++) {
+          for (let gx = startGx; gx <= endGx; gx++) {
+            const vis = this.fov.getVisibility(gx, gy);
+            if (vis === 'UNEXPLORED') continue;
+
+            const tile = this.maze.getTile(gx, gy);
+            const rx = gx * TILE_SIZE;
+            const ry = gy * TILE_SIZE;
+
+            if (tile.type === TILE_FLOOR || tile.type === TILE_ALTAR) {
+              ctx.fillStyle = vis === 'VISIBLE' ? '#1c2233' : '#0e121d';
+              ctx.fillRect(rx, ry, TILE_SIZE, TILE_SIZE);
+              ctx.strokeStyle = vis === 'VISIBLE' ? '#252e45' : '#141a29';
+              ctx.strokeRect(rx, ry, TILE_SIZE, TILE_SIZE);
+            }
+
+            if (tile.type === TILE_ALTAR) {
+              ctx.fillStyle = vis === 'VISIBLE' ? '#f59e0b' : '#78350f';
+              ctx.beginPath();
+              ctx.arc(rx + 16, ry + 16, 11, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#fef3c7';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+
+            if (tile.type === TILE_WALL || tile.type === TILE_RUNE_WALL) {
+              const isRune = tile.type === TILE_RUNE_WALL;
+              ctx.fillStyle = vis === 'VISIBLE' ? (isRune ? '#581c87' : '#334155') : '#1e293b';
+              ctx.fillRect(rx, ry, TILE_SIZE, TILE_SIZE);
+
+              ctx.fillStyle = vis === 'VISIBLE' ? (isRune ? '#7e22ce' : '#475569') : '#0f172a';
+              ctx.fillRect(rx + 2, ry + 2, TILE_SIZE - 4, TILE_SIZE - 8);
+
+              if (isRune && vis === 'VISIBLE') {
+                ctx.strokeStyle = '#c084fc';
+                ctx.strokeRect(rx + 4, ry + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+              }
+            }
+
+            if (tile.type === TILE_TORCH && vis === 'VISIBLE') {
+              ctx.fillStyle = '#f97316';
+              ctx.beginPath();
+              ctx.arc(rx + 16, ry + 16, 4 + Math.sin(performance.now() * 0.01) * 1.5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+
+        // Cristaux
+        for (const c of this.crystalPickups) {
+          if (c.collected) continue;
+          if (this.fov.getVisibility(c.gx, c.gy) === 'VISIBLE') {
+            const cx = c.gx * TILE_SIZE + 16;
+            const cy = c.gy * TILE_SIZE + 16 + Math.sin(performance.now() * 0.005) * 4;
+            ctx.fillStyle = '#06b6d4';
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - 8);
+            ctx.lineTo(cx + 6, cy);
+            ctx.lineTo(cx, cy + 8);
+            ctx.lineTo(cx - 6, cy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#a5f3fc';
+            ctx.stroke();
+          }
+        }
+
+        // Monstres
+        for (const m of this.monsters) {
+          const mgx = Math.floor(m.x / TILE_SIZE);
+          const mgy = Math.floor(m.y / TILE_SIZE);
+          if (this.fov.getVisibility(mgx, mgy) === 'VISIBLE') {
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, 11, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fee2e2';
+            ctx.beginPath();
+            ctx.arc(m.x - 3, m.y - 2, 2.5, 0, Math.PI * 2);
+            ctx.arc(m.x + 3, m.y - 2, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#450a0a';
+            ctx.fillRect(m.x - 12, m.y - 18, 24, 4);
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(m.x - 12, m.y - 18, (m.hp / m.maxHp) * 24, 4);
+          }
+        }
+
+        // Mages Rivaux
+        for (const r of this.rivalMages) {
+          if (!r.alive) continue;
+          const rgx = Math.floor(r.x / TILE_SIZE);
+          const rgy = Math.floor(r.y / TILE_SIZE);
+          if (this.fov.getVisibility(rgx, rgy) === 'VISIBLE') {
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(r.x, r.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Projectiles
+        for (const p of this.projectiles) {
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fffbeb';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Particules
+        for (const part of this.particles) {
+          ctx.fillStyle = part.color;
+          ctx.globalAlpha = Math.max(0, part.life / part.maxLife);
+          ctx.beginPath();
+          ctx.arc(part.x, part.y, part.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+
+        // Joueur
+        if (this.player.isImmortalMonster) {
+          const pulse = Math.sin(performance.now() * 0.008) * 3;
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+          ctx.beginPath();
+          ctx.arc(this.player.x, this.player.y, 22 + pulse, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#991b1b';
+          ctx.beginPath();
+          ctx.arc(this.player.x, this.player.y, 14, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#fef2f2';
+          ctx.beginPath();
+          ctx.arc(this.player.x - 4, this.player.y - 3, 2.5, 0, Math.PI * 2);
+          ctx.arc(this.player.x + 4, this.player.y - 3, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = 'rgba(139, 92, 246, 0.2)';
+          ctx.beginPath();
+          ctx.arc(this.player.x, this.player.y, 18, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#8b5cf6';
+          ctx.beginPath();
+          ctx.arc(this.player.x, this.player.y, 11, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(this.player.x, this.player.y);
+          ctx.lineTo(
+            this.player.x + Math.cos(this.player.facingAngle) * 16,
+            this.player.y + Math.sin(this.player.facingAngle) * 16
+          );
+          ctx.stroke();
+        }
+
+        ctx.restore();
+        this.renderMinimap();
+      }
+
+      renderMinimap() {
+        if (!this.minimapCtx) return;
+        const mctx = this.minimapCtx;
+        const w = this.minimapCanvas.width;
+        const h = this.minimapCanvas.height;
+
+        mctx.fillStyle = '#07090e';
+        mctx.fillRect(0, 0, w, h);
+
+        const pgx = Math.floor(this.player.x / TILE_SIZE);
+        const pgy = Math.floor(this.player.y / TILE_SIZE);
+        const scale = 4;
+        const offsetX = Math.floor(w / 2 - pgx * scale);
+        const offsetY = Math.floor(h / 2 - pgy * scale);
+
+        for (const key of this.fov.exploredTiles) {
+          const [gxStr, gyStr] = key.split(',');
+          const gx = parseInt(gxStr, 10);
+          const gy = parseInt(gyStr, 10);
+          const tile = this.maze.getTile(gx, gy);
+
+          const mx = offsetX + gx * scale;
+          const my = offsetY + gy * scale;
+          if (mx < -scale || mx > w || my < -scale || my > h) continue;
+
+          if (tile.type === TILE_FLOOR) {
+            mctx.fillStyle = '#1e293b';
+            mctx.fillRect(mx, my, scale, scale);
+          } else if (tile.type === TILE_WALL || tile.type === TILE_RUNE_WALL) {
+            mctx.fillStyle = '#64748b';
+            mctx.fillRect(mx, my, scale, scale);
+          } else if (tile.type === TILE_ALTAR) {
+            mctx.fillStyle = '#f59e0b';
+            mctx.fillRect(mx, my, scale + 1, scale + 1);
+          }
+        }
+
+        const playerMx = offsetX + pgx * scale;
+        const playerMy = offsetY + pgy * scale;
+        mctx.fillStyle = this.player.isImmortalMonster ? '#ef4444' : '#a855f7';
+        mctx.beginPath();
+        mctx.arc(playerMx + scale / 2, playerMy + scale / 2, 3, 0, Math.PI * 2);
+        mctx.fill();
+      }
+
+      loop(now) {
+        const dt = Math.min(0.1, (now - this.lastTime) / 1000);
+        this.lastTime = now;
+
+        this.update(dt);
+        this.render();
+
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(t => this.loop(t));
+        }
+      }
+
+      start() {
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(t => {
+            this.lastTime = t;
+            this.loop(t);
+          });
+        }
+      }
+    }
+
+    const game = new GameEngine();
+    window.game = game;
+    game.start();
+
+    /* ==========================================================================
+       9. API PUBLIQUE EXPOSÉE POUR TESTS PLAYWRIGHT E2E (WINDOW.MAZICGAME)
+       ========================================================================== */
+    window.MazicGame = {
+      getState: () => {
+        return {
+          player: {
+            x: game.player.x,
+            y: game.player.y,
+            gx: Math.round(game.player.x / TILE_SIZE),
+            gy: Math.round(game.player.y / TILE_SIZE),
+            hp: game.player.hp,
+            maxHp: game.player.maxHp,
+            mana: game.player.mana,
+            maxMana: game.player.maxMana,
+            isImmortalMonster: game.player.isImmortalMonster
+          },
+          roomsGenerated: game.maze.roomsCount,
+          deadEndsSealed: game.maze.deadEndsSealed,
+          wallsAltered: game.maze.wallsAltered,
+          visibleTilesCount: game.fov.visibleCount,
+          exploredTilesCount: game.fov.exploredCount,
+          spellsCast: game.player.spellsCast,
+          isImmortalMonster: game.player.isImmortalMonster,
+          victory: game.victory,
+          gameOver: game.gameOver,
+          inventory: {
+            arcaneCrystals: game.player.arcaneCrystals
+          }
+        };
+      },
+
+      stepMove: (dx, dy, steps = 1) => {
+        for (let i = 0; i < steps; i++) {
+          game.player.moveWithCollision(dx * TILE_SIZE, dy * TILE_SIZE, game.maze);
+        }
+        game.maze.checkPlayerProximity(game.player);
+        game.fov.update(game.player, 0.05);
+        return window.MazicGame.getState();
+      },
+
+      movePlayer: (dx, dy) => {
+        return window.MazicGame.stepMove(dx, dy, 1);
+      },
+
+      castSpell: (slotIndex) => {
+        const success = game.castSpell(slotIndex);
+        return { success, state: window.MazicGame.getState() };
+      },
+
+      exploreNewRoom: () => {
+        const exit = game.maze.openExits.find(e => !e.connected);
+        if (exit) {
+          game.player.x = (exit.gx + (exit.dir === 'left' ? 1 : exit.dir === 'right' ? -1 : 0)) * TILE_SIZE + 16;
+          game.player.y = (exit.gy + (exit.dir === 'up' ? 1 : exit.dir === 'down' ? -1 : 0)) * TILE_SIZE + 16;
+          game.maze.attemptExpandAtExit(exit);
+          game.fov.update(game.player, 0.05);
+        }
+        return window.MazicGame.getState();
+      },
+
+      triggerImmortalMonsterForm: () => {
+        game.player.transformIntoImmortalMonster();
+        return window.MazicGame.getState();
+      },
+
+      triggerImmortalTransformation: () => {
+        return window.MazicGame.triggerImmortalMonsterForm();
+      },
+
+      completeLabyrinthObjective: () => {
+        game.player.arcaneCrystals = 3;
+        let altarPos = null;
+        for (const [key, tile] of game.maze.tiles.entries()) {
+          if (tile.type === TILE_ALTAR) {
+            altarPos = tile;
+            break;
+          }
+        }
+        if (!altarPos) {
+          const tgx = Math.floor(game.player.x / TILE_SIZE);
+          const tgy = Math.floor(game.player.y / TILE_SIZE);
+          game.maze.setTile(tgx, tgy, TILE_ALTAR);
+        }
+        game.triggerVictory();
+        return window.MazicGame.getState();
+      },
+
+      teleportToAltarAndWin: () => {
+        return window.MazicGame.completeLabyrinthObjective();
+      }
+    };
+  </script>
+</body>
+</html>
