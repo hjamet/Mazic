@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
   <title>Mazic — Labyrinthe Vivant & Magie d'Arcane</title>
   <style>
     :root {
@@ -26,35 +27,48 @@
       user-select: none;
     }
 
-    body {
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      max-width: 100vw;
+      max-height: 100vh;
+      overflow: hidden;
       background-color: var(--bg-dark);
       color: var(--text-main);
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
+      margin: 0;
+      padding: 0;
     }
 
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header Compact 48px */
     header {
       background: linear-gradient(180deg, #131722 0%, #0d1017 100%);
       border-bottom: 1px solid var(--panel-border);
-      padding: 10px 20px;
+      height: 48px;
+      min-height: 48px;
+      max-height: 48px;
+      padding: 0 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-      z-index: 10;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+      z-index: 20;
+      box-sizing: border-box;
     }
 
     .title-area {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .title-area h1 {
-      font-size: 1.4rem;
+      font-size: 1.25rem;
       font-weight: 800;
       letter-spacing: 2px;
       background: linear-gradient(135deg, #fbbf24 0%, #c084fc 100%);
@@ -64,16 +78,17 @@
     }
 
     .status-badge {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 9999px;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       background: rgba(139, 92, 246, 0.2);
       border: 1px solid var(--accent-arcane);
       color: #d8b4fe;
       transition: all 0.3s ease;
+      white-space: nowrap;
     }
 
     .status-badge.monster {
@@ -88,25 +103,51 @@
       50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.8); }
     }
 
-    .header-actions {
+    /* Header quick stats counters */
+    .header-stats {
       display: flex;
       align-items: center;
       gap: 12px;
+      background: rgba(10, 13, 20, 0.7);
+      border: 1px solid var(--panel-border);
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    .h-stat {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .h-stat strong {
+      color: #f1f5f9;
+      font-weight: 700;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     button.btn-header {
       background: #1e2433;
       color: var(--text-main);
       border: 1px solid var(--panel-border);
-      padding: 6px 14px;
+      padding: 5px 10px;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       font-weight: 600;
       transition: all 0.2s;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
+      white-space: nowrap;
     }
 
     button.btn-header:hover {
@@ -124,60 +165,134 @@
       border-color: var(--accent-crimson);
     }
 
-    /* Main Container */
+    /* Main Container (Strict 100vw x 100vh grid) */
     .game-container {
-      display: flex;
       flex: 1;
-      height: calc(100vh - 58px);
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      height: calc(100vh - 48px);
+      max-height: calc(100vh - 48px);
+      min-height: 0;
+      overflow: hidden;
       position: relative;
+      box-sizing: border-box;
     }
 
     /* Canvas Viewport */
     .canvas-viewport {
-      flex: 1;
       position: relative;
       background: radial-gradient(circle at center, #12151f 0%, #07080d 100%);
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
     }
 
     #game-canvas {
       display: block;
       cursor: crosshair;
+      max-width: 100%;
+      max-height: 100%;
     }
 
-    /* Side HUD */
+    /* Overlay Spells Bar on Canvas bottom */
+    .canvas-spells-overlay {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      background: rgba(10, 13, 22, 0.9);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(8px);
+      padding: 5px 8px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      z-index: 10;
+    }
+
+    .spell-chip {
+      background: #161b29;
+      border: 1px solid #28324a;
+      border-radius: 6px;
+      padding: 5px 8px;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .spell-chip:hover:not(:disabled) {
+      background: #222a3e;
+      border-color: var(--accent-gold);
+    }
+
+    .spell-chip:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .spell-chip .sc-key {
+      background: #263047;
+      color: var(--accent-gold);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-weight: 800;
+    }
+
+    .spell-chip .sc-cost {
+      color: var(--mana-color);
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* Side HUD (Strict 340px, always visible, inner scroll) */
     .side-hud {
-      width: 320px;
+      width: 340px;
+      min-width: 340px;
+      max-width: 340px;
+      height: 100%;
+      max-height: 100%;
       background: var(--panel-bg);
       border-left: 1px solid var(--panel-border);
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      padding: 16px;
+      gap: 8px;
+      padding: 10px;
       overflow-y: auto;
+      overflow-x: hidden;
       box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
-      z-index: 5;
+      z-index: 15;
+      box-sizing: border-box;
     }
 
     .hud-card {
       background: rgba(13, 16, 26, 0.85);
       border: 1px solid var(--panel-border);
-      border-radius: 8px;
-      padding: 12px;
+      border-radius: 6px;
+      padding: 8px 10px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
+      box-sizing: border-box;
     }
 
     .hud-card-header {
-      font-size: 0.8rem;
+      font-size: 0.72rem;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -187,18 +302,18 @@
     .bar-container {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
     .bar-label-row {
       display: flex;
       justify-content: space-between;
-      font-size: 0.8rem;
+      font-size: 0.72rem;
       font-weight: 600;
     }
     .bar-bg {
-      height: 10px;
+      height: 8px;
       background: #1e2230;
-      border-radius: 5px;
+      border-radius: 4px;
       overflow: hidden;
       position: relative;
       border: 1px solid rgba(255, 255, 255, 0.05);
@@ -206,7 +321,7 @@
     .bar-fill {
       height: 100%;
       width: 100%;
-      border-radius: 5px;
+      border-radius: 4px;
       transition: width 0.2s ease-out;
     }
     .bar-fill.hp {
@@ -222,23 +337,23 @@
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 6px;
     }
     .stat-box {
       background: #141824;
       border: 1px solid #232a3d;
-      border-radius: 6px;
-      padding: 8px 10px;
+      border-radius: 4px;
+      padding: 4px 6px;
       display: flex;
       flex-direction: column;
     }
     .stat-label {
-      font-size: 0.72rem;
+      font-size: 0.65rem;
       color: var(--text-muted);
       text-transform: uppercase;
     }
     .stat-value {
-      font-size: 1.15rem;
+      font-size: 0.95rem;
       font-weight: 800;
       color: #f1f5f9;
     }
@@ -252,7 +367,8 @@
       background: #07090e;
       border: 1px solid #252c3f;
       border-radius: 6px;
-      padding: 4px;
+      padding: 2px;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
     }
     #minimap-canvas {
       background: #07090e;
@@ -260,23 +376,23 @@
       display: block;
     }
 
-    /* Spells Bar */
+    /* Spells Bar in HUD */
     .spells-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      gap: 6px;
     }
     .spell-btn {
       background: #161b29;
       border: 1px solid #28324a;
-      border-radius: 8px;
-      padding: 10px 8px;
+      border-radius: 6px;
+      padding: 6px 4px;
       color: var(--text-main);
       cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 2px;
       transition: all 0.2s;
       position: relative;
       text-align: center;
@@ -284,10 +400,6 @@
     .spell-btn:hover:not(:disabled) {
       background: #21283d;
       border-color: var(--accent-gold);
-      transform: translateY(-1px);
-    }
-    .spell-btn:active:not(:disabled) {
-      transform: translateY(1px);
     }
     .spell-btn:disabled {
       opacity: 0.4;
@@ -295,29 +407,29 @@
     }
     .spell-key {
       position: absolute;
-      top: 4px;
-      left: 6px;
-      font-size: 0.65rem;
+      top: 3px;
+      left: 4px;
+      font-size: 0.6rem;
       font-weight: 800;
       background: #263047;
-      padding: 1px 5px;
-      border-radius: 3px;
+      padding: 1px 3px;
+      border-radius: 2px;
       color: var(--accent-gold);
     }
     .spell-cost {
       position: absolute;
-      top: 4px;
-      right: 6px;
-      font-size: 0.65rem;
+      top: 3px;
+      right: 4px;
+      font-size: 0.6rem;
       font-weight: 700;
       color: var(--mana-color);
     }
     .spell-icon {
-      font-size: 1.4rem;
-      margin-top: 4px;
+      font-size: 1.15rem;
+      margin-top: 2px;
     }
     .spell-name {
-      font-size: 0.75rem;
+      font-size: 0.68rem;
       font-weight: 700;
     }
 
@@ -325,23 +437,23 @@
     .inventory-container {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
     }
     .crystal-counter {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       font-weight: 600;
       color: #cbd5e1;
     }
     .crystal-dots {
       display: flex;
-      gap: 6px;
+      gap: 5px;
     }
     .crystal-dot {
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       background: #1e2536;
       border: 1px solid #334155;
@@ -355,18 +467,20 @@
 
     /* Event Log */
     .log-container {
-      flex: 1;
-      max-height: 130px;
+      height: 80px;
+      max-height: 80px;
+      min-height: 60px;
       background: #0c0f18;
       border: 1px solid #20273a;
-      border-radius: 6px;
-      padding: 8px;
-      font-size: 0.75rem;
+      border-radius: 4px;
+      padding: 6px;
+      font-size: 0.7rem;
       font-family: 'Consolas', monospace;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
+      box-sizing: border-box;
     }
     .log-entry {
       color: var(--text-muted);
@@ -377,16 +491,16 @@
     .log-entry.danger { color: #f87171; }
     .log-entry.victory { color: #fde047; font-weight: bold; }
 
-    /* Victory Banner */
+    /* Victory Banner Modal Fullscreen Overlay */
     .modal-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(4, 6, 12, 0.85);
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(4, 6, 12, 0.88);
       backdrop-filter: blur(8px);
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 100;
+      z-index: 1000;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.4s ease;
@@ -399,10 +513,10 @@
       background: #111522;
       border: 2px solid var(--accent-gold);
       border-radius: 12px;
-      padding: 30px 40px;
+      padding: 26px 36px;
       text-align: center;
       box-shadow: 0 0 40px rgba(245, 158, 11, 0.4);
-      max-width: 480px;
+      max-width: 460px;
       animation: zoom-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     @keyframes zoom-in {
@@ -410,14 +524,14 @@
       to { transform: scale(1); opacity: 1; }
     }
     .victory-card h2 {
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       color: #fbbf24;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     .victory-card p {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: #cbd5e1;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
       line-height: 1.5;
     }
     .btn-restart {
@@ -425,10 +539,10 @@
       color: #0b0d14;
       font-weight: 800;
       border: none;
-      padding: 10px 24px;
+      padding: 9px 20px;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       text-transform: uppercase;
       box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
     }
@@ -442,9 +556,9 @@
       bottom: 20px;
       left: 20px;
       display: grid;
-      grid-template-columns: repeat(3, 44px);
-      grid-template-rows: repeat(2, 44px);
-      gap: 6px;
+      grid-template-columns: repeat(3, 40px);
+      grid-template-rows: repeat(2, 40px);
+      gap: 5px;
       opacity: 0.35;
       transition: opacity 0.2s;
     }
@@ -452,21 +566,27 @@
     .btn-touch {
       background: rgba(26, 32, 48, 0.7);
       border: 1px solid var(--panel-border);
-      border-radius: 8px;
+      border-radius: 6px;
       color: white;
-      font-size: 1.1rem;
+      font-size: 1rem;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
     }
-  </style>
+    </style>
 </head>
 <body>
   <header>
     <div class="title-area">
       <h1>MAZIC</h1>
       <span id="player-form-badge" class="status-badge">Mage Explorateur</span>
+    </div>
+    <div class="header-stats">
+      <span class="h-stat" title="Salles créées">🏰 <span id="header-rooms-count">1</span></span>
+      <span class="h-stat" title="Impasses scellées">🛑 <span id="header-deadends-count">0</span></span>
+      <span class="h-stat" title="Murs altérés">⛏ <span id="header-walls-count">0</span></span>
+      <span class="h-stat" title="Cristaux d'Arcane">💎 <span id="header-crystals-count">0/3</span></span>
     </div>
     <div class="header-actions">
       <button id="btn-toggle-audio" class="btn-header" title="Activer / Désactiver les effets sonores">
@@ -482,6 +602,22 @@
     <div class="canvas-viewport" id="viewport">
       <canvas id="game-canvas"></canvas>
 
+      <!-- Overlay Spells Bar on Canvas bottom -->
+      <div class="canvas-spells-overlay">
+        <button class="spell-chip" id="overlay-spell-1" onclick="window.MazicGame.castSpell(1)" title="Tir directionnel pyrique (10M)">
+          <span class="sc-key">1</span><span class="sc-icon">🔥</span><span class="sc-name">Orbe Pyrique</span><span class="sc-cost">10M</span>
+        </button>
+        <button class="spell-chip" id="overlay-spell-2" onclick="window.MazicGame.castSpell(2)" title="Brise-mur runique (25M)">
+          <span class="sc-key">2</span><span class="sc-icon">⛏</span><span class="sc-name">Brise-Mur</span><span class="sc-cost">25M</span>
+        </button>
+        <button class="spell-chip" id="overlay-spell-3" onclick="window.MazicGame.castSpell(3)" title="Œil d'arcane vision (20M)">
+          <span class="sc-key">3</span><span class="sc-icon">👁</span><span class="sc-name">Œil d'Arcane</span><span class="sc-cost">20M</span>
+        </button>
+        <button class="spell-chip" id="overlay-spell-4" onclick="window.MazicGame.castSpell(4)" title="Pas astral téléportation (30M)">
+          <span class="sc-key">4</span><span class="sc-icon">⚡</span><span class="sc-name">Pas Astral</span><span class="sc-cost">30M</span>
+        </button>
+      </div>
+
       <!-- Touch / D-pad Controls -->
       <div class="touch-controls">
         <div></div>
@@ -491,18 +627,9 @@
         <button class="btn-touch" id="btn-touch-down">▼</button>
         <button class="btn-touch" id="btn-touch-right">▶</button>
       </div>
-
-      <!-- Victory Modal -->
-      <div class="modal-overlay" id="victory-modal">
-        <div class="victory-card">
-          <h2>✦ ASCENSION DU LABYRINTHE ✦</h2>
-          <p>Vous avez triomphé des méandres du Labyrinthe Vivant ! Le Cœur d'Arcane a libéré sa puissance céleste et scellé votre légende.</p>
-          <button class="btn-restart" id="btn-restart">Recommencer l'Exploration</button>
-        </div>
-      </div>
     </div>
 
-    <!-- Right Side HUD -->
+    <!-- Right Side HUD (340px) -->
     <div class="side-hud">
       <!-- Player Vitality -->
       <div class="hud-card">
@@ -627,6 +754,15 @@
           <div class="log-entry info">[Système] Éveil dans la Salle Centrale du Labyrinthe.</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Victory Modal Fullscreen Overlay -->
+  <div class="modal-overlay" id="victory-modal">
+    <div class="victory-card">
+      <h2>✦ ASCENSION DU LABYRINTHE ✦</h2>
+      <p>Vous avez triomphé des méandres du Labyrinthe Vivant ! Le Cœur d'Arcane a libéré sa puissance céleste et scellé votre légende.</p>
+      <button class="btn-restart" id="btn-restart">Recommencer l'Exploration</button>
     </div>
   </div>
 
@@ -1798,6 +1934,16 @@
         const wc = document.getElementById('walls-altered-count'); if (wc) wc.textContent = this.maze.wallsAltered;
         const mc = document.getElementById('monsters-killed-count'); if (mc) mc.textContent = this.monstersKilled;
 
+        const hrc = document.getElementById('header-rooms-count'); if (hrc) hrc.textContent = this.maze.roomsCount;
+        const hdc = document.getElementById('header-deadends-count'); if (hdc) hdc.textContent = this.maze.deadEndsSealed;
+        const hwc = document.getElementById('header-walls-count'); if (hwc) hwc.textContent = this.maze.wallsAltered;
+        const hcc = document.getElementById('header-crystals-count'); if (hcc) hcc.textContent = `${this.player.arcaneCrystals}/3`;
+
+        const os1 = document.getElementById('overlay-spell-1'); if (os1) os1.disabled = this.player.mana < 10;
+        const os2 = document.getElementById('overlay-spell-2'); if (os2) os2.disabled = this.player.mana < 25;
+        const os3 = document.getElementById('overlay-spell-3'); if (os3) os3.disabled = this.player.mana < 20;
+        const os4 = document.getElementById('overlay-spell-4'); if (os4) os4.disabled = this.player.mana < 30;
+
         const s1 = document.getElementById('spell-1'); if (s1) s1.disabled = this.player.mana < 10;
         const s2 = document.getElementById('spell-2'); if (s2) s2.disabled = this.player.mana < 25;
         const s3 = document.getElementById('spell-3'); if (s3) s3.disabled = this.player.mana < 20;
@@ -2164,6 +2310,11 @@
         return window.MazicGame.completeLabyrinthObjective();
       }
     };
+
+    window.exploreNewRoom = () => window.MazicGame.exploreNewRoom();
+    window.triggerImmortalMonsterForm = () => window.MazicGame.triggerImmortalMonsterForm();
+    window.completeLabyrinthObjective = () => window.MazicGame.completeLabyrinthObjective();
+    window.castSpell = (s) => window.MazicGame.castSpell(s);
   </script>
 </body>
 </html>
