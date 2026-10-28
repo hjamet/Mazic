@@ -18,6 +18,11 @@ from Entities.Maze.Floor import Floor
 from Entities.Maze.Wall import Wall
 from Entities.Character import Character
 from Camera import Camera
+from MazeGenerator.FogOfWar import FogOfWar
+from EntityPlugins.SpellBook import SpellBook
+from Entities.Monster import Monster, transform_into_immortal_monster
+from UI.HUD import HUD
+from Audio.SoundManager import SoundManager
 
 
 def test_room_spawner_no_coordinate_accumulation():
@@ -165,3 +170,167 @@ def test_issue21_floor_has_no_hitbox():
     assert floor.rect is None, f"Floor should have rect is None, but got {floor.rect}"
     assert isinstance(wall.rect, pygame.Rect), f"Wall should have valid pygame.Rect, got {wall.rect}"
     assert isinstance(char.rect, pygame.Rect), f"Character should have valid pygame.Rect, got {char.rect}"
+
+
+def test_fog_of_war_raycasting_and_wall_occlusion():
+    """Vérifie que FogOfWar bloque la ligne de vue derrière un mur via raycasting Bresenham."""
+    fow = FogOfWar(tile_size=16, vision_radius_tiles=6)
+    walls = {(2, 0)}  # Un mur en x=2, y=0
+
+    # Raycasting depuis le joueur en (0, 0)
+    visible = fow.compute_fov(0, 0, walls, arcane_sight_active=False)
+
+    assert (0, 0) in visible, "Player center tile must be visible"
+    assert (1, 0) in visible, "Tile in front of wall must be visible"
+    assert (2, 0) in visible, "Wall tile facing the player must be visible"
+    assert (3, 0) not in visible, "Tile directly behind wall must be occluded"
+    assert (4, 0) not in visible, "Tile further behind wall must be occluded"
+
+
+def test_fog_of_war_memory_explored_tiles():
+    """Vérifie que les tuiles explorées restent en mémoire (statut EXPLORED) quand le joueur s'éloigne."""
+    fow = FogOfWar(tile_size=16, vision_radius_tiles=4)
+
+    # Joueur en (0, 0)
+    fow.update(0, 0, walls=set())
+    assert fow.get_tile_visibility(0, 0) == "VISIBLE"
+    assert (0, 0) in fow.visible_tiles
+    assert (0, 0) in fow.explored_tiles
+
+    # Joueur se déplace loin en (400, 400)
+    fow.update(400, 400, walls=set())
+    assert (0, 0) not in fow.visible_tiles, "Old tile must no longer be currently visible"
+    assert fow.get_tile_visibility(0, 0) == "EXPLORED", "Explored tile must remain EXPLORED in memory"
+    assert fow.get_tile_visibility(999, 999) == "UNEXPLORED", "Unvisited tile must be UNEXPLORED"
+
+
+def test_spellbook_mana_consumption_and_regen():
+    """Vérifie la consommation de mana par les sorts, le rejet si mana insuffisant et la régénération."""
+    sb = SpellBook(max_mana=100.0, mana_regen_rate=10.0)
+    assert sb.mana == 100.0
+
+    # Sort Fireball (coût 10)
+    res = sb.cast_fireball((0, 0), (100, 100))
+    assert res is not None
+    assert res["spell"] == "fireball"
+    assert sb.mana == 90.0
+
+    # Forcer mana bas pour tester le rejet
+    sb.mana = 5.0
+    res_fail = sb.cast_fireball((0, 0), (100, 100))
+    assert res_fail is None, "Cast must fail when mana < cost"
+    assert sb.mana == 5.0, "Mana must not be deducted on failed cast"
+
+    # Régénération sur 2 secondes (10 mana/s -> +20)
+    sb.update(2.0)
+    assert sb.mana == 25.0
+
+    # Régénération plafonnée au max_mana
+    sb.update(50.0)
+    assert sb.mana == 100.0
+
+
+def test_spellbook_wall_alter_mechanic():
+    """Vérifie que Brise-Mur détruit un mur (-> sol) ou crée un mur sur du sol libre."""
+    sb = SpellBook()
+    walls = {(5, 5), (6, 5)}
+    floors = {(5, 6), (6, 6)}
+
+    # 1. Détruire un mur
+    res_destroy = sb.cast_wall_alter(5, 5, walls, floors)
+    assert res_destroy == "DESTROYED_WALL"
+    assert (5, 5) not in walls, "Wall must be removed from walls_set"
+    assert (5, 5) in floors, "Tile must be added to floors_set"
+    assert sb.mana == 75.0  # 100 - 25
+
+    # 2. Créer un mur sur un sol libre
+    res_create = sb.cast_wall_alter(5, 6, walls, floors)
+    assert res_create == "CREATED_WALL"
+    assert (5, 6) in walls, "Tile must be added to walls_set"
+    assert (5, 6) not in floors, "Tile must be removed from floors_set"
+    assert sb.mana == 50.0  # 75 - 25
+
+    # 3. Cibler une coordonnée invalide (ni mur ni sol)
+    res_invalid = sb.cast_wall_alter(100, 100, walls, floors)
+    assert res_invalid is None
+    assert sb.mana == 50.0, "Mana must not be consumed on invalid target"
+
+
+def test_spellbook_arcane_sight_penetration():
+    """Vérifie que le sort Arcane Sight traverse l'occultation des murs."""
+    sb = SpellBook()
+    fow = FogOfWar(tile_size=16, vision_radius_tiles=6)
+    walls = {(2, 0)}
+
+    # Sans Arcane Sight : la tuile (3, 0) derrière le mur est occultée
+    fow.update(0, 0, walls, arcane_sight_active=False)
+    assert (3, 0) not in fow.visible_tiles
+
+    # Activation Arcane Sight (coût 20)
+    ok = sb.cast_arcane_sight(duration=6.0)
+    assert ok is True
+    assert sb.is_arcane_sight_active is True
+    assert sb.mana == 80.0
+
+    # Avec Arcane Sight actif : la vision traverse les murs
+    fow.update(0, 0, walls, arcane_sight_active=sb.is_arcane_sight_active)
+    assert (3, 0) in fow.visible_tiles, "Arcane sight must penetrate walls"
+    assert fow.get_tile_visibility(3, 0) == "VISIBLE"
+
+
+def test_spellbook_blink_teleportation():
+    """Vérifie que Blink téléporte sur du sol à portée, rejette les murs et les portées excessives."""
+    sb = SpellBook()
+    walls = {(2, 0)}
+    floors = {(0, 0), (1, 0), (1, 1), (2, 1), (3, 1)}
+
+    # Téléportation valide vers (16, 16) soit tuile (1, 1)
+    new_pos = sb.cast_blink((0, 0), (16, 16), walls, floors, max_range_tiles=6)
+    assert new_pos == (16.0, 16.0)
+    assert sb.mana == 70.0  # 100 - 30
+
+    # Téléportation invalide sur un mur (32, 0) soit tuile (2, 0)
+    fail_wall = sb.cast_blink((16, 16), (32, 0), walls, floors, max_range_tiles=6)
+    assert fail_wall is None, "Blink onto a wall must be rejected"
+    assert sb.mana == 70.0
+
+    # Téléportation invalide hors portée (distance > 6 * 16 = 96 px)
+    fail_range = sb.cast_blink((16, 16), (500, 500), walls, floors, max_range_tiles=6)
+    assert fail_range is None, "Blink beyond max range must be rejected"
+    assert sb.mana == 70.0
+
+
+def test_immortal_monster_transformation_on_death():
+    """Vérifie la mécanique signature : à 0 PV le Mage devient un Monstre Immortel avec buff de vitesse."""
+    char = Character(name="HeroMage", x=0, y=0)
+    assert char.is_immortal_monster is False
+    initial_speed = char.speed
+
+    # Infliger des dégâts mortels
+    char.damage(150)
+
+    # Doit être transformé en Monstre Immortel
+    assert char.is_immortal_monster is True, "Character must be marked as immortal monster"
+    assert char.hp > 0, "HP must be restored upon immortal transformation"
+    assert char.speed >= initial_speed * 1.3, "Speed must receive a 1.35x multiplier"
+    assert char._is_dead is False, "Death state must be cleared"
+
+
+def test_hud_minimap_generation_and_sound_manager_headless():
+    """Vérifie la génération de la surface minimap et l'exécution sans erreur de SoundManager en headless."""
+    hud = HUD()
+    fow = FogOfWar()
+    fow.explored_tiles = {(0, 0), (1, 0), (0, 1)}
+    fow.visible_tiles = {(0, 0)}
+
+    minimap_surf = hud.generate_minimap_surface(fow, None, (0, 0), (120, 120))
+    assert isinstance(minimap_surf, pygame.Surface)
+    assert minimap_surf.get_size() == (120, 120)
+
+    # SoundManager headless
+    sm = SoundManager()
+    assert sm.play_fireball() is True
+    assert sm.play_wall_alter() is True
+    assert sm.play_arcane_sight() is True
+    assert sm.play_blink() is True
+    assert sm.play_transformation() is True

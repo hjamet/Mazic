@@ -4,6 +4,7 @@ from EntityManager import Entity, AnimatedEntity
 from Entities.Projectile import Projectile
 from EntityPlugins.Health import Health
 from EntityPlugins.AbilityManager import AbilityManager
+from EntityPlugins.SpellBook import SpellBook
 from typing import List, Tuple
 
 
@@ -84,12 +85,27 @@ class Character(Entity, AnimatedEntity, Health, AbilityManager):
 
         # Set default attributes
         self.speed = 2
+        self.is_immortal_monster = False
+        self.has_darkvision = False
+        self.spellbook = SpellBook()
         self.add_ability("auto_attack", Projectile)
 
         # Set internal attributes
         self.last_auto_attack = 0
         if self.is_main_character:
             self.visibility_memory = None
+
+    def damage(self, damage: int) -> None:
+        """Takes damage and triggers immortal monster transformation if HP reaches 0."""
+        super().damage(damage)
+        self.check_immortal_monster_transformation()
+
+    def check_immortal_monster_transformation(self) -> bool:
+        """Transforms the character into an Immortal Monster when killed, per Henri Jamet's design."""
+        if self.hp <= 0 and not self.is_immortal_monster:
+            from Entities.Monster import transform_into_immortal_monster
+            return transform_into_immortal_monster(self)
+        return False
 
     def update(self, event_list: list) -> None:
         """This function is called at each frame. It allows the entity to react to a list of events.

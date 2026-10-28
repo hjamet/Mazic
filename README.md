@@ -1,138 +1,131 @@
 [![libera manifesto](https://img.shields.io/badge/libera-manifesto-lightgrey.svg)](https://liberamanifesto.com)
+[![Tests](https://img.shields.io/badge/pytest-13%20passed-brightgreen.svg)]()
+[![Python](https://img.shields.io/badge/python-3.9%20|%203.11%20|%203.13-blue.svg)]()
 
 # Mazic
 
-## Description
+**Mazic** is a fast-paced 2D roguelike labyrinth game in which you play a wizard trapped in an ever-shifting, dynamically generated maze haunted by lethal guardians and rival spellcasters. Unlock arcane abilities, reshape walls, survive against bloodthirsty monsters... or become one yourself!
 
-Mazic is a cooperative game where players take on the role of mages exploring a magical labyrinth filled with dangerous creatures to recover powerful artifacts. A terrifying legend has it that the souls of the mages who failed in their quest are trapped in the labyrinth and haunt the place, ready to do anything to prevent newcomers from escaping.
+---
 
-## Installation 🐼
+## 🔮 Core Gameplay Mechanics
 
-We use Poetry for managing virtual environments & installing dependencies. 
+### 1. The 4 Mazic Spells (`SpellBook`)
+Wizards manage a dynamic **Mana pool** (100 MP baseline with continuous regeneration) and command 4 distinct arcane powers:
+- **`[1] Orbe Pyrique` (Fireball, 10 MP)**: Directional projectile delivering instant arcane damage to monsters and rivals.
+- **`[2] Brise-Mur Runique` (Wall Alter, 25 MP)**: Alter labyrinth topography! Destroys an adjacent internal wall into walkable floor, or conjures a runic wall on empty ground.
+- **`[3] Œil d'Arcane` (Arcane Sight, 20 MP)**: Ethereal vision bypassing stone walls and extending perception radius for 6 seconds.
+- **`[4] Pas Astral` (Blink, 30 MP)**: Instantaneous short-range teleportation to any visible, walkable tile within range (rejects solid walls).
+
+### 2. The Signature Mechanic: Immortal Monster Transformation
+> *"Quand on est tué par un monstre, on ne meurt pas passivement : on se transforme en Monstre Immortel, et notre objectif devient de traquer les autres joueurs !"* — Henri Jamet
+
+When the player's health drops to 0 HP:
+- Immediate resurrection as an **Immortal Monster** (`is_immortal_monster = True`).
+- Health fully restored to maximum.
+- **1.35x speed boost** and enhanced darkvision.
+- Switch to the monster faction to hunt down remaining wizards in the maze.
+
+### 3. Fog of War & Spatial Memory
+- **2D Raycasting (Bresenham)**: Line of sight realistically blocked by stone walls.
+- **Tile Visibility States**: `VISIBLE` (currently lit by arcane torch), `EXPLORED` (remembered in spatial memory), `UNEXPLORED` (pitch-black darkness).
+- **Heads-Up Display & Minimap**: Real-time HUD showing Health, Mana, spell slots, player status (Mage vs Immortal Monster), and an interactive minimap of explored rooms.
+
+---
+
+## 🏗️ Architecture
+
+```
+mazic/
+├── src/
+│   ├── Mazic.py                     # Main Pygame game loop & event dispatcher
+│   ├── Camera.py                    # Smooth 2D scrolling camera & viewport
+│   ├── EntityManager.py             # Entity-Component manager & collision system
+│   ├── Entities/
+│   │   ├── Character.py             # Wizard character (SpellBook + Immortal Monster logic)
+│   │   ├── Monster.py               # Labyrinth guardian demons & transformation logic
+│   │   ├── Projectile.py            # Arcane projectiles
+│   │   └── Maze/                    # Floor & Wall tiles
+│   ├── EntityPlugins/
+│   │   ├── SpellBook.py             # Mana pool, regen, 4 Mazic spells & inventory
+│   │   ├── Health.py                # Health management & health bar rendering
+│   │   └── AbilityManager.py        # Cooldown & capability manager
+│   ├── MazeGenerator/
+│   │   ├── MazeManager.py           # Real-time procedural room expansion & dead-end sealing
+│   │   ├── RoomSpawner.py           # Room template loader & entrance matching
+│   │   └── FogOfWar.py              # Bresenham FOV raycasting & explored tile memory
+│   ├── UI/
+│   │   └── HUD.py                   # Health/Mana gauges, spell bar & real-time minimap
+│   └── Audio/
+│       └── SoundManager.py          # Procedural PCM synthesizer (headless compatible)
+├── web/
+│   └── index.html                   # Standalone Web HTML5/Canvas 1-click playable edition
+├── assets/
+│   ├── rooms/                       # Procedural JSON room templates
+│   └── frames/                      # 16px pixel art sprites & animations
+└── tests/
+    └── test_mazic.py                # 13 automated Pytest integration & unit tests
+```
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
+- Python 3.9+ (tested on Python 3.11 and 3.13)
+- Pygame `>= 2.5.2`, NumPy `>= 1.26.0`
 
-- Python 3.9.7 (or higher)
-- Poetry
-
-### Steps
-
-1. **Clone the repository:**
-    ```sh
-    git clone https://github.com/yourusername/mazic.git
-    cd mazic
-    ```
-
-2. **Install Python 3.9.7:**
-    - You can use **Pyenv** to install it. See [pyenv](https://github.com/pyenv/pyenv).
-
-3. **Install dependencies:**
-    ```sh
-    poetry install
-    ```
-
-4. **Run the game:**
-    ```sh
-    poetry run python src/main.py
-    ```
-
-Alternatively, you can create a virtual environment, install the dependencies, and run the `src/main.py` file from the root of the repository:
-```sh
-python -m venv env
-source env/bin/activate
-python -m pip install -r requirements.txt
-python src/main.py
-```
-
-Or you can run the Makefile with the following command:
-```sh
-make install
-```
-
-### You just want to play the Game...
-
-Just go to the release tab and download the latest game version! 💃
-
-## Do you want to get your hands dirty?
-
-> **We are assuming you have Python 3.9.7 or higher installed on your machine.**
-
-### Using Virtual Environment and pip
+### Installation
 
 ```sh
-python -m venv env
-source env/bin/activate
-python -m pip install -r requirements.txt
-python src/main.py
-```
+# Clone repository
+git clone https://github.com/hjamet/Mazic.git
+cd Mazic
 
-### Using Poetry
+# Install dependencies with pip
+pip install pygame numpy pandas pytest
 
-```sh
-# Install Poetry if you haven't already
-curl -sSL https://install.python-poetry.org | python3 -
-
-# Install dependencies
+# Or with Poetry
 poetry install
-
-# Run the game
-poetry run python src/main.py
 ```
 
-## Repository Convention & Architecture 🦥
+### Running the Python / Pygame Engine
+```sh
+python src/main.py
+```
 
-### Architecture 🦜
+**Controls**:
+- `Z Q S D` / `W A S D` / Arrow Keys: Move wizard
+- `Mouse Left Click`: Auto-attack / Cast targeted spell
+- `1` / `2` / `3` / `4`: Cast Fireball, Wall Alter, Arcane Sight, or Blink
 
-- The `src` directory contains the project's source code. Each Python file generally contains a class of the same name. The `main.py` file is the program's entry point. Subdirectories organize utilities by category.
-- The `doc` directory contains the project's documentation. It can be generated using Pdoc3 (`make doc`).
-- The `logs` directory contains the project's logs. These are generated using the `src.Logger` class and are saved in a `xxx.log` file and displayed in the console.
-- The `assets` directory contains the project's assets, including images used for the graphical interface.
+---
 
-### Convention 🦦
+## 🧪 Automated Test Suite
 
-- **[DOCSTRING]**: We use typed Google docstrings for all functions and methods. See [PEP 484](https://www.python.org/dev/peps/pep-0484/) and [Sphinxcontrib Napoleon](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html). Docstrings and notebooks should be written in English. Each function and class should have a brief usage example in its docstring.
-- **[GIT]**: We use the commit convention described here: [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). You should never work on the master branch but on a branch named after the feature you are working on after opening an issue to let other members know what you are working on so that you can discuss it. When you are done, you can open a pull request to merge your branch into master. We will then review your code and merge it if everything is okay. Issues and pull requests can be written in French.
+Mazic includes **13 automated tests** covering geometric room generation, alignment, collision handling, line of sight, spellcasting mechanics, and immortal monster transformation:
 
-> Of course, anyone who doesn't follow these rules, arbitrarily written by a tyrannical mind, is subject to judgmental looks, cookie embargoes, and denunciatory messages with angry animal emojis.
+```sh
+python -m pytest -v
+```
 
-## Contributing
+```
+tests/test_mazic.py::test_room_spawner_no_coordinate_accumulation PASSED
+tests/test_mazic.py::test_all_room_templates_valid_and_have_entrances PASSED
+tests/test_mazic.py::test_dynamic_maze_generation_alignment PASSED
+tests/test_mazic.py::test_dead_end_sealing_on_blocked_entrance PASSED
+tests/test_mazic.py::test_issue21_floor_has_no_hitbox PASSED
+tests/test_mazic.py::test_fog_of_war_raycasting_and_wall_occlusion PASSED
+tests/test_mazic.py::test_fog_of_war_memory_explored_tiles PASSED
+tests/test_mazic.py::test_spellbook_mana_consumption_and_regen PASSED
+tests/test_mazic.py::test_spellbook_wall_alter_mechanic PASSED
+tests/test_mazic.py::test_spellbook_arcane_sight_penetration PASSED
+tests/test_mazic.py::test_spellbook_blink_teleportation PASSED
+tests/test_mazic.py::test_immortal_monster_transformation_on_death PASSED
+tests/test_mazic.py::test_hud_minimap_generation_and_sound_manager_headless PASSED
+```
 
-We welcome contributions from the community! Here are some ways you can help:
+---
 
-1. **Report Bugs:** If you find a bug, please report it by opening an issue.
-2. **Suggest Features:** If you have an idea for a new feature, please open an issue to discuss it.
-3. **Submit Pull Requests:** If you want to contribute code, please fork the repository and submit a pull request.
-
-### How to Contribute
-
-1. **Fork the repository:**
-    ```sh
-    git fork https://github.com/hjamet/Mazic.git
-    ```
-
-2. **Create a new branch:**
-    ```sh
-    git checkout -b feature-name
-    ```
-
-3. **Make your changes and commit them:**
-    ```sh
-    git commit -m "feat: add new feature"
-    ```
-
-4. **Push to the branch:**
-    ```sh
-    git push origin feature-name
-    ```
-
-5. **Open a pull request:**
-    - Go to the repository on GitHub and click on "New Pull Request".
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Thanks to all the contributors who have helped make this project better.
-- Special thanks to the open-source community for their invaluable support and contributions.
+## 📜 License
+Apache License 2.0 / MIT. Created by Henri Jamet.

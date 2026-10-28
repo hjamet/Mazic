@@ -14,6 +14,10 @@ from Logger import Logger
 
 # Test
 from MazeGenerator.MazeManager import MazeManager
+from MazeGenerator.FogOfWar import FogOfWar
+from UI.HUD import HUD
+from Audio.SoundManager import SoundManager
+from Entities.Monster import Monster, transform_into_immortal_monster
 
 
 class Mazic:
@@ -54,6 +58,11 @@ class Mazic:
         # Instantiate attributes
         self.clock = pygame.time.Clock()
         self.running = True
+
+        # Fog of War, HUD, and Audio SoundManager
+        self.fog_of_war = FogOfWar()
+        self.hud = HUD()
+        self.sound_manager = SoundManager()
 
         # Spawn initial entities
         self.camera = None  # Will be set in spawn_initial_entities
@@ -125,6 +134,33 @@ class Mazic:
 
             # Update display (this will also update hitboxes and masks)
             self.camera.update()
+
+            # Update Fog of War
+            all_walls = {
+                (int(e.x // 16), int(e.y // 16))
+                for room in getattr(self.maze_manager, "rooms", [])
+                for e in room.entities
+                if getattr(e, "block_vision", False)
+            }
+            arcane_active = getattr(
+                getattr(self.main_character, "spellbook", None),
+                "is_arcane_sight_active",
+                False,
+            )
+            self.fog_of_war.update(
+                self.main_character.x,
+                self.main_character.y,
+                all_walls,
+                arcane_sight_active=arcane_active,
+            )
+
+            # Render HUD (HP, Mana, Spells, Status, Minimap)
+            self.hud.render(
+                self.screen,
+                self.main_character,
+                self.fog_of_war,
+                self.maze_manager,
+            )
 
             pygame.display.flip()
 
@@ -227,5 +263,74 @@ class Mazic:
                         },
                     )
                 )
+
+            # ---------------------------- CAPTURE SPELL CASTING --------------------------- #
+            elif key in (pygame.K_1, pygame.K_KP1):
+                # Spell 1: Fireball
+                x_click, y_click = pygame.mouse.get_pos()
+                tx = self.camera.x + (x_click - self.config.window_width / 2) / self.camera.zoom
+                ty = self.camera.y + (y_click - self.config.window_height / 2) / self.camera.zoom
+                if self.main_character.spellbook.cast_fireball(
+                    (self.main_character.x, self.main_character.y), (tx, ty)
+                ):
+                    self.sound_manager.play_fireball()
+                    in_game_events.append(
+                        EntityManager.Event(
+                            targets_id=[self.main_character_id],
+                            type="auto_attack",
+                            data={"x_click": tx, "y_click": ty},
+                        )
+                    )
+            elif key in (pygame.K_2, pygame.K_KP2):
+                # Spell 2: Wall Alter
+                x_click, y_click = pygame.mouse.get_pos()
+                tx = self.camera.x + (x_click - self.config.window_width / 2) / self.camera.zoom
+                ty = self.camera.y + (y_click - self.config.window_height / 2) / self.camera.zoom
+                gx, gy = int(tx // 16), int(ty // 16)
+                walls_set = {
+                    (int(e.x // 16), int(e.y // 16))
+                    for r in getattr(self.maze_manager, "rooms", [])
+                    for e in r.entities
+                    if getattr(e, "block_vision", False)
+                }
+                floors_set = {
+                    (int(e.x // 16), int(e.y // 16))
+                    for r in getattr(self.maze_manager, "rooms", [])
+                    for e in r.entities
+                    if not getattr(e, "block_vision", False)
+                }
+                res = self.main_character.spellbook.cast_wall_alter(gx, gy, walls_set, floors_set)
+                if res:
+                    self.sound_manager.play_wall_alter()
+            elif key in (pygame.K_3, pygame.K_KP3):
+                # Spell 3: Arcane Sight
+                if self.main_character.spellbook.cast_arcane_sight(duration=6.0):
+                    self.sound_manager.play_arcane_sight()
+            elif key in (pygame.K_4, pygame.K_KP4):
+                # Spell 4: Blink
+                x_click, y_click = pygame.mouse.get_pos()
+                tx = self.camera.x + (x_click - self.config.window_width / 2) / self.camera.zoom
+                ty = self.camera.y + (y_click - self.config.window_height / 2) / self.camera.zoom
+                walls_set = {
+                    (int(e.x // 16), int(e.y // 16))
+                    for r in getattr(self.maze_manager, "rooms", [])
+                    for e in r.entities
+                    if getattr(e, "block_vision", False)
+                }
+                floors_set = {
+                    (int(e.x // 16), int(e.y // 16))
+                    for r in getattr(self.maze_manager, "rooms", [])
+                    for e in r.entities
+                    if not getattr(e, "block_vision", False)
+                }
+                new_pos = self.main_character.spellbook.cast_blink(
+                    (self.main_character.x, self.main_character.y),
+                    (tx, ty),
+                    walls_set,
+                    floors_set,
+                )
+                if new_pos:
+                    self.main_character.x, self.main_character.y = new_pos
+                    self.sound_manager.play_blink()
 
         return in_game_events
