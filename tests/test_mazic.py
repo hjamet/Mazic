@@ -1,9 +1,10 @@
 import os
 import sys
 
-# Ensure src/ is in sys.path and pygame runs in headless dummy mode
+# Ensure src/ is in sys.path and working directory is repo root for relative assets
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pytest
 import pygame
@@ -23,6 +24,7 @@ from EntityPlugins.SpellBook import SpellBook
 from Entities.Monster import Monster, transform_into_immortal_monster
 from UI.HUD import HUD
 from Audio.SoundManager import SoundManager
+from Mazic import Mazic
 
 
 def test_room_spawner_no_coordinate_accumulation():
@@ -334,3 +336,146 @@ def test_hud_minimap_generation_and_sound_manager_headless():
     assert sm.play_arcane_sight() is True
     assert sm.play_blink() is True
     assert sm.play_transformation() is True
+
+
+def test_mazic_pygame_wall_alter_mutates_entities():
+    """Vérifie que apply_wall_alter altère réellement les entités Wall et Floor dans room et entity_manager."""
+    game = Mazic()
+    start_room = game.maze_manager.rooms[0]
+
+    # Trouver un mur initial dans la salle
+    initial_walls = [e for e in start_room.entities if isinstance(e, Wall)]
+    assert len(initial_walls) > 0, "Initial room must contain walls"
+    target_wall = initial_walls[0]
+    gx, gy = int(target_wall.x // 16), int(target_wall.y // 16)
+
+    # 1. Détruire le mur -> création d'un Floor
+    res = game.apply_wall_alter(gx, gy)
+    assert res in ("DESTROYED_WALL", "destroyed")
+    assert target_wall not in start_room.entities, "Wall entity must be removed from room.entities"
+    assert target_wall not in game.entity_manager.entities, "Wall entity must be removed from entity_manager"
+
+    floors_at_tile = [
+        e for e in start_room.entities if isinstance(e, Floor) and int(e.x // 16) == gx and int(e.y // 16) == gy
+    ]
+    assert len(floors_at_tile) == 1, "A new Floor entity must be created at the destroyed wall position"
+    assert floors_at_tile[0] in game.entity_manager.entities, "New Floor must be present in entity_manager"
+
+    # 2. Re-créer un mur sur ce sol -> suppression du Floor et création d'un Wall
+    res2 = game.apply_wall_alter(gx, gy)
+    assert res2 in ("CREATED_WALL", "created")
+    assert floors_at_tile[0] not in start_room.entities, "Floor entity must be removed from room.entities"
+    assert floors_at_tile[0] not in game.entity_manager.entities, "Floor must be removed from entity_manager"
+
+    walls_at_tile = [
+        e for e in start_room.entities if isinstance(e, Wall) and int(e.x // 16) == gx and int(e.y // 16) == gy
+    ]
+    assert len(walls_at_tile) == 1, "A new Wall entity must be created at the position"
+    assert walls_at_tile[0] in game.entity_manager.entities, "New Wall must be present in entity_manager"
+
+
+def test_mazic_pygame_fireball_and_immortal_monster_combat_loop():
+    """Vérifie la boucle de combat Pygame : fireball contre monstre, collecte de cristaux, transformation et chasse des rivaux."""
+    game = Mazic()
+    assert len(game.monsters) >= 1, "Mazic must spawn at least one Guardian Demon"
+    assert len(game.rival_mages) >= 1, "Mazic must spawn a rival mage"
+    demon = game.monsters[0]
+    assert demon in game.entity_manager.entities, "Demon must be in entity_manager"
+
+    # 1. Tirer une boule de feu sur le démon
+    demon.x = game.main_character.x + 30
+    demon.y = game.main_character.y
+    demon.hp = 20  # Fireball deals 25 damage, so this will kill it
+
+    casted = game.cast_player_fireball((demon.x, demon.y))
+    assert casted is True, "Player must successfully cast fireball"
+    assert len(game.active_fireballs) == 1
+
+    # Avancer le gameplay pour collision de la boule de feu
+    game.step_gameplay(0.1, set())
+    assert demon not in game.monsters, "Dead monster must be removed from game.monsters"
+    assert demon not in game.entity_manager.entities, "Dead monster must be removed from entity_manager"
+    assert game.main_character.spellbook.inventory["crystals"] >= 1, "Killing monster must grant a crystal"
+
+    # 2. Attaque d'un monstre réduisant les PV du joueur à 0 -> Transformation en Monstre Immortel
+    attacker = Monster(
+        name="Lethal Demon",
+        x=game.main_character.x + 5,
+        y=game.main_character.y,
+        damage_amount=150,
+    )
+    game.monsters.append(attacker)
+    game.entity_manager.add(attacker)
+
+    game.step_gameplay(0.1, set())
+    assert game.main_character.is_immortal_monster is True, "Player must become an Immortal Monster upon 0 HP"
+
+    # 3. Chasse des mages rivaux par le Monstre Immortel
+    rival = game.rival_mages[0]
+    rival.x = game.main_character.x + 6
+    rival.y = game.main_character.y
+
+    game.step_gameplay(0.1, set())
+    assert rival not in game.rival_mages, "Slain rival must be removed from game.rival_mages"
+    assert rival not in game.entity_manager.entities, "Slain rival must be removed from entity_manager"
+    assert getattr(game.main_character, "hunters_slain", 0) == 1, "hunters_slain count must be 1"
+
+
+def test_mazic_camera_fog_of_war_filtering():
+    """Vérifie que Camera.update filtre les entités selon le FogOfWar (UNEXPLORED masqué, EXPLORED assombri/masqué, VISIBLE normal)."""
+    class MockScreen:
+        def __init__(self):
+            self.blit_calls = []
+
+        def fill(self, color):
+            pass
+
+        def get_width(self):
+            return 800
+
+        def get_height(self):
+            return 600
+
+        def blit(self, source, dest):
+            self.blit_calls.append((source, dest))
+
+    mock_screen = MockScreen()
+
+    class MockGame:
+        def __init__(self, screen_obj):
+            self.screen = screen_obj
+            self.fog_of_war = FogOfWar(tile_size=16)
+            self.main_character = None
+
+    game = MockGame(mock_screen)
+    em = EntityManager()
+    cam = Camera(game, em)
+    cam.zoom = 1
+    cam.x = 80
+    cam.y = 80
+
+    # Définir le statut du Fog of War
+    # (0, 0) -> VISIBLE
+    # (10, 10) -> EXPLORED
+    # (20, 20) -> UNEXPLORED
+    game.fog_of_war.visible_tiles = {(0, 0)}
+    game.fog_of_war.explored_tiles = {(0, 0), (10, 10)}
+
+    wall_visible = Wall(x=0, y=0)
+    wall_explored = Wall(x=160, y=160)
+    monster_explored = Monster(name="HiddenDemon", x=160, y=160)
+    wall_unexplored = Wall(x=320, y=320)
+
+    em.add(wall_visible)
+    em.add(wall_explored)
+    em.add(monster_explored)
+    em.add(wall_unexplored)
+
+    cam.update()
+
+    # Vérifications :
+    # 1. wall_unexplored (gx=20, gy=20) ne doit PAS être dessiné
+    # 2. monster_explored (gx=10, gy=10) ne doit PAS être dessiné (entité mobile dans EXPLORED)
+    # 3. wall_visible (gx=0, gy=0) et wall_explored (gx=10, gy=10) doivent être dessinés (2 blits)
+    assert len(mock_screen.blit_calls) == 2, f"Expected exactly 2 blit calls (visible wall and explored wall), got {len(mock_screen.blit_calls)}"
+

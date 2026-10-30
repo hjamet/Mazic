@@ -136,13 +136,37 @@ class Camera(Entity):
             else:
                 animated_entity.rect = None
 
-            # Affichage de l'image
-            image_rect = image.get_rect(center=(screen_x, screen_y))
-            self.game.screen.blit(image, image_rect)
-
             # Mise à jour du masque si nécessaire
             if animated_entity.has_mask:
                 animated_entity.mask = pygame.mask.from_surface(image)
+
+            # Conditionnement du rendu visuel par le Fog of War
+            fog = getattr(self.game, "fog_of_war", None)
+            is_player = animated_entity is getattr(self.game, "main_character", None)
+
+            if fog is not None and not is_player:
+                gx, gy = int(animated_entity.x // 16), int(animated_entity.y // 16)
+                vis = fog.get_tile_visibility(gx, gy)
+                unexp_vals = (0, "UNEXPLORED", getattr(fog, "UNEXPLORED", 0))
+                exp_vals = (1, "EXPLORED", getattr(fog, "EXPLORED", 1))
+
+                if vis in unexp_vals:
+                    # Ne pas dessiner l'entité non explorée
+                    continue
+                elif vis in exp_vals:
+                    # Les entités mobiles sont invisibles hors du champ de vision actif
+                    if animated_entity.__class__.__name__ in ("Monster", "Character", "Projectile"):
+                        continue
+                    # Les éléments d'architecture sont assombris (mémoire des lieux)
+                    dimmed_image = image.copy()
+                    dimmed_image.fill((100, 100, 120), special_flags=pygame.BLEND_RGB_MULT)
+                    image_rect = dimmed_image.get_rect(center=(screen_x, screen_y))
+                    self.game.screen.blit(dimmed_image, image_rect)
+                    continue
+
+            # Affichage de l'image
+            image_rect = image.get_rect(center=(screen_x, screen_y))
+            self.game.screen.blit(image, image_rect)
 
             # Debug: Affichage des contours
             # if animated_entity.rect:
