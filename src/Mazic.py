@@ -25,40 +25,6 @@ from Entities.Maze.Floor import Floor
 from Entities.Maze.Wall import Wall
 from EntityPlugins.SpellBook import SpellBook
 
-# Définition des constantes et méthodes d'intégration si non encore présentes
-if not hasattr(FogOfWar, "UNEXPLORED"):
-    FogOfWar.UNEXPLORED = "UNEXPLORED"
-    FogOfWar.EXPLORED = "EXPLORED"
-    FogOfWar.VISIBLE = "VISIBLE"
-
-if not hasattr(SpellBook, "collect_crystal"):
-    def _collect_crystal(self):
-        self.inventory["crystals"] = self.inventory.get("crystals", 0) + 1
-    SpellBook.collect_crystal = _collect_crystal
-
-if not hasattr(SoundManager, "play_monster_transform"):
-    SoundManager.play_monster_transform = SoundManager.play_transformation
-
-if not hasattr(Monster, "update_ai"):
-    def _monster_update_ai(self, dt: float, player_pos: tuple, walls: set):
-        dx = player_pos[0] - self.x
-        dy = player_pos[1] - self.y
-        dist = math.hypot(dx, dy)
-        if dist > 14:
-            step = self.speed * dt * 16
-            nx = self.x + (dx / dist) * step
-            ny = self.y + (dy / dist) * step
-            if (int(nx // 16), int(ny // 16)) not in walls:
-                self.x, self.y = nx, ny
-            elif (int(nx // 16), int(self.y // 16)) not in walls:
-                self.x = nx
-            elif (int(self.x // 16), int(ny // 16)) not in walls:
-                self.y = ny
-            self.set_animation("run", reverse=(dx < 0))
-        else:
-            self.set_animation("idle")
-    Monster.update_ai = _monster_update_ai
-
 
 class Mazic:
     # Sets the entity manager

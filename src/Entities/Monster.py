@@ -1,6 +1,6 @@
 import math
 import pygame
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Tuple, Set
 from EntityManager import Entity, AnimatedEntity, Event
 from EntityPlugins.Health import Health
 
@@ -144,3 +144,28 @@ class Monster(Entity, AnimatedEntity, Health):
                 self.set_animation("idle")
 
         return new_events
+
+    def update_ai(
+        self,
+        dt: float,
+        target_pos: Tuple[float, float],
+        walls_set: set,
+    ) -> None:
+        """Updates monster movement and orientation towards target_pos avoiding walls."""
+        dx = target_pos[0] - self.x
+        dy = target_pos[1] - self.y
+        dist = math.hypot(dx, dy)
+        if dist > 14:
+            step = self.speed * dt * 16
+            nx = self.x + (dx / dist) * step
+            ny = self.y + (dy / dist) * step
+            if (int(nx // 16), int(ny // 16)) not in walls_set:
+                self.x, self.y = nx, ny
+            elif (int(nx // 16), int(self.y // 16)) not in walls_set:
+                self.x = nx
+            elif (int(self.x // 16), int(ny // 16)) not in walls_set:
+                self.y = ny
+            self.set_animation("run", reverse=(dx < 0))
+        else:
+            self.set_animation("idle")
+

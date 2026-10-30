@@ -44,6 +44,11 @@ class SpellBook:
             if self.arcane_sight_timer > 0:
                 self.arcane_sight_timer = max(0.0, self.arcane_sight_timer - dt)
 
+    def collect_crystal(self) -> int:
+        """Increments player crystal count and returns new total."""
+        self.inventory["crystals"] = self.inventory.get("crystals", 0) + 1
+        return self.inventory["crystals"]
+
     def cast_fireball(
         self,
         origin: Tuple[float, float],

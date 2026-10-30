@@ -5,6 +5,10 @@ import math
 class FogOfWar:
     """Manages the Fog of War, line-of-sight raycasting, and tile exploration memory."""
 
+    UNEXPLORED = "UNEXPLORED"
+    EXPLORED = "EXPLORED"
+    VISIBLE = "VISIBLE"
+
     def __init__(self, tile_size: int = 16, vision_radius_tiles: int = 8) -> None:
         self.tile_size = tile_size
         self.vision_radius_tiles = vision_radius_tiles
@@ -130,7 +134,7 @@ class FogOfWar:
     def get_tile_visibility(self, gx: int, gy: int) -> str:
         """Returns the visibility status of a tile: VISIBLE, EXPLORED, or UNEXPLORED."""
         if (gx, gy) in self.visible_tiles:
-            return "VISIBLE"
+            return self.VISIBLE
         elif (gx, gy) in self.explored_tiles:
-            return "EXPLORED"
-        return "UNEXPLORED"
+            return self.EXPLORED
+        return self.UNEXPLORED

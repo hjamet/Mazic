@@ -1,6 +1,7 @@
 from typing import Any
 
 from EntityManager import Entity, EntityManager
+from MazeGenerator.FogOfWar import FogOfWar
 import pygame
 
 
@@ -147,13 +148,11 @@ class Camera(Entity):
             if fog is not None and not is_player:
                 gx, gy = int(animated_entity.x // 16), int(animated_entity.y // 16)
                 vis = fog.get_tile_visibility(gx, gy)
-                unexp_vals = (0, "UNEXPLORED", getattr(fog, "UNEXPLORED", 0))
-                exp_vals = (1, "EXPLORED", getattr(fog, "EXPLORED", 1))
 
-                if vis in unexp_vals:
+                if vis == FogOfWar.UNEXPLORED:
                     # Ne pas dessiner l'entité non explorée
                     continue
-                elif vis in exp_vals:
+                elif vis == FogOfWar.EXPLORED:
                     # Les entités mobiles sont invisibles hors du champ de vision actif
                     if animated_entity.__class__.__name__ in ("Monster", "Character", "Projectile"):
                         continue
