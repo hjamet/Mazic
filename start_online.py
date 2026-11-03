@@ -16,6 +16,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 TUNNEL_FILE = BASE_DIR / "tunnel_url.txt"
+LOG_FILE = BASE_DIR / "server.log"
 
 CLOUDFLARED_CANDIDATES = [
     r"C:\Program Files (x86)\cloudflared\cloudflared.exe",
@@ -67,6 +68,8 @@ def main():
         except Exception:
             pass
 
+    log_f = open(LOG_FILE, "a", encoding="utf-8")
+
     print("[1/3] Démarrage du serveur FastAPI / WebSockets sur port 8090 (0.0.0.0)...")
     uvicorn_cmd = [
         sys.executable,
@@ -83,8 +86,8 @@ def main():
     server_proc = subprocess.Popen(
         uvicorn_cmd,
         cwd=str(BASE_DIR),
-        stdout=sys.stdout,
-        stderr=sys.stderr,
+        stdout=log_f,
+        stderr=subprocess.STDOUT,
     )
 
     # Small delay for socket binding
@@ -115,6 +118,8 @@ def main():
         try:
             for line in cf_proc.stdout:
                 line_str = line.strip()
+                log_f.write(f"[cloudflared] {line_str}\n")
+                log_f.flush()
                 if not tunnel_url:
                     match = url_regex.search(line_str)
                     if match:
