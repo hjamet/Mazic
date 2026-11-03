@@ -1,53 +1,118 @@
-[![libera manifesto](https://img.shields.io/badge/libera-manifesto-lightgrey.svg)](https://liberamanifesto.com)
-
 # Mazic
 
-## Description
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
+[![WebSockets](https://img.shields.io/badge/WebSockets-30Hz%20Authoritative-blue.svg)]()
+[![0x72](https://img.shields.io/badge/Tileset-0x72__DungeonTilesetII-orange.svg)]()
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-Mazic is a cooperative game in which you take on the role of a group of mages who are foolish or foolhardy enough to travel to a magical labyrinth infested by the worst creatures of the shadows in order to recover artefacts that can multiply their power. Alas, a terrifying legend has it that the souls of the mages who failed in their quest are trapped in the labyrinth and haunt the place, ready to do anything to prevent newcomers from escaping.
+**Mazic** est un jeu roguelike multijoueur 2D en ligne temps réel, 100 % jouable dans le navigateur sans installation. Incarnez un mage arcanique pris au piège dans un donjon labyrinthique généré procéduralement, harcelé par des monstres impitoyables et des rivaux. Collectez les cristaux d'arcane pour activer le portail d'évasion... ou devenez un monstre immortel traquant vos anciens compagnons !
 
-## Installation 🐼
+---
 
-* We use Poetry for managing virtual environments & installing dependencies. See
-    * https://python-poetry.org/
-    * https://github.com/pyenv/pyenv
-* This project assumes you have python 3.9.7 installed. You can use **Pyenv** to install it.
-* We highly recommend using **Poetry** to install the dependencies.
+## 🔮 Mécaniques de Jeu Clés
 
-You can alternatively create a virtual environment, install the dependencies and run the src/main.py file from the root of the repository.
-Or you can run the Makefile with the following command :
+### 1. Multijoueur Autoritaire 30 Hz
+- **Serveur maître** : Toute la physique AABB, le raycasting, l'IA et la résolution des sorts sont exécutés côté serveur à **30 ticks/seconde** (`server/game_engine.py`).
+- **Clients synchronisés** : Les navigateurs reçoivent les snapshots d'état via WebSockets ultra-rapides et effectuent une interpolation douce des trajectoires.
+
+### 2. Autotiler 2.5D Authentique `0x72_DungeonTilesetII`
+- **Rendu en fausse perspective 2.5D** : Algorithme de bitmask 8-voisins générant faces frontales de mur (`wall_mid`), coins (`wall_left`, `wall_right`), bannières et décors de donjon (`assets/frames/`).
+- **Superposition foreground (`z-index`)** : Les rebords supérieurs des murs (`wall_top_mid`) passent devant la tête des personnages au nord, et derrière les personnages au sud.
+
+### 3. Les 4 Sortilèges Arcaniques (`SpellBook`)
+- **`[1] Orbe Pyrique` (20 Mana)** : Projectile magique infligeant des dégâts aux monstres ou étourdissant les monstres joueurs.
+- **`[2] Brise-Mur Runique` (30 Mana)** : Altère le donjon en temps réel ! Détruit un mur intérieur en sol praticable, ou érige une barricade magique pour stopper une poursuite (avec mise à jour immédiate de l'autotiling).
+- **`[3] Œil d'Arcane` (25 Mana)** : Vision éthérée traversant les murs et perception élargie pendant 5 secondes.
+- **`[4] Pas Astral` (35 Mana)** : Téléportation courte portée instantanée vers une case visible praticable.
+
+### 4. Esprit de Ruche & Transformation en Monstre Immortel
+> *"Quand on est tué par un monstre, on ne meurt pas passivement : on se transforme en Monstre Immortel, et notre objectif devient de traquer les autres joueurs !"* — Henri Jamet
+
+- À 0 PV, le joueur humain renaît instantanément sous la forme d'un **Monstre Immortel** (`big_demon` / `chort`).
+- PV augmentés à 160, vitesse accrue (+20 %), attaque de griffe sauvage au corps-à-corps (28 dégâts).
+- Vision nocturne dans les ténèbres et **Voix Démoniaque** appliquée en direct sur le flux microphone !
+
+### 5. IA « Chasseur Honnête » (Zéro Omniscience)
+- **Perception réaliste** : Les monstres IA ne trichent pas. Ils détectent les joueurs par **vue directe** (raycasting DDA, cône de torche) et par **ouïe** (bruits de pas, sorts, microphone du joueur atténué par les murs).
+- **Machine à états tactique** : `PATROL` (rondes) ➔ `CHASE` (poursuite vers la dernière position vue/entendue via le plus court chemin A*) ➔ `SEARCH` (inspection aux embranchements après perte de vue).
+
+### 6. Voice Proximity & Relais Audio Basse Latence
+- **Voix de proximité spatialisée** : Volume et panoramique stéréo calculés selon la distance et l'occlusion des murs.
+- **Double canal** : Signalisation P2P WebRTC avec fallback automatique via relais WebSocket (`voice_frame`), garantissant une voix 100 % fonctionnelle à travers les tunnels et pare-feux.
+
+---
+
+## 🏗️ Architecture du Projet
 
 ```
-> make install
+mazic/
+├── server/
+│   ├── __init__.py
+│   ├── maze_generator.py      # Donjon procédural (graphe de salles, couloirs larges, autotiler 2.5D)
+│   ├── game_engine.py         # Moteur serveur autoritaire 30 Hz, collisions AABB, IA Chasseur Honnête A*
+│   └── app.py                 # Serveur FastAPI, WebSockets /ws/{room_id}, relais WebRTC/Voice
+├── web/
+│   ├── index.html             # Interface et Canvas HTML5 plein écran
+│   ├── game.js                # Moteur client (rendu 2.5D, autotiling dynamique, interpolation)
+│   └── voice.js               # Audio de proximité, capture microphone, filtres voix démoniaque
+├── assets/
+│   └── frames/                # 368 sprites pixel art originaux 0x72_DungeonTilesetII
+├── start_online.py            # Lanceur 1-clic avec tunnel public Cloudflare automatique
+├── pyproject.toml             # Configuration du projet (FastAPI, Uvicorn, WebSockets, NumPy)
+└── README.md
 ```
 
-### You just want to play the Game...
+---
 
-Just go to the release tab and download last game version ! 💃
+## 🚀 Démarrage Rapide
 
-## Do you want to get your hands dirty?
+### Prérequis
+- Python 3.9+ (testé sur Python 3.11 et 3.12)
+- Outil `uv` (recommandé) ou `pip`
 
-> **We are assuming you have python 3.9.7 installed !**
+### 1. Installation des dépendances
 
+```sh
+# Avec uv (ultra-rapide)
+uv sync
+
+# Ou avec pip standard
+pip install fastapi "uvicorn[standard]" websockets numpy
 ```
-> python -m venv env
-> source env/bin/activate
-> python -m pip install -r requirements.txt
-> python src/main.py
+
+### 2. Lancement en 1-clic (Serveur local + Tunnel public mondial)
+
+```sh
+python start_online.py
 ```
 
-### Repository Convention & Architecture 🦥
+Le script démarre automatiquement :
+1. Le serveur FastAPI autoritaire sur le port local `8090` (dual-stack `::` / `127.0.0.1`).
+2. Le tunnel Cloudflare sans compte pour générer une URL publique `https://....trycloudflare.com`.
+3. Affiche l'URL publique à partager avec vos amis !
 
-#### Architecture 🦜
-<>
-- Le dossier `src` contient le code source du projet. Chaque fichier python contient généralement une classe du même nom. Le fichier `main.py` est le point d'entrée du programme. Les sous-dossiers permettent de ranger les utilitaires par catégorie.
-- Le dossier `doc` contient la documentation du projet. Cette dernière peut être générée à l'aide de Pdoc3. (```make doc```)
-- Le dossier `logs` contient les logs du projet. Ces derniers sont générés à l'aide de la classe `src.Logger` et sont sauvegardés dans un fichier `xxx.log` et affichés dans la console.
-- Le dossier `assets` contient les assets du projet. Il contient notamment les images utilisées pour l'interface graphique.
+Pour un test purement local :
+```sh
+python -m uvicorn server.app:app --host 127.0.0.1 --port 8090
+```
+Ouvrez ensuite [http://localhost:8090](http://localhost:8090) dans votre navigateur.
 
-#### Convention 🦦
+---
 
-* **[DOCSTRING]** : We use typed google docstrings for all functions and methods. See https://www.python.org/dev/peps/pep-0484/ and https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html . Docstring and notebooks should be written in English. Each function and each class should have a brief usage example in its docstring.
-* **[GIT]** : We use the the commit convention described here: https://www.conventionalcommits.org/en/v1.0.0/ . You should never work on master, but on a branch named after the feature you are working after opening an issue to let other members know what you are working on so that you can discuss it. When you are done, you can open a pull request to merge your branch into master. We will then review your code and merge it if everything is ok. Issues and pull requests can be written in French.
+## 🎮 Contrôles en Jeu
 
-> Of course, anyone who doesn't follow these rules, arbitrarily written by a tyrannical mind, is subject to judgmental looks, cookie embargoes and denunciatory messages with angry animal emojis.
+| Action | Touche / Contrôle |
+|---|---|
+| **Déplacement** | `Z Q S D` / `W A S D` / Flèches directionnelles |
+| **Marche Silencieuse (Sneak)** | Maintenir `Shift` (réduit le bruit pour échapper aux monstres) |
+| **Visée & Torche** | Souris (oriente le faisceau lumineux et les sorts) |
+| **Attaque de base** | Clic gauche |
+| **Sorts 1 / 2 / 3 / 4** | Touches `1`, `2`, `3`, `4` (ou barre de sorts en bas d'écran) |
+| **Interagir / Portes / Fontaines** | Touche `E` |
+| **Mode Test Monstre Immortel** | Bouton `Transformer en Monstre` (test instantané de l'Esprit de Ruche) |
+| **Nouvelle Partie** | Bouton `Recommencer la partie` (regénère un donjon pour tous les joueurs) |
+
+---
+
+## 📜 Licence
+Apache License 2.0. Développé par Henri Jamet.

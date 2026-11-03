@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Mazic — Labyrinthe Vivant & Magie d'Arcane</title>
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --panel-bg: rgba(13, 16, 26, 0.94);
+      --panel-border: #1e2638;
+      --accent-gold: #f59e0b;
+      --accent-arcane: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --accent-crimson: #ef4444;
+      --hp-color: #10b981;
+      --mana-color: #3b82f6;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      max-width: 100vw;
+      max-height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header Compact 46px */
+    header {
+      background: linear-gradient(180deg, #121624 0%, #0a0d16 100%);
+      border-bottom: 1px solid var(--panel-border);
+      height: 46px;
+      min-height: 46px;
+      max-height: 46px;
+      padding: 0 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 30;
+      box-sizing: border-box;
+    }
+
+    .title-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title-area h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #fbbf24 0%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+    }
+
+    .status-badge {
+      font-size: 0.70rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(14, 165, 233, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: #7dd3fc;
+      white-space: nowrap;
+    }
+
+    .status-badge.monster {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--accent-crimson);
+      color: #fca5a5;
+      animation: pulse-crimson 2s infinite;
+    }
+
+    @keyframes pulse-crimson {
+      0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 16px rgba(239, 68, 68, 0.8); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-actions select {
+      background: #151a28;
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    button.btn-header {
+      background: #171d2b;
+      color: var(--text-main);
+      border: 1px solid var(--panel-border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.74rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    button.btn-header:hover {
+      background: #232c42;
+      border-color: var(--accent-gold);
+    }
+
+    button.btn-curse {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    button.btn-curse:hover {
+      background: rgba(239, 68, 68, 0.3);
+      border-color: var(--accent-crimson);
+    }
+
+    /* Main Container (Strict 100vw x (100vh - 46px)) */
+    .game-container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      height: calc(100vh - 46px);
+      max-height: calc(100vh - 46px);
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    /* Canvas Viewport */
+    .canvas-viewport {
+      position: relative;
+      background: radial-gradient(circle at center, #0f131f 0%, #05060a 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #game-canvas {
+      display: block;
+      cursor: crosshair;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Overlay Spells Bar en bas du Canvas */
+    .canvas-spells-overlay {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      background: rgba(9, 12, 20, 0.92);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(10px);
+      padding: 6px 12px;
+      border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.7);
+      z-index: 20;
+    }
+
+    .spell-chip {
+      background: #141824;
+      border: 1px solid #22293d;
+      border-radius: 6px;
+      padding: 5px 8px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .spell-chip .sc-key {
+      background: #20273a;
+      color: var(--accent-gold);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 800;
+    }
+
+    .spell-chip .sc-cost {
+      color: var(--mana-color);
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* Side HUD (340px avec inner scroll garanti) */
+    .side-hud {
+      width: 340px;
+      min-width: 340px;
+      max-width: 340px;
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.6);
+      z-index: 25;
+      box-sizing: border-box;
+    }
+
+    .hud-card {
+      background: rgba(15, 19, 31, 0.85);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-sizing: border-box;
+    }
+
+    .hud-card-header {
+      font-size: 0.70rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Minimap */
+    .minimap-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #05070c;
+      border: 1px solid #1e2638;
+      border-radius: 6px;
+      padding: 4px;
+    }
+    #minimap-canvas {
+      background: #05070c;
+      border-radius: 4px;
+      display: block;
+    }
+
+    /* Barres HP / Mana */
+    .bar-container {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .bar-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.70rem;
+      font-weight: 600;
+    }
+    .bar-bg {
+      height: 9px;
+      background: #141724;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .bar-fill {
+      height: 100%;
+      width: 100%;
+      border-radius: 4px;
+      transition: width 0.15s ease-out;
+    }
+    .bar-fill.hp {
+      background: linear-gradient(90deg, #059669, #10b981);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+    .bar-fill.mana {
+      background: linear-gradient(90deg, #2563eb, #3b82f6);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    }
+
+    /* Panneau Vocal */
+    .voice-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    button.btn-voice {
+      width: 100%;
+      padding: 8px;
+      background: #1a2233;
+      border: 1px solid var(--accent-cyan);
+      color: #e0f2fe;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.76rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button.btn-voice.active {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--accent-crimson);
+      color: #fca5a5;
+    }
+    button.btn-voice:hover {
+      filter: brightness(1.15);
+    }
+
+    .vu-meter-bg {
+      height: 8px;
+      background: #101420;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid #1f2738;
+    }
+    .vu-meter-fill {
+      height: 100%;
+      width: 0%;
+      background: #10b981;
+      border-radius: 4px;
+      transition: width 0.08s ease;
+    }
+
+    .vu-status {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .voice-mode-banner {
+      font-size: 0.68rem;
+      padding: 4px 6px;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.1);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      color: #38bdf8;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .controls-guide {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .controls-guide span {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Compact -->
+  <header>
+    <div class="title-area">
+      <h1>Mazic</h1>
+      <span id="role-badge" class="status-badge">🛡️ SURVIVANT HUMAIN</span>
+      <span id="connection-status" style="font-size: 0.70rem; color: #f59e0b; font-weight: 600;">Connexion...</span>
+    </div>
+
+    <div class="header-actions">
+      <select id="skin-select" title="Choix du Héros">
+        <option value="wizzard_m">Mage Masculin</option>
+        <option value="wizzard_f">Mage Féminin</option>
+        <option value="knight_m">Chevalier Masculin</option>
+        <option value="knight_f">Chevalier Féminin</option>
+        <option value="elf_m">Elfe Masculin</option>
+        <option value="elf_f">Elfe Féminin</option>
+        <option value="lizard_m">Saurien Masculin</option>
+        <option value="lizard_f">Saurien Féminin</option>
+      </select>
+      <button id="btn-copy-link" class="btn-header" title="Copier le lien public pour vos amis">🔗 Inviter des Amis</button>
+      <button id="btn-transform-test" class="btn-header btn-curse" title="Test instantané du mode Monstre / Esprit de Ruche">👹 Basculer Monstre</button>
+      <button id="btn-bot-test" class="btn-header" title="Invoquer un allié bot simulé">🤖 Allié Bot</button>
+      <button id="btn-reset-game" class="btn-header" title="Générer un nouveau donjon procédural">🔄 Donjon</button>
+    </div>
+  </header>
+
+  <!-- Grille Principale -->
+  <div class="game-container">
+    <!-- Viewport Canvas 2.5D -->
+    <div class="canvas-viewport">
+      <canvas id="game-canvas"></canvas>
+
+      <!-- Barre de Sortilèges Overlay -->
+      <div class="canvas-spells-overlay">
+        <div class="spell-chip">
+          <span class="sc-key">1</span>
+          <span>Orbe Pyrique</span>
+          <span class="sc-cost">20 MP</span>
+        </div>
+        <div class="spell-chip">
+          <span class="sc-key">2</span>
+          <span>Brise-Mur / Barricade</span>
+          <span class="sc-cost">30 MP</span>
+        </div>
+        <div class="spell-chip">
+          <span class="sc-key">3</span>
+          <span>Clairvoyance</span>
+          <span class="sc-cost">25 MP</span>
+        </div>
+        <div class="spell-chip">
+          <span class="sc-key">4</span>
+          <span>Saut Astral</span>
+          <span class="sc-cost">35 MP</span>
+        </div>
+        <div class="spell-chip">
+          <span class="sc-key">E</span>
+          <span>Porte / Fontaine</span>
+        </div>
+        <div class="spell-chip">
+          <span class="sc-key">Shift</span>
+          <span>Discrétion</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HUD Latéral Droit -->
+    <aside class="side-hud">
+      <!-- Mini-carte -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Carte du Labyrinthe</span>
+          <span style="font-size: 0.65rem; color: var(--accent-gold);">56×56</span>
+        </div>
+        <div class="minimap-wrapper">
+          <canvas id="minimap-canvas" width="160" height="160"></canvas>
+        </div>
+      </div>
+
+      <!-- Vitalité & Mana -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Signes Vitaux</span>
+          <span id="crystal-count" style="color: #38bdf8; font-weight: 700;">0 / 5 Cristaux</span>
+        </div>
+        <div class="bar-container">
+          <div class="bar-label-row">
+            <span style="color: var(--hp-color); font-size: 0.68rem;">Vie</span>
+            <span id="hp-val">100 / 100</span>
+          </div>
+          <div class="bar-bg">
+            <div id="hp-bar-fill" class="bar-fill hp" style="width: 100%;"></div>
+          </div>
+        </div>
+        <div class="bar-container">
+          <div class="bar-label-row">
+            <span style="color: var(--mana-color); font-size: 0.68rem;">Mana</span>
+            <span id="mana-val">100 / 100</span>
+          </div>
+          <div class="bar-bg">
+            <div id="mana-bar-fill" class="bar-fill mana" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proximité Vocale & Esprit de Ruche -->
+      <div class="hud-card voice-panel">
+        <div class="hud-card-header">
+          <span>Voice Proximity & Esprit de Ruche</span>
+        </div>
+        <button id="btn-mic" class="btn-voice">🎤 Activer Micro Proximité</button>
+
+        <div class="vu-meter-bg">
+          <div id="vu-fill" class="vu-meter-fill"></div>
+        </div>
+        <div id="vu-status" class="vu-status">Silence absolu</div>
+
+        <div id="voice-mode-text" class="voice-mode-banner">
+          🗣️ Voix Humaine (Proximité + Occlusion Murs)
+        </div>
+
+        <button id="btn-voice-test" class="btn-header" style="justify-content: center; width: 100%;">
+          🔊 Tester ma Voix de Monstre (Loopback)
+        </button>
+      </div>
+
+      <!-- Guide des Contrôles -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Contrôles du Donjon</span>
+        </div>
+        <div class="controls-guide">
+          <div><span>ZQSD / WASD / Flèches</span> : Déplacement</div>
+          <div><span>Souris</span> : Visée / Direction de la Torche</div>
+          <div><span>Clic Gauche</span> : Attaque de base / Griffe</div>
+          <div><span>[1]</span> Orbe Pyrique (dégâts de zone)</div>
+          <div><span>[2]</span> Brise-Mur (détruit ou crée un mur)</div>
+          <div><span>[3]</span> Clairvoyance (élargit la vision)</div>
+          <div><span>[4]</span> Saut Astral (téléportation courte)</div>
+          <div><span>[E]</span> Ouvrir/Fermer Porte & Boire Fontaine</div>
+          <div><span>[Shift]</span> Déplacement silencieux (aucun bruit)</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Scripts du Client Web -->
+  <script src="voice.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

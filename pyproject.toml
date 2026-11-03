@@ -1,20 +1,19 @@
-[tool.poetry]
+[project]
 name = "mazic"
-version = "0.1.0"
-description = "Mazic is a PvP game in which you play a mage trapped in a labyrinth haunted by a multitude of bloodthirsty monsters. Your objective? Unlock new abilities and increase your power to become the ultimate wizard!"
-authors = ["Henri Jamet <henri.jamet.ch@gmail.com>"]
-license = "Apache License"
+version = "1.0.0"
+description = "2D Multiplayer Roguelike Game with FastAPI, WebSockets & 0x72 DungeonTilesetII"
 readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "websockets>=12.0",
+    "numpy>=1.26.0",
+]
 
-[tool.poetry.dependencies]
-python = "3.9.7"
-pygame = "^2.5.2"
-numpy = "^1.26.0"
-snakeviz = "^2.2.0"
-pdoc3 = "^0.10.0"
-black = "^23.12.1"
-
+[tool.hatch.build.targets.wheel]
+packages = ["server"]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -165,3 +165,7 @@ cython_debug/
 # Cprofile
 *.prof
 
+# Log files
+logs/
+*:Zone.Identifier
+
