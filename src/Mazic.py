@@ -426,7 +426,8 @@ class Mazic:
 
             # Capture key releases
             elif event.type == pygame.KEYUP:
-                self.key_pressed.remove(event.key)
+                if event.key in self.key_pressed:
+                    self.key_pressed.remove(event.key)
 
             # Capture mouse clicks
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -440,9 +441,11 @@ class Mazic:
             elif event.type == pygame.MOUSEBUTTONUP:
                 # Capture left click
                 if event.button == pygame.BUTTON_LEFT:
-                    self.key_pressed.remove(event.button)
+                    if event.button in self.key_pressed:
+                        self.key_pressed.remove(event.button)
                 elif event.button == pygame.BUTTON_RIGHT:
-                    self.key_pressed.remove(event.button)
+                    if event.button in self.key_pressed:
+                        self.key_pressed.remove(event.button)
 
         # Generate in-game events
         for key in self.key_pressed:

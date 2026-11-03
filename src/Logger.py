@@ -17,6 +17,7 @@ def Logger(name, level=Config().log_level, log_initialization=True):
     """
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    logger.propagate = False
 
     if not logger.handlers:
         if not os.path.exists("logs"):

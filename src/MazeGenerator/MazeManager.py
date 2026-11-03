@@ -247,6 +247,10 @@ class MazeManager:
             List[Wall]: La liste des murs créés.
         """
         created_walls = []
+        room_is_loaded = (
+            room in self.rooms
+            and self.rooms.index(room) in getattr(self, "loaded_rooms", [])
+        )
         for wx, wy in entrance_group.coordinates:
             wall = Wall(x=wx, y=wy, assets_needed={"idle": ["wall_mid"]})
             wall._local_x = wx - room.x
@@ -256,14 +260,16 @@ class MazeManager:
                 e for e in room.entities if isinstance(e, Floor) and e.x == wx and e.y == wy
             ]
             for floor_entity in floors_to_remove:
-                room.entities.remove(floor_entity)
-                if self.entity_manager is not None and hasattr(self.entity_manager, "remove"):
+                if floor_entity in room.entities:
+                    room.entities.remove(floor_entity)
+                if room_is_loaded and self.entity_manager is not None and hasattr(self.entity_manager, "remove"):
                     if floor_entity in getattr(self.entity_manager, "entities", []):
                         self.entity_manager.remove(floor_entity)
 
             room.entities.append(wall)
-            if self.entity_manager is not None and hasattr(self.entity_manager, "add"):
-                self.entity_manager.add(wall)
+            if room_is_loaded and self.entity_manager is not None and hasattr(self.entity_manager, "add"):
+                if wall not in getattr(self.entity_manager, "entities", []):
+                    self.entity_manager.add(wall)
 
             # Mettre à jour self.grid
             grid_x = (wx // 16) - self.grid_origin[0]
@@ -322,12 +328,13 @@ class MazeManager:
                 and room_index not in self.loaded_rooms
             ):
                 room = self.rooms[room_index]
-                newly_loaded_entities.extend(room.entities)
-                self.loaded_rooms.append(room_index)
                 self.logger.info(f"Chargement de la salle {room.room_nbr}.")
 
                 # Création des salles voisines
                 self._create_neighboring_rooms(room)
+
+                self.loaded_rooms.append(room_index)
+                newly_loaded_entities.extend(room.entities)
 
         # Déchargement des salles non nécessaires
         unloaded_entities = []
