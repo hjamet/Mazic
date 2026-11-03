@@ -1,131 +1,118 @@
-[![libera manifesto](https://img.shields.io/badge/libera-manifesto-lightgrey.svg)](https://liberamanifesto.com)
-[![Tests](https://img.shields.io/badge/pytest-13%20passed-brightgreen.svg)]()
-[![Python](https://img.shields.io/badge/python-3.9%20|%203.11%20|%203.13-blue.svg)]()
-
 # Mazic
 
-**Mazic** is a fast-paced 2D roguelike labyrinth game in which you play a wizard trapped in an ever-shifting, dynamically generated maze haunted by lethal guardians and rival spellcasters. Unlock arcane abilities, reshape walls, survive against bloodthirsty monsters... or become one yourself!
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
+[![WebSockets](https://img.shields.io/badge/WebSockets-30Hz%20Authoritative-blue.svg)]()
+[![0x72](https://img.shields.io/badge/Tileset-0x72__DungeonTilesetII-orange.svg)]()
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+
+**Mazic** est un jeu roguelike multijoueur 2D en ligne temps réel, 100 % jouable dans le navigateur sans installation. Incarnez un mage arcanique pris au piège dans un donjon labyrinthique généré procéduralement, harcelé par des monstres impitoyables et des rivaux. Collectez les cristaux d'arcane pour activer le portail d'évasion... ou devenez un monstre immortel traquant vos anciens compagnons !
 
 ---
 
-## 🔮 Core Gameplay Mechanics
+## 🔮 Mécaniques de Jeu Clés
 
-### 1. The 4 Mazic Spells (`SpellBook`)
-Wizards manage a dynamic **Mana pool** (100 MP baseline with continuous regeneration) and command 4 distinct arcane powers:
-- **`[1] Orbe Pyrique` (Fireball, 10 MP)**: Directional projectile delivering instant arcane damage to monsters and rivals.
-- **`[2] Brise-Mur Runique` (Wall Alter, 25 MP)**: Alter labyrinth topography! Destroys an adjacent internal wall into walkable floor, or conjures a runic wall on empty ground.
-- **`[3] Œil d'Arcane` (Arcane Sight, 20 MP)**: Ethereal vision bypassing stone walls and extending perception radius for 6 seconds.
-- **`[4] Pas Astral` (Blink, 30 MP)**: Instantaneous short-range teleportation to any visible, walkable tile within range (rejects solid walls).
+### 1. Multijoueur Autoritaire 30 Hz
+- **Serveur maître** : Toute la physique AABB, le raycasting, l'IA et la résolution des sorts sont exécutés côté serveur à **30 ticks/seconde** (`server/game_engine.py`).
+- **Clients synchronisés** : Les navigateurs reçoivent les snapshots d'état via WebSockets ultra-rapides et effectuent une interpolation douce des trajectoires.
 
-### 2. The Signature Mechanic: Immortal Monster Transformation
+### 2. Autotiler 2.5D Authentique `0x72_DungeonTilesetII`
+- **Rendu en fausse perspective 2.5D** : Algorithme de bitmask 8-voisins générant faces frontales de mur (`wall_mid`), coins (`wall_left`, `wall_right`), bannières et décors de donjon (`assets/frames/`).
+- **Superposition foreground (`z-index`)** : Les rebords supérieurs des murs (`wall_top_mid`) passent devant la tête des personnages au nord, et derrière les personnages au sud.
+
+### 3. Les 4 Sortilèges Arcaniques (`SpellBook`)
+- **`[1] Orbe Pyrique` (20 Mana)** : Projectile magique infligeant des dégâts aux monstres ou étourdissant les monstres joueurs.
+- **`[2] Brise-Mur Runique` (30 Mana)** : Altère le donjon en temps réel ! Détruit un mur intérieur en sol praticable, ou érige une barricade magique pour stopper une poursuite (avec mise à jour immédiate de l'autotiling).
+- **`[3] Œil d'Arcane` (25 Mana)** : Vision éthérée traversant les murs et perception élargie pendant 5 secondes.
+- **`[4] Pas Astral` (35 Mana)** : Téléportation courte portée instantanée vers une case visible praticable.
+
+### 4. Esprit de Ruche & Transformation en Monstre Immortel
 > *"Quand on est tué par un monstre, on ne meurt pas passivement : on se transforme en Monstre Immortel, et notre objectif devient de traquer les autres joueurs !"* — Henri Jamet
 
-When the player's health drops to 0 HP:
-- Immediate resurrection as an **Immortal Monster** (`is_immortal_monster = True`).
-- Health fully restored to maximum.
-- **1.35x speed boost** and enhanced darkvision.
-- Switch to the monster faction to hunt down remaining wizards in the maze.
+- À 0 PV, le joueur humain renaît instantanément sous la forme d'un **Monstre Immortel** (`big_demon` / `chort`).
+- PV augmentés à 160, vitesse accrue (+20 %), attaque de griffe sauvage au corps-à-corps (28 dégâts).
+- Vision nocturne dans les ténèbres et **Voix Démoniaque** appliquée en direct sur le flux microphone !
 
-### 3. Fog of War & Spatial Memory
-- **2D Raycasting (Bresenham)**: Line of sight realistically blocked by stone walls.
-- **Tile Visibility States**: `VISIBLE` (currently lit by arcane torch), `EXPLORED` (remembered in spatial memory), `UNEXPLORED` (pitch-black darkness).
-- **Heads-Up Display & Minimap**: Real-time HUD showing Health, Mana, spell slots, player status (Mage vs Immortal Monster), and an interactive minimap of explored rooms.
+### 5. IA « Chasseur Honnête » (Zéro Omniscience)
+- **Perception réaliste** : Les monstres IA ne trichent pas. Ils détectent les joueurs par **vue directe** (raycasting DDA, cône de torche) et par **ouïe** (bruits de pas, sorts, microphone du joueur atténué par les murs).
+- **Machine à états tactique** : `PATROL` (rondes) ➔ `CHASE` (poursuite vers la dernière position vue/entendue via le plus court chemin A*) ➔ `SEARCH` (inspection aux embranchements après perte de vue).
+
+### 6. Voice Proximity & Relais Audio Basse Latence
+- **Voix de proximité spatialisée** : Volume et panoramique stéréo calculés selon la distance et l'occlusion des murs.
+- **Double canal** : Signalisation P2P WebRTC avec fallback automatique via relais WebSocket (`voice_frame`), garantissant une voix 100 % fonctionnelle à travers les tunnels et pare-feux.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture du Projet
 
 ```
 mazic/
-├── src/
-│   ├── Mazic.py                     # Main Pygame game loop & event dispatcher
-│   ├── Camera.py                    # Smooth 2D scrolling camera & viewport
-│   ├── EntityManager.py             # Entity-Component manager & collision system
-│   ├── Entities/
-│   │   ├── Character.py             # Wizard character (SpellBook + Immortal Monster logic)
-│   │   ├── Monster.py               # Labyrinth guardian demons & transformation logic
-│   │   ├── Projectile.py            # Arcane projectiles
-│   │   └── Maze/                    # Floor & Wall tiles
-│   ├── EntityPlugins/
-│   │   ├── SpellBook.py             # Mana pool, regen, 4 Mazic spells & inventory
-│   │   ├── Health.py                # Health management & health bar rendering
-│   │   └── AbilityManager.py        # Cooldown & capability manager
-│   ├── MazeGenerator/
-│   │   ├── MazeManager.py           # Real-time procedural room expansion & dead-end sealing
-│   │   ├── RoomSpawner.py           # Room template loader & entrance matching
-│   │   └── FogOfWar.py              # Bresenham FOV raycasting & explored tile memory
-│   ├── UI/
-│   │   └── HUD.py                   # Health/Mana gauges, spell bar & real-time minimap
-│   └── Audio/
-│       └── SoundManager.py          # Procedural PCM synthesizer (headless compatible)
+├── server/
+│   ├── __init__.py
+│   ├── maze_generator.py      # Donjon procédural (graphe de salles, couloirs larges, autotiler 2.5D)
+│   ├── game_engine.py         # Moteur serveur autoritaire 30 Hz, collisions AABB, IA Chasseur Honnête A*
+│   └── app.py                 # Serveur FastAPI, WebSockets /ws/{room_id}, relais WebRTC/Voice
 ├── web/
-│   └── index.html                   # Standalone Web HTML5/Canvas 1-click playable edition
+│   ├── index.html             # Interface et Canvas HTML5 plein écran
+│   ├── game.js                # Moteur client (rendu 2.5D, autotiling dynamique, interpolation)
+│   └── voice.js               # Audio de proximité, capture microphone, filtres voix démoniaque
 ├── assets/
-│   ├── rooms/                       # Procedural JSON room templates
-│   └── frames/                      # 16px pixel art sprites & animations
-└── tests/
-    └── test_mazic.py                # 13 automated Pytest integration & unit tests
+│   └── frames/                # 368 sprites pixel art originaux 0x72_DungeonTilesetII
+├── start_online.py            # Lanceur 1-clic avec tunnel public Cloudflare automatique
+├── pyproject.toml             # Configuration du projet (FastAPI, Uvicorn, WebSockets, NumPy)
+└── README.md
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Démarrage Rapide
 
-### Prerequisites
-- Python 3.9+ (tested on Python 3.11 and 3.13)
-- Pygame `>= 2.5.2`, NumPy `>= 1.26.0`
+### Prérequis
+- Python 3.9+ (testé sur Python 3.11 et 3.12)
+- Outil `uv` (recommandé) ou `pip`
 
-### Installation
+### 1. Installation des dépendances
 
 ```sh
-# Clone repository
-git clone https://github.com/hjamet/Mazic.git
-cd Mazic
+# Avec uv (ultra-rapide)
+uv sync
 
-# Install dependencies with pip
-pip install pygame numpy pandas pytest
-
-# Or with Poetry
-poetry install
+# Ou avec pip standard
+pip install fastapi "uvicorn[standard]" websockets numpy
 ```
 
-### Running the Python / Pygame Engine
+### 2. Lancement en 1-clic (Serveur local + Tunnel public mondial)
+
 ```sh
-python src/main.py
+python start_online.py
 ```
 
-**Controls**:
-- `Z Q S D` / `W A S D` / Arrow Keys: Move wizard
-- `Mouse Left Click`: Auto-attack / Cast targeted spell
-- `1` / `2` / `3` / `4`: Cast Fireball, Wall Alter, Arcane Sight, or Blink
+Le script démarre automatiquement :
+1. Le serveur FastAPI autoritaire sur le port local `8090` (dual-stack `::` / `127.0.0.1`).
+2. Le tunnel Cloudflare sans compte pour générer une URL publique `https://....trycloudflare.com`.
+3. Affiche l'URL publique à partager avec vos amis !
+
+Pour un test purement local :
+```sh
+python -m uvicorn server.app:app --host 127.0.0.1 --port 8090
+```
+Ouvrez ensuite [http://localhost:8090](http://localhost:8090) dans votre navigateur.
 
 ---
 
-## 🧪 Automated Test Suite
+## 🎮 Contrôles en Jeu
 
-Mazic includes **13 automated tests** covering geometric room generation, alignment, collision handling, line of sight, spellcasting mechanics, and immortal monster transformation:
-
-```sh
-python -m pytest -v
-```
-
-```
-tests/test_mazic.py::test_room_spawner_no_coordinate_accumulation PASSED
-tests/test_mazic.py::test_all_room_templates_valid_and_have_entrances PASSED
-tests/test_mazic.py::test_dynamic_maze_generation_alignment PASSED
-tests/test_mazic.py::test_dead_end_sealing_on_blocked_entrance PASSED
-tests/test_mazic.py::test_issue21_floor_has_no_hitbox PASSED
-tests/test_mazic.py::test_fog_of_war_raycasting_and_wall_occlusion PASSED
-tests/test_mazic.py::test_fog_of_war_memory_explored_tiles PASSED
-tests/test_mazic.py::test_spellbook_mana_consumption_and_regen PASSED
-tests/test_mazic.py::test_spellbook_wall_alter_mechanic PASSED
-tests/test_mazic.py::test_spellbook_arcane_sight_penetration PASSED
-tests/test_mazic.py::test_spellbook_blink_teleportation PASSED
-tests/test_mazic.py::test_immortal_monster_transformation_on_death PASSED
-tests/test_mazic.py::test_hud_minimap_generation_and_sound_manager_headless PASSED
-```
+| Action | Touche / Contrôle |
+|---|---|
+| **Déplacement** | `Z Q S D` / `W A S D` / Flèches directionnelles |
+| **Marche Silencieuse (Sneak)** | Maintenir `Shift` (réduit le bruit pour échapper aux monstres) |
+| **Visée & Torche** | Souris (oriente le faisceau lumineux et les sorts) |
+| **Attaque de base** | Clic gauche |
+| **Sorts 1 / 2 / 3 / 4** | Touches `1`, `2`, `3`, `4` (ou barre de sorts en bas d'écran) |
+| **Interagir / Portes / Fontaines** | Touche `E` |
+| **Mode Test Monstre Immortel** | Bouton `Transformer en Monstre` (test instantané de l'Esprit de Ruche) |
+| **Nouvelle Partie** | Bouton `Recommencer la partie` (regénère un donjon pour tous les joueurs) |
 
 ---
 
-## 📜 License
-Apache License 2.0 / MIT. Created by Henri Jamet.
+## 📜 Licence
+Apache License 2.0. Développé par Henri Jamet.
