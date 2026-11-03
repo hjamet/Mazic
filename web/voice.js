@@ -77,16 +77,23 @@ class VoiceProximityEngine {
           this.onRmsUpdate(this.currentRms, this.currentRms > 0.015);
         }
 
-        // Si la voix dépasse le seuil de bruit, downsampler et envoyer via WebSocket
-        if (this.currentRms > 0.012 && this.ws && this.ws.readyState === WebSocket.OPEN) {
+        // Si la voix dépasse le seuil de bruit, downsampler et envoyer via WebSocket ou Loopback
+        if (this.currentRms > 0.012) {
           const downsampled = this.downsampleBuffer(inputData, this.audioCtx.sampleRate, this.sampleRate);
           const pcm16 = this.floatTo16BitPCM(downsampled);
           const b64 = this.arrayBufferToBase64(pcm16.buffer);
 
-          this.ws.send(JSON.stringify({
-            type: "voice_frame",
-            pcm_b64: b64,
-          }));
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+              type: "voice_frame",
+              pcm_b64: b64,
+            }));
+          }
+
+          if (this.selfTestActive && this.selfTestChannel) {
+            this.selfTestChannel.setRoutingMode("DEMONIC");
+            this.selfTestChannel.queueAudioChunk(b64);
+          }
         }
       };
 
@@ -167,11 +174,7 @@ class VoiceProximityEngine {
     this.selfTestChannel = new PeerAudioChannel("self_test", this.audioCtx);
     // Configuré en mode Monstre vers Humain avec délai de 180ms
     this.selfTestChannel.isSelfTest = true;
-    this.selfTestChannel.updateAcoustics(
-      { is_monster: false, x: 0, y: 0 },
-      { is_monster: true, x: 32, y: 0 },
-      0 // 0 mur
-    );
+    this.selfTestChannel.setRoutingMode("DEMONIC");
   }
 
   /**
@@ -431,9 +434,44 @@ class PeerAudioChannel {
   }
 
   /**
-   * Planifie la lecture d'un chunk audio reçu
+   * Configure explicitement le mode de routage audio (ex: DEMONIC pour Loopback)
    */
-  queueAudioChunk(float32Data, sampleRate) {
+  setRoutingMode(mode) {
+    if (mode === "DEMONIC") {
+      this.normalGain.gain.setTargetAtTime(0.0, this.audioCtx.currentTime, 0.05);
+      this.demonicGain.gain.setTargetAtTime(1.2, this.audioCtx.currentTime, 0.05);
+      this.wallFilter.frequency.setTargetAtTime(16000, this.audioCtx.currentTime, 0.05);
+      this.masterGain.gain.setTargetAtTime(0.95, this.audioCtx.currentTime, 0.05);
+      if (this.pannerNode && this.pannerNode.pan) {
+        this.pannerNode.pan.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
+      }
+    } else {
+      this.normalGain.gain.setTargetAtTime(1.0, this.audioCtx.currentTime, 0.05);
+      this.demonicGain.gain.setTargetAtTime(0.0, this.audioCtx.currentTime, 0.05);
+    }
+  }
+
+  /**
+   * Planifie la lecture d'un chunk audio reçu (Float32Array ou base64 string)
+   */
+  queueAudioChunk(chunk, sampleRate = 16000) {
+    if (!chunk) return;
+
+    let float32Data = chunk;
+    if (typeof chunk === "string") {
+      const binaryString = window.atob(chunk);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const int16Array = new Int16Array(bytes.buffer);
+      float32Data = new Float32Array(int16Array.length);
+      for (let i = 0; i < int16Array.length; i++) {
+        float32Data[i] = int16Array[i] / (int16Array[i] < 0 ? 0x8000 : 0x7FFF);
+      }
+    }
+
     if (!float32Data || float32Data.length === 0) return;
 
     const buffer = this.audioCtx.createBuffer(1, float32Data.length, sampleRate);
@@ -444,7 +482,7 @@ class PeerAudioChannel {
 
     const now = this.audioCtx.currentTime;
     if (this.nextPlayTime < now) {
-      this.nextPlayTime = now + 0.02; // Petit tampon initial anti-craquement
+      this.nextPlayTime = now + (this.isSelfTest ? 0.18 : 0.02); // 180ms pour loopback, 20ms sinon
     }
 
     source.connect(this.entryGain);

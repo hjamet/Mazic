@@ -285,6 +285,7 @@ class DungeonGenerator:
         p_cx = rooms[portal_room_idx]["cx"]
         p_cy = rooms[portal_room_idx]["cy"]
         portal: dict[str, Any] = {
+            "id": "portal_main",
             "x": float(p_cx * self.tile_size + 8),
             "y": float(p_cy * self.tile_size + 8),
             "tx": p_cx,
@@ -296,7 +297,7 @@ class DungeonGenerator:
         # Salles de fontaines (shrines) = 2 salles de distance médiane
         fountains: list[dict[str, Any]] = []
         shrine_indices = [room_distances[len(room_distances) // 3][1], room_distances[2 * len(room_distances) // 3][1]]
-        for s_idx in shrine_indices:
+        for i, s_idx in enumerate(shrine_indices):
             rooms[s_idx]["kind"] = "shrine"
             s_room = rooms[s_idx]
             s_cx = s_room["cx"]
@@ -304,6 +305,7 @@ class DungeonGenerator:
             wall_y = s_room["y"] - 1 if s_room["y"] > 0 and grid[s_room["y"] - 1][s_cx] == WALL else s_room["y"]
             floor_y = wall_y + 1 if wall_y + 1 < self.height and grid[wall_y + 1][s_cx] == FLOOR else s_room["cy"]
             fountains.append({
+                "id": f"fountain_{i}",
                 "x": float(s_cx * self.tile_size + 8),
                 "y": float(floor_y * self.tile_size + 8),
                 "tx": s_cx,
@@ -451,7 +453,7 @@ class DungeonGenerator:
                     else:
                         # Mur intérieur ou latéral
                         left_floor = (x > 0 and grid[y][x - 1] in (FLOOR, DOOR_CLOSED, DOOR_OPEN))
-                        right_floor = (x + 1 < width and grid[y + 1 if y + 1 < height else y][x + 1] in (FLOOR, DOOR_CLOSED, DOOR_OPEN))
+                        right_floor = (x + 1 < width and grid[y][x + 1] in (FLOOR, DOOR_CLOSED, DOOR_OPEN))
                         if left_floor:
                             tiles[y][x]["wb"] = "wall_outer_front_left"
                         elif right_floor:
@@ -552,6 +554,7 @@ class DungeonGenerator:
                 updated.append({
                     "tx": x,
                     "ty": y,
+                    "cell_value": int(grid[y][x]),
                     "tile": tiles[y][x]
                 })
 

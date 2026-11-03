@@ -21,10 +21,14 @@
     constructor() {
       this.cache = new Map();
       this.pending = new Map();
+      this.failed = new Set();
     }
 
     getImage(name) {
       if (!name) return null;
+      if (this.failed.has(name)) {
+        return null;
+      }
       if (this.cache.has(name)) {
         return this.cache.get(name);
       }
@@ -42,8 +46,13 @@
       };
       img.onerror = () => {
         this.pending.delete(name);
+        this.failed.add(name);
       };
       return null;
+    }
+
+    get(name) {
+      return this.getImage(name);
     }
 
     // Résolution de frame animée automatique
@@ -398,8 +407,12 @@
           if (this.tiles && this.tiles[ty]) {
             this.tiles[ty][tx] = tile;
           }
-          if (up.cell_value !== undefined && this.grid && this.grid[ty]) {
-            this.grid[ty][tx] = up.cell_value;
+          if (this.grid && this.grid[ty]) {
+            if (up.cell_value !== undefined) {
+              this.grid[ty][tx] = up.cell_value;
+            } else if (up.tile && up.tile.t !== undefined) {
+              this.grid[ty][tx] = up.tile.t;
+            }
           }
         }
       }
@@ -415,12 +428,16 @@
     }
 
     handleGameEvent(ev) {
+      const ex = ev.x !== undefined ? ev.x : (ev.tx !== undefined ? ev.tx * 16 + 8 : null);
+      const ey = ev.y !== undefined ? ev.y : (ev.ty !== undefined ? ev.ty * 16 + 8 : null);
+      if (ex === null || ey === null) return;
+
       if (ev.type === "hit") {
-        this.triggerSoundWave(ev.x, ev.y, 35, "#ef4444");
-      } else if (ev.type === "door") {
-        this.triggerSoundWave(ev.x, ev.y, 50, "#f59e0b");
-      } else if (ev.type === "spell") {
-        this.triggerSoundWave(ev.x, ev.y, 60, "#8b5cf6");
+        this.triggerSoundWave(ex, ey, 35, "#ef4444");
+      } else if (ev.type === "door" || ev.type === "door_open" || ev.type === "door_close") {
+        this.triggerSoundWave(ex, ey, 50, "#f59e0b");
+      } else if (ev.type === "spell" || ev.type === "spell_cast") {
+        this.triggerSoundWave(ex, ey, 60, "#8b5cf6");
       }
     }
 
@@ -493,7 +510,7 @@
       this.visibleTilesSet.clear();
 
       const isMonster = !!me.is_monster;
-      const hasArcaneSight = me.arcane_sight_until && me.arcane_sight_until > now / 1000;
+      const hasArcaneSight = Boolean(me.arcane_sight_active || (me.arcane_sight_until && me.arcane_sight_until > now / 1000));
 
       // Paramètres du cône
       const fovAngle = isMonster ? (120 * Math.PI) / 180 : (78 * Math.PI) / 180;
@@ -553,11 +570,29 @@
       }
 
       // 3. Détection des entités visibles (avec ligne de vue directe libre)
+      const portalList = [];
+      if (this.portal) {
+        if (!this.portal.id) this.portal.id = "portal_main";
+        portalList.push(this.portal);
+      }
+
+      const fountainsList = this.fountains.map((f, idx) => {
+        if (!f.id) f.id = "fountain_" + idx;
+        return f;
+      });
+
+      const projectilesList = this.projectiles.map((p, idx) => {
+        if (!p.id) p.id = "proj_" + idx;
+        return p;
+      });
+
       const allEntities = [
         ...Object.values(this.players),
         ...this.monsters,
         ...this.crystals,
-        ...this.fountains,
+        ...fountainsList,
+        ...projectilesList,
+        ...portalList,
       ];
 
       for (const ent of allEntities) {
@@ -699,6 +734,7 @@
 
       // Portail
       if (this.portal) {
+        if (!this.portal.id) this.portal.id = "portal_main";
         renderList.push({
           type: "portal",
           y: this.portal.y,
@@ -718,22 +754,24 @@
       }
 
       // Fontaines runiques
-      for (const f of this.fountains) {
+      this.fountains.forEach((f, idx) => {
+        if (!f.id) f.id = "fountain_" + idx;
         renderList.push({
           type: "fountain",
           y: f.y,
           ent: f,
         });
-      }
+      });
 
       // Projectiles
-      for (const p of this.projectiles) {
+      this.projectiles.forEach((p, idx) => {
+        if (!p.id) p.id = "proj_" + idx;
         renderList.push({
           type: "projectile",
           y: p.y,
           ent: p,
         });
-      }
+      });
 
       // Monstres IA
       for (const m of this.monsters) {

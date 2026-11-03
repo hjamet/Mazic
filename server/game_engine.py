@@ -45,7 +45,7 @@ HERO_SKINS = [
     "lizard_f",
 ]
 
-MONSTER_SKINS = ["chort", "skelet", "zombie", "masked_orc"]
+MONSTER_SKINS = ["chort", "skelet", "big_zombie", "masked_orc", "imp", "tiny_zombie"]
 MONSTER_PLAYER_SKIN = "big_demon"
 
 
@@ -618,7 +618,13 @@ class GameRoom:
                 life=0.45,
             )
             self.projectiles.append(proj)
-            self.events.append({"type": "spell_cast", "spell": "energy_bolt", "player_id": player.id})
+            self.events.append({
+                "type": "spell_cast",
+                "spell": "energy_bolt",
+                "player_id": player.id,
+                "x": player.x,
+                "y": player.y,
+            })
 
     def cast_spell(self, player_id: str, spell_id: int) -> bool:
         """Lance l'un des 4 sorts du joueur."""
@@ -653,7 +659,13 @@ class GameRoom:
                 life=2.0,
             )
             self.projectiles.append(proj)
-            self.events.append({"type": "spell_cast", "spell": "fireball", "player_id": player.id})
+            self.events.append({
+                "type": "spell_cast",
+                "spell": "fireball",
+                "player_id": player.id,
+                "x": player.x,
+                "y": player.y,
+            })
             return True
 
         elif spell_id == 2:
@@ -770,7 +782,14 @@ class GameRoom:
                             self.pending_tile_updates.extend(updated)
                             player.noise_radius = max(player.noise_radius, 150.0)
                             player.noise_event_timer = 0.35
-                            self.events.append({"type": "door_open", "tx": tx, "ty": ty, "player_id": player.id})
+                            self.events.append({
+                                "type": "door_open",
+                                "tx": tx,
+                                "ty": ty,
+                                "x": tile_center_x,
+                                "y": tile_center_y,
+                                "player_id": player.id,
+                            })
                             toggled = True
                             break
                         elif tile == DOOR_OPEN:
@@ -779,7 +798,14 @@ class GameRoom:
                             self.pending_tile_updates.extend(updated)
                             player.noise_radius = max(player.noise_radius, 150.0)
                             player.noise_event_timer = 0.35
-                            self.events.append({"type": "door_close", "tx": tx, "ty": ty, "player_id": player.id})
+                            self.events.append({
+                                "type": "door_close",
+                                "tx": tx,
+                                "ty": ty,
+                                "x": tile_center_x,
+                                "y": tile_center_y,
+                                "player_id": player.id,
+                            })
                             toggled = True
                             break
             if toggled:
