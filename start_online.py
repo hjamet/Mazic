@@ -93,10 +93,16 @@ def main():
     # Small delay for socket binding
     time.sleep(1.0)
 
+    empty_config = BASE_DIR / ".empty_cloudflared_config.yml"
+    if not empty_config.exists():
+        empty_config.write_text("# Quick Tunnel config bypassing ~/.cloudflared/config.yml\n", encoding="utf-8")
+
     print(f"[2/3] Démarrage du tunnel Cloudflared ({cloudflared_bin})...")
     cf_cmd = [
         cloudflared_bin,
         "tunnel",
+        "--config",
+        str(empty_config),
         "--url",
         "http://127.0.0.1:8090",
         "--no-autoupdate",

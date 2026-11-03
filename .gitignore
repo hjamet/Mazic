@@ -167,5 +167,11 @@ cython_debug/
 
 # Log files
 logs/
+server.log
+tunnel_url.txt
+.empty_cloudflared_config.yml
+empty_config.yml
+cf_*.log
 *:Zone.Identifier
+
 
