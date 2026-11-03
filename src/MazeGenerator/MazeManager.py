@@ -66,10 +66,10 @@ class MazeManager:
 
         # Create a bigger grid if the room is out of bounds
         if min_x < 0 or min_y < 0 or max_x >= grid_width or max_y >= grid_height:
-            new_min_x = min(0, min_x)
-            new_min_y = min(0, min_y)
-            new_max_x = max(grid_width - 1, max_x)
-            new_max_y = max(grid_height - 1, max_y)
+            new_min_x = int(min(0, min_x))
+            new_min_y = int(min(0, min_y))
+            new_max_x = int(max(grid_width - 1, max_x))
+            new_max_y = int(max(grid_height - 1, max_y))
 
             new_grid = np.full(
                 (new_max_y - new_min_y + 1, new_max_x - new_min_x + 1), 0, dtype=int
@@ -300,21 +300,19 @@ class MazeManager:
             LoadUnloadResult: Named tuple contenant les listes des entités chargées et déchargées.
         """
         # Calcul de la position de l'entité sur la grille
-        entity_grid_x = (entity.x // 16) - self.grid_origin[0]
-        entity_grid_y = (entity.y // 16) - self.grid_origin[1]
+        entity_grid_x = int(entity.x // 16) - int(self.grid_origin[0])
+        entity_grid_y = int(entity.y // 16) - int(self.grid_origin[1])
 
         # Détermination des salles voisines
         radius = 10
-        min_x, max_x = max(0, entity_grid_x - radius), min(
-            self.grid.shape[1], entity_grid_x + radius + 1
-        )
-        min_y, max_y = max(0, entity_grid_y - radius), min(
-            self.grid.shape[0], entity_grid_y + radius + 1
-        )
+        min_x = int(max(0, entity_grid_x - radius))
+        max_x = int(min(self.grid.shape[1], entity_grid_x + radius + 1))
+        min_y = int(max(0, entity_grid_y - radius))
+        max_y = int(min(self.grid.shape[0], entity_grid_y + radius + 1))
         neighboring_room_indices = set(
             self.grid[min_y:max_y, min_x:max_x].flatten()
         ) - {0}
-        neighboring_room_indices = {index - 1 for index in neighboring_room_indices}
+        neighboring_room_indices = {int(index) - 1 for index in neighboring_room_indices}
 
         newly_loaded_entities = []
         for room_index in neighboring_room_indices.copy():
