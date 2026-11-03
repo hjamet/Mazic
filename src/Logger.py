@@ -18,29 +18,30 @@ def Logger(name, level=Config().log_level, log_initialization=True):
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    if not os.path.exists("logs"):
-        os.makedirs("logs")
+    if not logger.handlers:
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
 
-    handler = logging.handlers.RotatingFileHandler(
-        f"logs/{name}.log",
-        mode="a",
-        encoding="utf-8",
-        maxBytes=5 * 1024 * 1024,
-        delay=0,
-    )
+        handler = logging.handlers.RotatingFileHandler(
+            f"logs/{name}.log",
+            mode="a",
+            encoding="utf-8",
+            maxBytes=5 * 1024 * 1024,
+            delay=True,
+        )
 
-    handler.setLevel(level)
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    logger.addHandler(handler)
+        handler.setLevel(level)
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        logger.addHandler(handler)
 
-    stdout_logger = logging.StreamHandler()
-    stdout_logger.setLevel(level)
-    stdout_logger.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    logger.addHandler(stdout_logger)
+        stdout_logger = logging.StreamHandler()
+        stdout_logger.setLevel(level)
+        stdout_logger.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        logger.addHandler(stdout_logger)
 
     if log_initialization:
         logger.info(
