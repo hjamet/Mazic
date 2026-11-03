@@ -378,17 +378,22 @@
     updateState(state) {
       if (!state) return;
 
-      this.players = state.players || {};
+      if (Array.isArray(state.players)) {
+        this.players = Object.fromEntries(state.players.map((p) => [p.id, p]));
+      } else {
+        this.players = state.players || {};
+      }
       this.monsters = state.monsters || [];
       this.projectiles = state.projectiles || [];
       this.crystals = state.crystals || [];
       this.fountains = state.fountains || [];
       this.portal = state.portal || null;
-      this.gameStatus = state.game_status || "RUNNING";
+      this.gameStatus = state.game_status || state.status || "RUNNING";
 
       // Mises à jour de tuiles dynamiques (sort Brise-Mur, porte ouverte...)
-      if (state.tile_updates && Array.isArray(state.tile_updates)) {
-        for (const up of state.tile_updates) {
+      const tileUpdates = state.tile_updates || state.pending_tile_updates;
+      if (tileUpdates && Array.isArray(tileUpdates)) {
+        for (const up of tileUpdates) {
           const { tx, ty, tile } = up;
           if (this.tiles && this.tiles[ty]) {
             this.tiles[ty][tx] = tile;

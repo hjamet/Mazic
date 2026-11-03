@@ -6,6 +6,7 @@ Binds on dual-stack IPv4/IPv6 port 8090 and creates a public trycloudflare.com U
 
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys

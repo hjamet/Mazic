@@ -22,32 +22,15 @@ try:
         WALL,
         DungeonGenerator,
     )
-    try:
-        from server.maze_generator import recompute_area
-    except ImportError:
-        recompute_area = None
 except (ImportError, ModuleNotFoundError):
-    try:
-        from .maze_generator import (  # type: ignore
-            DOOR_CLOSED,
-            DOOR_OPEN,
-            FLOOR,
-            VOID,
-            WALL,
-            DungeonGenerator,
-        )
-        try:
-            from .maze_generator import recompute_area  # type: ignore
-        except ImportError:
-            recompute_area = None
-    except (ImportError, ModuleNotFoundError):
-        VOID = 0
-        FLOOR = 1
-        WALL = 2
-        DOOR_CLOSED = 3
-        DOOR_OPEN = 4
-        DungeonGenerator = None  # type: ignore
-        recompute_area = None
+    from .maze_generator import (  # type: ignore
+        DOOR_CLOSED,
+        DOOR_OPEN,
+        FLOOR,
+        VOID,
+        WALL,
+        DungeonGenerator,
+    )
 
 TILE_SIZE = 16
 
@@ -416,11 +399,13 @@ class GameRoom:
         self.generator = DungeonGenerator(self.width, self.height) if DungeonGenerator is not None else None
         self._spawn_initial_monsters()
 
+    def get_init_payload(self) -> dict[str, Any]:
+        """Retourne les données du donjon pour l'initialisation client."""
+        return self.dungeon
+
     def _recompute_area(self, tx: int, ty: int, radius: int = 2) -> list[dict[str, Any]]:
         """Recalcule l'autotiling autour d'une case modifiée."""
-        if recompute_area is not None:
-            return recompute_area(self.dungeon, tx, ty, radius=radius)
-        if self.generator is not None and hasattr(self.generator, "recompute_area"):
+        if self.generator is not None:
             return self.generator.recompute_area(self.dungeon, tx, ty, radius=radius)
         return []
 
@@ -554,6 +539,12 @@ class GameRoom:
                 length = math.hypot(kx, ky)
                 vx = (kx / length) * max_speed
                 vy = (ky / length) * max_speed
+        elif math.hypot(vx, vy) > 0.0:
+            # Vecteur de direction envoyé par le client JS (ex: [-1..1])
+            mag = math.hypot(vx, vy)
+            if mag <= 1.05:
+                vx = (vx / mag) * max_speed
+                vy = (vy / mag) * max_speed
 
         player.vx = vx
         player.vy = vy
@@ -568,16 +559,18 @@ class GameRoom:
         else:
             player.anim = "idle"
 
-        # Actions
-        if data.get("action_attack"):
+        # Actions (supporte 'attack' et 'action_attack', 'spell' et 'action_spell', 'interact' et 'action_interact')
+        if data.get("attack") or data.get("action_attack"):
             self._handle_attack(player)
 
-        spell_id = data.get("action_spell")
+        spell_id = data.get("spell") or data.get("action_spell")
         if spell_id in (1, 2, 3, 4, "1", "2", "3", "4"):
             self.cast_spell(player.id, int(spell_id))
 
-        if data.get("action_interact"):
+        if data.get("interact") or data.get("action_interact"):
             self._handle_interaction(player)
+
+    handle_input = handle_player_input
 
     def _handle_attack(self, player: PlayerState) -> None:
         """Attaque de base (clic gauche)."""
@@ -810,6 +803,26 @@ class GameRoom:
         player.max_hp = 160.0
         player.mana = 100.0
         self.events.append({"type": "player_transformed", "player_id": player.id, "x": player.x, "y": player.y})
+
+    def force_transform(self, player_id: str) -> None:
+        """Bascule un joueur entre humain et monstre (pour tests/débug)."""
+        player = self.players.get(player_id)
+        if not player:
+            return
+        if not player.is_monster:
+            self._transform_player_to_monster(player)
+        else:
+            player.is_monster = False
+            player.skin = "wizzard_m"
+            player.hp = 100.0
+            player.max_hp = 100.0
+            player.mana = 100.0
+            self.events.append({"type": "player_untransformed", "player_id": player.id})
+
+    def spawn_bot_ally(self) -> None:
+        """Génère un allié bot dans la salle de départ pour tests."""
+        bot_id = f"bot_{random.randint(1000, 9999)}"
+        self.add_player(bot_id, f"Bot Ally {bot_id[-4:]}", "elf_m")
 
     def step(self, dt: float = 1.0 / 30.0) -> None:
         """Tick autoritaire serveur à 30 Hz."""
@@ -1123,14 +1136,20 @@ class GameRoom:
 
     def get_snapshot(self) -> dict[str, Any]:
         """Retourne l'état complet actuel pour diffusion WebSocket et vide les événements."""
+        players_dict = {p.id: p.to_dict() for p in self.players.values()}
         snapshot = {
             "room_id": self.room_id,
             "status": self.game_status,
-            "players": [p.to_dict() for p in self.players.values()],
+            "game_status": self.game_status,
+            "players": players_dict,
+            "players_list": list(players_dict.values()),
             "monsters": [m.to_dict() for m in self.monsters],
             "projectiles": [proj.to_dict() for proj in self.projectiles],
+            "crystals": self.crystals,
             "crystals_collected": self.crystals_collected,
+            "fountains": self.fountains,
             "portal": self.portal,
+            "tile_updates": list(self.pending_tile_updates),
             "pending_tile_updates": list(self.pending_tile_updates),
             "events": list(self.events),
         }
