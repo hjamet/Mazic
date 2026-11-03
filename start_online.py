@@ -67,14 +67,14 @@ def main():
         except Exception:
             pass
 
-    print("[1/3] Démarrage du serveur FastAPI / WebSockets sur port 8090 (dual-stack ::)...")
+    print("[1/3] Démarrage du serveur FastAPI / WebSockets sur port 8090 (0.0.0.0)...")
     uvicorn_cmd = [
         sys.executable,
         "-m",
         "uvicorn",
         "server.app:app",
         "--host",
-        "::",
+        "0.0.0.0",
         "--port",
         "8090",
         "--log-level",
@@ -95,7 +95,7 @@ def main():
         cloudflared_bin,
         "tunnel",
         "--url",
-        "http://localhost:8090",
+        "http://127.0.0.1:8090",
         "--no-autoupdate",
     ]
     cf_proc = subprocess.Popen(
