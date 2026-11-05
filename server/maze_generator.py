@@ -263,13 +263,18 @@ class DungeonGenerator:
         # Distance depuis rooms[0] (spawn) par BFS sur les centres de salles
         rooms[0]["kind"] = "spawn"
         spawn_center_x, spawn_center_y = rooms[0]["cx"], rooms[0]["cy"]
+        spawn_candidates: list[tuple[int, int]] = [
+            (spawn_center_x - 1, spawn_center_y - 1),
+            (spawn_center_x, spawn_center_y - 1),
+            (spawn_center_x + 1, spawn_center_y - 1),
+            (spawn_center_x - 1, spawn_center_y),
+            (spawn_center_x, spawn_center_y),
+            (spawn_center_x + 1, spawn_center_y),
+        ]
         spawn_points: list[tuple[int, int]] = [
-            ((spawn_center_x - 1) * self.tile_size + 8, (spawn_center_y - 1) * self.tile_size + 8),
-            (spawn_center_x * self.tile_size + 8, (spawn_center_y - 1) * self.tile_size + 8),
-            ((spawn_center_x + 1) * self.tile_size + 8, (spawn_center_y - 1) * self.tile_size + 8),
-            ((spawn_center_x - 1) * self.tile_size + 8, spawn_center_y * self.tile_size + 8),
-            (spawn_center_x * self.tile_size + 8, spawn_center_y * self.tile_size + 8),
-            ((spawn_center_x + 1) * self.tile_size + 8, spawn_center_y * self.tile_size + 8),
+            (sx * self.tile_size + 8, sy * self.tile_size + 8)
+            for sx, sy in spawn_candidates
+            if 0 <= sx < self.width and 0 <= sy < self.height and grid[sy][sx] == FLOOR
         ]
 
         # Calcul des distances depuis rooms[0]
@@ -316,6 +321,28 @@ class DungeonGenerator:
                 "mid_sprite": "wall_fountain_mid_red_anim_f0",
                 "basin_sprite": "wall_fountain_basin_red_anim_f0"
             })
+
+        # Colonnes physiques (WALL) dans les grandes salles normales (>= 9x8) avant tirage des spawns
+        for r in rooms:
+            rx, ry, rw, rh = r["x"], r["y"], r["w"], r["h"]
+            if rw >= 9 and rh >= 8 and r["kind"] == "normal":
+                col_coords = (
+                    (rx + 2, ry + 2),
+                    (rx + rw - 3, ry + 2),
+                    (rx + 2, ry + rh - 3),
+                    (rx + rw - 3, ry + rh - 3),
+                )
+                for cx, cy in col_coords:
+                    if (
+                        1 <= cx < self.width - 1
+                        and 1 <= cy < self.height - 1
+                        and grid[cy][cx] == FLOOR
+                        and grid[cy - 1][cx] == FLOOR
+                        and grid[cy + 1][cx] == FLOOR
+                        and grid[cy][cx - 1] == FLOOR
+                        and grid[cy][cx + 1] == FLOOR
+                    ):
+                        grid[cy][cx] = WALL
 
         # Cristaux d'Arcane (5 cristaux dans 5 salles distinctes hors spawn et portal)
         candidate_crystal_rooms = [
@@ -498,15 +525,22 @@ class DungeonGenerator:
         # (c) Colonnes dans les grandes salles et props au sol
         for r in rooms:
             rx, ry, rw, rh = r["x"], r["y"], r["w"], r["h"]
-            # Colonnes si salle assez grande (>= 9x8)
+            # Colonnes si salle assez grande (>= 9x8) et pilier encore WALL entouré de 4 FLOOR
             if rw >= 9 and rh >= 8 and r["kind"] == "normal":
                 col_x1, col_y1 = rx + 2, ry + 2
                 col_x2, col_y2 = rx + rw - 3, ry + 2
                 col_x3, col_y3 = rx + 2, ry + rh - 3
                 col_x4, col_y4 = rx + rw - 3, ry + rh - 3
                 for cx, cy in ((col_x1, col_y1), (col_x2, col_y2), (col_x3, col_y3), (col_x4, col_y4)):
-                    if 0 <= cx < width and 0 <= cy < height and grid[cy][cx] in (FLOOR, WALL):
-                        grid[cy][cx] = WALL  # bloque physiquement
+                    if (
+                        1 <= cx < width - 1
+                        and 1 <= cy < height - 1
+                        and grid[cy][cx] == WALL
+                        and grid[cy - 1][cx] == FLOOR
+                        and grid[cy + 1][cx] == FLOOR
+                        and grid[cy][cx - 1] == FLOOR
+                        and grid[cy][cx + 1] == FLOOR
+                    ):
                         if not tiles[cy][cx]["fl"]:
                             tiles[cy][cx]["fl"] = "floor_1"
                         tiles[cy][cx]["pr"] = "column"

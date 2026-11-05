@@ -291,7 +291,6 @@
           if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({
               type: "join",
-              name: "Joueur_" + (this.myId ? this.myId.substring(0, 4) : "1"),
               skin: this.selectedSkin,
             }));
           }

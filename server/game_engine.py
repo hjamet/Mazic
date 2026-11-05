@@ -362,11 +362,7 @@ class GameRoom:
         if dungeon is not None:
             self.dungeon = dungeon
         else:
-            if DungeonGenerator is None:
-                # Créer un donjon minimal si generator non encore dispo
-                self.dungeon = self._create_fallback_dungeon()
-            else:
-                self.dungeon = DungeonGenerator().generate()
+            self.dungeon = DungeonGenerator().generate()
 
         self.grid: list[list[int]] = self.dungeon["grid"]
         self.width: int = len(self.grid[0])
@@ -388,7 +384,7 @@ class GameRoom:
         self.game_status: str = "RUNNING"  # RUNNING, HUMANS_WIN, MONSTERS_WIN
         self.projectile_seq: int = 0
 
-        self.generator = DungeonGenerator(self.width, self.height) if DungeonGenerator is not None else None
+        self.generator = DungeonGenerator(self.width, self.height)
         self._spawn_initial_monsters()
 
     def get_init_payload(self) -> dict[str, Any]:
@@ -397,41 +393,7 @@ class GameRoom:
 
     def _recompute_area(self, tx: int, ty: int, radius: int = 2) -> list[dict[str, Any]]:
         """Recalcule l'autotiling autour d'une case modifiée."""
-        if self.generator is not None:
-            return self.generator.recompute_area(self.dungeon, tx, ty, radius=radius)
-        return []
-
-    def _create_fallback_dungeon(self) -> dict[str, Any]:
-        """Génère une grille de test propre 40x40 si DungeonGenerator n'est pas encore prêt."""
-        w, h = 40, 40
-        grid = [[WALL for _ in range(w)] for _ in range(h)]
-        for y in range(4, 16):
-            for x in range(4, 16):
-                grid[y][x] = FLOOR
-        for y in range(20, 32):
-            for x in range(20, 32):
-                grid[y][x] = FLOOR
-        for y in range(15, 21):
-            grid[y][10] = FLOOR
-        for x in range(10, 21):
-            grid[20][x] = FLOOR
-
-        grid[15][10] = DOOR_CLOSED
-
-        tiles = [[{"fl": "floor_1", "wb": "wall_mid" if grid[y][x] == WALL else None} for x in range(w)] for y in range(h)]
-        return {
-            "grid": grid,
-            "tiles": tiles,
-            "rooms": [
-                {"kind": "spawn", "cx": 10, "cy": 10},
-                {"kind": "portal", "cx": 25, "cy": 25},
-            ],
-            "spawn_points": [(10 * 16 + 8, 10 * 16 + 8)],
-            "portal": {"x": 25 * 16 + 8, "y": 25 * 16 + 8, "tx": 25, "ty": 25, "active": False},
-            "crystals": [{"id": "c_0", "x": 22 * 16 + 8, "y": 22 * 16 + 8, "tx": 22, "ty": 22, "collected": False}],
-            "monster_spawns": [(26 * 16 + 8, 26 * 16 + 8), (28 * 16 + 8, 28 * 16 + 8)],
-            "fountains": [],
-        }
+        return self.generator.recompute_area(self.dungeon, tx, ty, radius=radius)
 
     def _spawn_initial_monsters(self) -> None:
         """Fait apparaître 4 monstres IA dans les salles distantes."""
