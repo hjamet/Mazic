@@ -505,11 +505,15 @@ class DungeonGenerator:
                 col_x3, col_y3 = rx + 2, ry + rh - 3
                 col_x4, col_y4 = rx + rw - 3, ry + rh - 3
                 for cx, cy in ((col_x1, col_y1), (col_x2, col_y2), (col_x3, col_y3), (col_x4, col_y4)):
-                    if 0 <= cx < width and 0 <= cy < height and grid[cy][cx] == FLOOR:
+                    if 0 <= cx < width and 0 <= cy < height and grid[cy][cx] in (FLOOR, WALL):
                         grid[cy][cx] = WALL  # bloque physiquement
+                        if not tiles[cy][cx]["fl"]:
+                            tiles[cy][cx]["fl"] = "floor_1"
                         tiles[cy][cx]["pr"] = "column"
-                        tiles[cy][cx]["wb"] = None
-                        tiles[cy][cx]["wt"] = None
+                        tiles[cy][cx]["wb"] = "column"
+                        tiles[cy][cx]["wt"] = "column"
+                        tiles[cy][cx]["wl"] = None
+                        tiles[cy][cx]["wr"] = None
 
             # Petits props au sol dans les coins (skull, crate, chest)
             if r["kind"] == "normal":

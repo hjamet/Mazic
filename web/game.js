@@ -705,14 +705,22 @@
             if (img) ctx.drawImage(img, px, py);
           }
 
-          // Décoration au sol (pr)
-          if (tile.pr && tile.pr !== "column") {
-            const img = this.assets.getImage(tile.pr);
-            if (img) ctx.drawImage(img, px, py);
+          // Décoration au sol ou base/fût de colonne 2.5D (pr)
+          if (tile.pr) {
+            if (tile.pr === "column") {
+              const colImg = this.assets.getImage("column");
+              if (colImg) {
+                // Tranche basse (fût + pied : y=16..40 dans column.png 16x48) ancrée au bas de la case (py+16)
+                ctx.drawImage(colImg, 0, 16, 16, 24, px, py - 8, 16, 24);
+              }
+            } else {
+              const img = this.assets.getImage(tile.pr);
+              if (img) ctx.drawImage(img, px, py);
+            }
           }
 
           // Base de mur ou porte (wb)
-          if (tile.wb) {
+          if (tile.wb && tile.wb !== "column") {
             const img = this.assets.getImage(tile.wb);
             if (img) ctx.drawImage(img, px, py);
           }
@@ -798,8 +806,8 @@
         this.renderEntity(ctx, item, now);
       }
 
-      // --- PASSE 3 : Rebords supérieurs de murs 2.5D (wt) en Premier Plan ---
-      // Couvre la tête des personnages passant derrière un mur au Sud !
+      // --- PASSE 3 : Rebords supérieurs de murs 2.5D (wt) et sommets de colonnes en Premier Plan ---
+      // Couvre la tête des personnages passant derrière un mur ou une colonne au Sud !
       for (let ty = minTy; ty <= maxTy; ty++) {
         for (let tx = minTx; tx <= maxTx; tx++) {
           const lastSeen = this.tileLastSeen[ty] ? this.tileLastSeen[ty][tx] : -Infinity;
@@ -817,10 +825,18 @@
           const tile = this.tiles[ty] ? this.tiles[ty][tx] : null;
           if (tile && tile.wt) {
             ctx.globalAlpha = alpha;
-            const img = this.assets.getImage(tile.wt);
-            if (img) {
-              // wt est ancré au sommet du mur (px, py)
-              ctx.drawImage(img, tx * 16, ty * 16);
+            if (tile.wt === "column") {
+              const colImg = this.assets.getImage("column");
+              if (colImg) {
+                // Tranche haute (chapiteau : y=0..16 dans column.png 16x48) en overlay premier plan
+                ctx.drawImage(colImg, 0, 0, 16, 16, tx * 16, ty * 16 - 24, 16, 16);
+              }
+            } else {
+              const img = this.assets.getImage(tile.wt);
+              if (img) {
+                // wt est ancré au sommet du mur (px, py)
+                ctx.drawImage(img, tx * 16, ty * 16);
+              }
             }
           }
         }
@@ -831,8 +847,8 @@
 
       ctx.restore();
 
-      // Dessin de la minimap
-      this.renderMinimap();
+      // Dessin de la minimap avec oubli progressif
+      this.renderMinimap(now);
     }
 
     renderEntity(ctx, item, now) {
@@ -846,8 +862,8 @@
       // Les monstres et joueurs s'effacent en 1.2s hors de vue
       let alpha = inSight ? 1.0 : Math.max(0, 1.0 - elapsed / 1200.0);
 
-      // Si c'est moi-même, je suis toujours visible
-      if (type === "player" && ent.id === this.myId) {
+      // Si c'est moi-même ou mon propre projectile, toujours visible
+      if ((type === "player" && ent.id === this.myId) || (type === "projectile" && ent.owner_id === this.myId && inSight)) {
         alpha = 1.0;
       }
 
@@ -873,14 +889,40 @@
         if (top) ctx.drawImage(top, px - 8, py - 16);
         if (basin) ctx.drawImage(basin, px - 8, py);
       } else if (type === "projectile") {
-        const pImg = this.assets.getImage(ent.skin || "FB001");
+        const angle = ent.angle !== undefined ? ent.angle : Math.atan2(ent.vy || 0, ent.vx || 0);
+        const isFireball = ent.kind === "fireball";
+        const fbFrame = (Math.floor(now / 60) % 5) + 1;
+        const spriteName = isFireball ? `FB00${fbFrame}` : (ent.skin || "weapon_red_magic_staff");
+        const pImg = this.assets.getImage(spriteName);
+
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(angle);
+
+        // Halo lumineux directionnel coloré selon ent.kind
+        const glowColor = isFireball ? "rgba(249, 115, 22, 0.55)" : "rgba(56, 189, 248, 0.55)";
+        const coreColor = isFireball ? "#fde047" : "#e0f2fe";
+        ctx.fillStyle = glowColor;
+        ctx.beginPath();
+        ctx.ellipse(-2, 0, isFireball ? 9 : 7, isFireball ? 5 : 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
         if (pImg) {
-          ctx.save();
-          ctx.translate(px, py);
-          ctx.rotate(ent.angle || 0);
-          ctx.drawImage(pImg, -8, -8);
-          ctx.restore();
+          if (isFireball) {
+            ctx.drawImage(pImg, -12, -6, 20, 12);
+          } else {
+            ctx.save();
+            ctx.rotate(Math.PI / 2);
+            ctx.drawImage(pImg, -4, -10, 8, 20);
+            ctx.restore();
+          }
         }
+
+        ctx.fillStyle = coreColor;
+        ctx.beginPath();
+        ctx.arc(2, 0, isFireball ? 2.5 : 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       } else if (type === "portal") {
         const ladder = this.assets.getImage("floor_ladder");
         if (ladder) ctx.drawImage(ladder, px - 8, py - 8);
@@ -987,12 +1029,13 @@
       }
     }
 
-    renderMinimap() {
+    renderMinimap(now = performance.now()) {
       if (!this.minimapCtx || !this.grid) return;
       const mctx = this.minimapCtx;
       const mw = this.minimapCanvas.width;
       const mh = this.minimapCanvas.height;
 
+      mctx.globalAlpha = 1.0;
       mctx.fillStyle = "#07090e";
       mctx.fillRect(0, 0, mw, mh);
 
@@ -1004,6 +1047,16 @@
           const lastSeen = this.tileLastSeen[y] ? this.tileLastSeen[y][tx] : -Infinity;
           if (lastSeen === -Infinity) continue; // Inexploré
 
+          const elapsed = now - lastSeen;
+          let alpha = 0.0;
+          if (this.visibleTilesSet.has(`${tx},${y}`)) {
+            alpha = 1.0;
+          } else if (elapsed < 6000) {
+            alpha = Math.max(0, 1.0 - elapsed / 6000.0) * 0.75;
+          }
+          if (alpha <= 0.01) continue;
+
+          mctx.globalAlpha = alpha;
           const cell = this.grid[y][tx];
           if (cell === WALL) {
             mctx.fillStyle = "#334155";
@@ -1018,7 +1071,8 @@
         }
       }
 
-      // Afficher les positions des joueurs explorés
+      mctx.globalAlpha = 1.0;
+      // Afficher la position du joueur local
       const me = this.getMe();
       if (me) {
         mctx.fillStyle = me.is_monster ? "#ef4444" : "#10b981";

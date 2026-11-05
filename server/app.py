@@ -250,19 +250,31 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str = "main"):
                 # Forward player inputs (movement, aim_angle, mic_rms, spells) to authoritative engine
                 forward_player_input(room, player_id, msg)
 
+            elif mtype == "join":
+                if msg.get("name"):
+                    player_name = str(msg["name"])
+                if msg.get("skin"):
+                    player_skin = str(msg["skin"])
+                if hasattr(room, "players") and player_id in room.players:
+                    room.players[player_id].name = player_name
+                    room.players[player_id].skin = player_skin
+
             elif mtype == "reset_game":
                 # Re-generate a brand-new procedural dungeon and reset all players
                 logger.info(f"Resetting game room '{room_id}' on request of {player_id}")
+                old_room = rooms.get(room_id)
+                old_players = getattr(old_room, "players", {}) if old_room else {}
                 RoomCls = get_game_room_class()
                 new_room = RoomCls(room_id=room_id)
                 rooms[room_id] = new_room
                 room = new_room
 
                 dungeon_payload = get_room_dungeon_payload(new_room)
-                # Re-register all connected players into the new dungeon
+                # Re-register all connected players into the new dungeon preserving their name and skin
                 for p_id, p_ws in list(room_connections.get(room_id, {}).items()):
-                    p_name = player_name if p_id == player_id else "Ally"
-                    p_skin = player_skin if p_id == player_id else "wizzard_f"
+                    old_p = old_players.get(p_id)
+                    p_name = old_p.name if old_p else (player_name if p_id == player_id else "Ally")
+                    p_skin = old_p.skin if old_p else (player_skin if p_id == player_id else "wizzard_f")
                     new_room.add_player(p_id, p_name, p_skin)
                     await p_ws.send_text(
                         json.dumps({

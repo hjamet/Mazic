@@ -13,24 +13,14 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-try:
-    from server.maze_generator import (
-        DOOR_CLOSED,
-        DOOR_OPEN,
-        FLOOR,
-        VOID,
-        WALL,
-        DungeonGenerator,
-    )
-except (ImportError, ModuleNotFoundError):
-    from .maze_generator import (  # type: ignore
-        DOOR_CLOSED,
-        DOOR_OPEN,
-        FLOOR,
-        VOID,
-        WALL,
-        DungeonGenerator,
-    )
+from server.maze_generator import (
+    DOOR_CLOSED,
+    DOOR_OPEN,
+    FLOOR,
+    VOID,
+    WALL,
+    DungeonGenerator,
+)
 
 TILE_SIZE = 16
 
@@ -358,7 +348,9 @@ class ProjectileState:
             "y": round(self.y, 2),
             "vx": round(self.vx, 2),
             "vy": round(self.vy, 2),
+            "angle": round(math.atan2(self.vy, self.vx), 3),
             "kind": self.kind,
+            "skin": "FB001" if self.kind == "fireball" else "weapon_red_magic_staff",
         }
 
 
@@ -824,7 +816,6 @@ class GameRoom:
     def _transform_player_to_monster(self, player: PlayerState) -> None:
         """Transforme définitivement un joueur humain mort en Monstre Immortel Joueur."""
         player.is_monster = True
-        player.skin = MONSTER_PLAYER_SKIN
         player.hp = 160.0
         player.max_hp = 160.0
         player.mana = 100.0
@@ -839,7 +830,6 @@ class GameRoom:
             self._transform_player_to_monster(player)
         else:
             player.is_monster = False
-            player.skin = "wizzard_m"
             player.hp = 100.0
             player.max_hp = 100.0
             player.mana = 100.0
