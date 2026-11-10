@@ -393,6 +393,98 @@
       color: #e2e8f0;
       font-weight: 600;
     }
+
+    /* Score de survie */
+    .score-line {
+      font-size: 0.80rem;
+      font-weight: 800;
+      color: #34d399;
+      font-variant-numeric: tabular-nums;
+    }
+    .score-line.negative {
+      color: #fca5a5;
+    }
+    .spawn-timer {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+    }
+    .ranking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 0.70rem;
+    }
+    .rank-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-variant-numeric: tabular-nums;
+    }
+    .rank-row.me {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--accent-gold);
+    }
+    .rank-row.monster {
+      color: #fca5a5;
+    }
+
+    /* Tableau de fin de partie (GAME_OVER) */
+    .game-over-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 6, 10, 0.78);
+      backdrop-filter: blur(3px);
+      z-index: 40;
+    }
+    .game-over-overlay.hidden {
+      display: none;
+    }
+    .go-panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--accent-crimson);
+      border-radius: 10px;
+      padding: 18px 22px;
+      min-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 0 32px rgba(239, 68, 68, 0.35);
+    }
+    .go-panel h2 {
+      font-size: 1.1rem;
+      color: #fca5a5;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .go-panel p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    #go-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      font-variant-numeric: tabular-nums;
+    }
+    #go-table th, #go-table td {
+      padding: 4px 6px;
+      text-align: left;
+      border-bottom: 1px solid var(--panel-border);
+    }
+    #go-table th {
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.65rem;
+    }
+    #go-table tr.me td {
+      color: var(--accent-gold);
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -429,15 +521,30 @@
     <div class="canvas-viewport">
       <canvas id="game-canvas"></canvas>
 
+      <!-- Tableau de classement de fin de partie (GAME_OVER) -->
+      <div id="game-over-overlay" class="game-over-overlay hidden">
+        <div class="go-panel">
+          <h2>☠️ Tous les mages sont tombés</h2>
+          <p id="go-summary"></p>
+          <table id="go-table">
+            <thead>
+              <tr><th>#</th><th>Joueur</th><th>Score</th><th>Survie</th><th>Monstre</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <button id="btn-go-restart" class="btn-header" style="justify-content: center;">🔄 Nouveau donjon</button>
+        </div>
+      </div>
+
       <!-- Barre de Sortilèges Overlay -->
       <div class="canvas-spells-overlay">
         <div class="spell-chip">
-          <span class="sc-key">1</span>
+          <span class="sc-key">1 / A</span>
           <span>Orbe Pyrique</span>
           <span class="sc-cost">20 MP</span>
         </div>
         <div class="spell-chip">
-          <span class="sc-key">2</span>
+          <span class="sc-key">2 / Z</span>
           <span>Brise-Mur / Barricade</span>
           <span class="sc-cost">30 MP</span>
         </div>
@@ -447,13 +554,17 @@
           <span class="sc-cost">25 MP</span>
         </div>
         <div class="spell-chip">
-          <span class="sc-key">4</span>
+          <span class="sc-key">4 / R</span>
           <span>Saut Astral</span>
           <span class="sc-cost">35 MP</span>
         </div>
         <div class="spell-chip">
           <span class="sc-key">E</span>
           <span>Porte / Fontaine</span>
+        </div>
+        <div class="spell-chip">
+          <span class="sc-key">S</span>
+          <span>Stop</span>
         </div>
         <div class="spell-chip">
           <span class="sc-key">Shift</span>
@@ -475,11 +586,21 @@
         </div>
       </div>
 
+      <!-- Survie & Score (mode Survie Pure : aucun portail, survivre le plus longtemps possible) -->
+      <div class="hud-card">
+        <div class="hud-card-header">
+          <span>Survie &amp; Score</span>
+          <span id="kills-count" style="color: #fca5a5; font-weight: 700;">Monstres tués : 0</span>
+        </div>
+        <div id="score-line" class="score-line">Score : +0.0s (Survie: 0s − Monstre: 0s)</div>
+        <div id="spawn-timer" class="spawn-timer"></div>
+        <div id="live-ranking" class="ranking-list"></div>
+      </div>
+
       <!-- Vitalité & Mana -->
       <div class="hud-card">
         <div class="hud-card-header">
           <span>Signes Vitaux</span>
-          <span id="crystal-count" style="color: #38bdf8; font-weight: 700;">0 / 5 Cristaux</span>
         </div>
         <div class="bar-container">
           <div class="bar-label-row">
@@ -528,15 +649,17 @@
           <span>Contrôles du Donjon</span>
         </div>
         <div class="controls-guide">
-          <div><span>ZQSD / WASD / Flèches</span> : Déplacement</div>
-          <div><span>Souris</span> : Visée / Direction de la Torche</div>
-          <div><span>Clic Gauche</span> : Attaque de base / Griffe</div>
+          <div><span>Clic Droit</span> : Se déplacer (maintenir = suivre le curseur)</div>
+          <div><span>Souris (à l'arrêt)</span> : Orienter la lampe torche</div>
+          <div><span>Clic Gauche (à l'arrêt)</span> : Attaque de base / Griffe</div>
+          <div><span>1-4 / A-Z-R</span> : Sorts (Clairvoyance sur 3, E réservé aux portes)</div>
           <div><span>[1]</span> Orbe Pyrique (dégâts de zone)</div>
           <div><span>[2]</span> Brise-Mur (détruit ou crée un mur)</div>
           <div><span>[3]</span> Clairvoyance (élargit la vision)</div>
           <div><span>[4]</span> Saut Astral (téléportation courte)</div>
-          <div><span>[E]</span> Ouvrir/Fermer Porte & Boire Fontaine</div>
-          <div><span>[Shift]</span> Déplacement silencieux (aucun bruit)</div>
+          <div><span>[E]</span> Porte (ouvrir/fermer) & Boire Fontaine</div>
+          <div><span>[Shift]</span> Marche furtive (moins de bruit)</div>
+          <div><span>[S] / [Espace]</span> Stop (annule la marche)</div>
         </div>
       </div>
     </aside>

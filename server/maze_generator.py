@@ -13,7 +13,10 @@ Garanties :
 
 from __future__ import annotations
 
+import argparse
 import math
+import os
+from pathlib import Path
 import random
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -48,26 +51,56 @@ FLOOR_PROPS: list[str] = [
     "chest_empty_open_anim_f0",
 ]
 
+ASSETS_FRAMES_DIR: Path = Path(__file__).resolve().parent.parent / "assets" / "frames"
+
 
 class DungeonGenerator:
     """Générateur procédural de donjon 2.5D compatible tileset 0x72."""
 
-    def __init__(self, width: int = 56, height: int = 56, tile_size: int = 16) -> None:
+    def __init__(
+        self,
+        width: int = 56,
+        height: int = 56,
+        tile_size: int = 16,
+        seed: Optional[int] = None,
+    ) -> None:
         self.width = width
         self.height = height
         self.tile_size = tile_size
+        self.seed: Optional[int] = seed
+        self.dungeon: Optional[dict[str, Any]] = None
+        self.grid: list[list[int]] = []
+        self.tiles: list[list[dict[str, Optional[str]]]] = []
+        self.rooms: list[dict[str, Any]] = []
+        self.doors: list[tuple[int, int]] = []
+        self.portal: Optional[dict[str, Any]] = None
+        self.fountains: list[dict[str, Any]] = []
+        self.crystals: list[dict[str, Any]] = []
+        self.monster_spawns: list[tuple[int, int]] = []
+        if seed is not None:
+            self._generate_procedural_dungeon(seed)
+
+    def _generate_procedural_dungeon(self, seed: Optional[int] = None) -> dict[str, Any]:
+        """Génère le donjon procédural et met à jour les attributs de l'instance."""
+        return self.generate(seed=seed)
 
     def generate(self, seed: Optional[int] = None) -> dict[str, Any]:
         """Génère un donjon complet avec géométrie, autotiling 2.5D et entités."""
         if seed is None:
-            seed = random.randint(0, 99999999)
+            seed = self.seed if self.seed is not None else random.randint(0, 99999999)
+        self.seed = seed
         rng = random.Random(seed)
 
         # 1. Grille initiale vide
         grid: list[list[int]] = [[VOID for _ in range(self.width)] for _ in range(self.height)]
 
-        # 2. Placement des salles (12 à 15 salles avec écart >= 3)
+        # 2. Placement des salles (12 à 15 salles sur 56x56, adapté selon la surface)
         target_room_count = rng.randint(12, 15)
+        area = self.width * self.height
+        if area >= 5000:
+            target_room_count += 10
+        elif area <= 1800:
+            target_room_count = min(target_room_count, 10)
         rooms: list[dict[str, Any]] = []
 
         max_attempts = 600
@@ -103,7 +136,8 @@ class DungeonGenerator:
                     "h": rh,
                     "cx": cx,
                     "cy": cy,
-                    "kind": "normal"
+                    "kind": "normal",
+                    "shape": "rect",
                 })
 
                 # Remplir le sol de la salle
@@ -217,6 +251,60 @@ class DungeonGenerator:
                 grid[dy][dx] = DOOR_CLOSED
                 doors_placed.add((dx, dy))
 
+        # 5b. Extensions de salles composites en L ou en T (jusqu'à 3 salles hors salle 0)
+        composite_count = 0
+        for r in rooms[1:]:
+            if composite_count >= 3:
+                break
+            rx, ry, rw, rh = r["x"], r["y"], r["w"], r["h"]
+            if rw >= 9 and rh >= 8:
+                continue
+            for side in ("N", "S", "E", "W"):
+                aw, ah = 5, 4
+                if side == "N":
+                    ax, ay = rx + (rw - aw) // 2, ry - ah
+                    shape = "T"
+                elif side == "S":
+                    ax, ay = rx, ry + rh
+                    shape = "L"
+                elif side == "E":
+                    ax, ay = rx + rw, ry
+                    shape = "L"
+                else:
+                    ax, ay = rx - aw, ry + (rh - ah) // 2
+                    shape = "T"
+
+                if ax < 3 or ay < 3 or ax + aw > self.width - 4 or ay + ah > self.height - 4:
+                    continue
+
+                wing_collision = False
+                for r2 in rooms:
+                    if r2["id"] == r["id"]:
+                        continue
+                    if not (
+                        ax + aw + 3 <= r2["x"]
+                        or ax >= r2["x"] + r2["w"] + 3
+                        or ay + ah + 3 <= r2["y"]
+                        or ay >= r2["y"] + r2["h"] + 3
+                    ):
+                        wing_collision = True
+                        break
+
+                if not wing_collision:
+                    for dx, dy in doors_placed:
+                        if (ax - 1 <= dx <= ax + aw) and (ay - 1 <= dy <= ay + ah):
+                            wing_collision = True
+                            break
+
+                if not wing_collision:
+                    for wy in range(ay, ay + ah):
+                        for wx in range(ax, ax + aw):
+                            grid[wy][wx] = FLOOR
+                    r["shape"] = shape
+                    r["wing"] = {"x": ax, "y": ay, "w": aw, "h": ah, "side": side}
+                    composite_count += 1
+                    break
+
         # 6. Passe de garantie géométrique 0x72
         # (a) Tout VOID adjacent (8-voisins) à FLOOR ou DOOR devient WALL
         for y in range(self.height):
@@ -322,10 +410,10 @@ class DungeonGenerator:
                 "basin_sprite": "wall_fountain_basin_red_anim_f0"
             })
 
-        # Colonnes physiques (WALL) dans les grandes salles normales (>= 9x8) avant tirage des spawns
+        # Colonnes physiques (WALL) dans les grandes salles (>= 9x8) avant tirage des spawns
         for r in rooms:
             rx, ry, rw, rh = r["x"], r["y"], r["w"], r["h"]
-            if rw >= 9 and rh >= 8 and r["kind"] == "normal":
+            if rw >= 9 and rh >= 8 and r["kind"] in ("normal", "spawn"):
                 col_coords = (
                     (rx + 2, ry + 2),
                     (rx + rw - 3, ry + 2),
@@ -380,7 +468,15 @@ class DungeonGenerator:
         # 8. Autotiler 2.5D
         tiles = self.compute_autotiling(grid, rooms, seed, portal=portal, fountains=fountains)
 
-        return {
+        self.grid = grid
+        self.tiles = tiles
+        self.rooms = rooms
+        self.doors = sorted(doors_placed)
+        self.portal = portal
+        self.fountains = fountains
+        self.crystals = crystals
+        self.monster_spawns = monster_spawns
+        self.dungeon = {
             "width": self.width,
             "height": self.height,
             "tile_size": self.tile_size,
@@ -394,6 +490,7 @@ class DungeonGenerator:
             "crystals": crystals,
             "monster_spawns": monster_spawns,
         }
+        return self.dungeon
 
     def compute_autotiling(
         self,
@@ -506,13 +603,7 @@ class DungeonGenerator:
                         tiles[y][x]["wl"] = "wall_outer_mid_right"
 
         # 4. Props spéciaux
-        # (a) Portail
-        if portal:
-            ptx, pty = portal["tx"], portal["ty"]
-            if 0 <= ptx < width and 0 <= pty < height:
-                tiles[pty][ptx]["pr"] = "floor_ladder"
-
-        # (b) Fontaines
+        # (a) Fontaines
         if fountains:
             for f in fountains:
                 wtx, wty = f["wall_tx"], f["wall_ty"]
@@ -522,11 +613,11 @@ class DungeonGenerator:
                 if 0 <= ftx < width and 0 <= fty < height:
                     tiles[fty][ftx]["pr"] = f["basin_sprite"]
 
-        # (c) Colonnes dans les grandes salles et props au sol
+        # (b) Colonnes dans les grandes salles et props au sol
         for r in rooms:
             rx, ry, rw, rh = r["x"], r["y"], r["w"], r["h"]
             # Colonnes si salle assez grande (>= 9x8) et pilier encore WALL entouré de 4 FLOOR
-            if rw >= 9 and rh >= 8 and r["kind"] == "normal":
+            if rw >= 9 and rh >= 8 and r["kind"] in ("normal", "spawn"):
                 col_x1, col_y1 = rx + 2, ry + 2
                 col_x2, col_y2 = rx + rw - 3, ry + 2
                 col_x3, col_y3 = rx + 2, ry + rh - 3
@@ -558,6 +649,8 @@ class DungeonGenerator:
                         tiles[py][px]["pr"] = FLOOR_PROPS[h_prop % len(FLOOR_PROPS)]
 
         return tiles
+
+    _build_tile_layers = compute_autotiling
 
     def recompute_area(
         self,
@@ -597,3 +690,174 @@ class DungeonGenerator:
                 })
 
         return updated
+
+    def render_full_vision_image(
+        self,
+        output_path: str,
+        scale: int = 2,
+        crop_box: tuple[int, int, int, int] | None = None,
+    ) -> str:
+        """
+        Rend le labyrinthe en pleine visibilité (sans brouillard de guerre)
+        selon les couches 2.5D de self.tiles avec les sprites de assets/frames/.
+        """
+        from PIL import Image
+
+        if not self.tiles or not self.grid:
+            self._generate_procedural_dungeon(self.seed)
+
+        sprite_cache: dict[str, Image.Image] = {}
+
+        def get_sprite(name: str) -> Image.Image:
+            if name not in sprite_cache:
+                sprite_path = ASSETS_FRAMES_DIR / f"{name}.png"
+                sprite_cache[name] = Image.open(sprite_path).convert("RGBA")
+            return sprite_cache[name]
+
+        ts = self.tile_size
+        canvas = Image.new("RGBA", (self.width * ts, self.height * ts), (9, 10, 15, 255))
+
+        # 1. Couche de sol (fl)
+        for ty in range(self.height):
+            for tx in range(self.width):
+                tile = self.tiles[ty][tx]
+                fl = tile.get("fl")
+                if fl:
+                    sp = get_sprite(fl)
+                    canvas.alpha_composite(sp, (tx * ts, ty * ts))
+
+        # 2. Couche de base des murs (wb), portes, props au sol (pr) et rebords latéraux (wl / wr)
+        for ty in range(self.height):
+            for tx in range(self.width):
+                tile = self.tiles[ty][tx]
+                px, py = tx * ts, ty * ts
+
+                wb = tile.get("wb")
+                pr = tile.get("pr")
+
+                if wb == "column" or pr == "column":
+                    col_img = get_sprite("column")
+                    shaft = col_img.crop((0, 16, 16, 40))
+                    canvas.alpha_composite(shaft, (px, max(0, py - 8)))
+                else:
+                    if pr:
+                        pr_img = get_sprite(pr)
+                        oy = py + ts - pr_img.height if pr_img.height > ts else py
+                        canvas.alpha_composite(pr_img, (px, max(0, oy)))
+                    if wb:
+                        wb_img = get_sprite(wb)
+                        if wb in ("doors_leaf_closed", "doors_leaf_open") and wb_img.size != (ts, ts):
+                            wb_img = wb_img.resize((ts, ts), Image.Resampling.NEAREST)
+                        canvas.alpha_composite(wb_img, (px, py))
+
+                wl = tile.get("wl")
+                if wl:
+                    canvas.alpha_composite(get_sprite(wl), (px, py))
+                wr = tile.get("wr")
+                if wr:
+                    canvas.alpha_composite(get_sprite(wr), (px, py))
+
+        # 3. Cristaux d'Arcane sur le sol
+        for cr in self.crystals:
+            ctx_i, cty_i = int(cr["tx"]), int(cr["ty"])
+            if 0 <= ctx_i < self.width and 0 <= cty_i < self.height:
+                c_img = get_sprite(cr.get("sprite", "flask_big_blue"))
+                canvas.alpha_composite(c_img, (ctx_i * ts, cty_i * ts))
+
+        # 4. Couche supérieure 2.5D (wt : wall_top_*, wall_outer_top_*, column décalée en Y)
+        for ty in range(self.height):
+            for tx in range(self.width):
+                tile = self.tiles[ty][tx]
+                wt = tile.get("wt")
+                if not wt:
+                    continue
+                px, py = tx * ts, ty * ts
+                if wt == "column":
+                    col_img = get_sprite("column")
+                    cap = col_img.crop((0, 0, 16, 20))
+                    canvas.alpha_composite(cap, (px, max(0, py - 24)))
+                else:
+                    wt_img = get_sprite(wt)
+                    canvas.alpha_composite(wt_img, (px, py))
+
+        if crop_box is not None:
+            tx0, ty0, tx1, ty1 = crop_box
+            x0 = max(0, min(self.width, tx0)) * ts
+            y0 = max(0, min(self.height, ty0)) * ts
+            x1 = max(x0 + ts, min(self.width, tx1) * ts)
+            y1 = max(y0 + ts, min(self.height, ty1) * ts)
+            canvas = canvas.crop((x0, y0, x1, y1))
+
+        if scale > 1:
+            canvas = canvas.resize(
+                (canvas.width * scale, canvas.height * scale),
+                Image.Resampling.NEAREST,
+            )
+
+        out_file = Path(output_path).resolve()
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        canvas.save(out_file, format="PNG")
+        return str(out_file)
+
+
+class Maze(DungeonGenerator):
+    """Classe de labyrinthe procédural 2.5D avec génération immédiate et export d'image."""
+
+    def __init__(
+        self,
+        width: int = 56,
+        height: int = 56,
+        seed: Optional[int] = None,
+        tile_size: int = 16,
+    ) -> None:
+        super().__init__(width=width, height=height, tile_size=tile_size, seed=seed)
+        if not self.tiles:
+            self._generate_procedural_dungeon(seed=seed)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Générateur procédural de donjon 2.5D Mazic et export PNG full-vision."
+    )
+    parser.add_argument("--width", type=int, default=56, help="Largeur de la grille en cases (défaut: 56)")
+    parser.add_argument("--height", type=int, default=56, help="Hauteur de la grille en cases (défaut: 56)")
+    parser.add_argument("--seed", type=int, default=None, help="Graine aléatoire optionnelle (int)")
+    parser.add_argument("--scale", type=int, default=2, help="Facteur d'agrandissement NEAREST (défaut: 2)")
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="maze_full_vision.png",
+        help="Chemin du fichier PNG de sortie",
+    )
+    parser.add_argument(
+        "--crop",
+        type=str,
+        default=None,
+        help="Découpe optionnelle x0,y0,x1,y1 en cases (ex: 26,12,43,27)",
+    )
+    args = parser.parse_args()
+
+    crop_tuple: tuple[int, int, int, int] | None = None
+    if args.crop:
+        parts = [int(p.strip()) for p in args.crop.split(",")]
+        if len(parts) != 4:
+            raise ValueError("--crop doit contenir 4 entiers séparés par des virgules: x0,y0,x1,y1")
+        crop_tuple = (parts[0], parts[1], parts[2], parts[3])
+
+    maze = Maze(width=args.width, height=args.height, seed=args.seed)
+    saved_path = maze.render_full_vision_image(
+        output_path=args.output,
+        scale=args.scale,
+        crop_box=crop_tuple,
+    )
+    comp_rooms = sum(1 for r in maze.rooms if r.get("shape") in ("L", "T"))
+    col_rooms = sum(
+        1
+        for r in maze.rooms
+        if r["w"] >= 9 and r["h"] >= 8 and r["kind"] in ("normal", "spawn")
+    )
+    print(
+        f"[Mazic MazeGenerator] Dimensions={maze.width}x{maze.height} | "
+        f"Seed={maze.seed} | Salles={len(maze.rooms)} (dont {comp_rooms} composites L/T, {col_rooms} à colonnes) | "
+        f"Portes={len(maze.doors)} | Scale=x{args.scale} | Crop={crop_tuple} -> {saved_path}"
+    )

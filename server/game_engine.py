@@ -38,6 +38,32 @@ HERO_SKINS = [
 MONSTER_SKINS = ["chort", "skelet", "big_zombie", "masked_orc", "imp", "tiny_zombie"]
 MONSTER_PLAYER_SKIN = "big_demon"
 
+# Types de monstres IA actuellement activés en jeu.
+# Statistiques de base FIXES : elles n'augmentent pas avec le temps.
+# (La vitesse est modulée uniquement par l'état IA : PATROL 42 / SEARCH 50 / CHASE 76.)
+MONSTER_TYPES: dict[str, dict[str, Any]] = {
+    "hunter": {
+        "skin": "chort",
+        "hp": 100.0,
+        "speed": 42.0,
+        "unlock_kills": 0,
+        "base_weight": 1.0,
+    },
+}
+
+# Apparition continue des monstres IA (style Zombie Wars)
+MONSTER_SPAWN_INTERVAL = 15.0  # secondes entre deux apparitions
+MONSTER_SPAWN_MIN_TILES = 12  # distance minimale (en cases) à tout humain vivant
+MAX_ACTIVE_AI_MONSTERS = 14  # plafond de monstres IA simultanés
+INITIAL_AI_MONSTERS = 4
+
+# Joueur-Monstre abattu : réapparition éloignée + étourdissement
+PLAYER_MONSTER_RESPAWN_STUN = 4.0
+
+# Déplacement au clic droit (style LoL)
+MOVE_TARGET_ARRIVAL_PX = 3.0
+MOVING_SPEED_THRESHOLD = 2.0
+
 
 def is_cell_blocking(grid: list[list[int]], tx: int, ty: int) -> bool:
     """Vérifie si une tuile de la grille bloque le passage et la vue."""
@@ -247,6 +273,15 @@ class PlayerState:
     noise_event_timer: float = 0.0
     arcane_sight_until: float = 0.0
     stun_until: float = 0.0
+    # Déplacement au clic droit (style LoL) et visée souris à l'arrêt
+    move_target_x: float = 0.0
+    move_target_y: float = 0.0
+    has_move_target: bool = False
+    mouse_aim_angle: float = 0.0
+    # Score de survie : score = survie - temps monstre pendant que d'autres humains vivaient
+    survival_time: float = 0.0
+    monster_active_time: float = 0.0
+    score: float = 0.0
     spell_cooldowns: dict[str, float] = field(default_factory=lambda: {
         "attack": 0.0,
         "1": 0.0,
@@ -254,7 +289,14 @@ class PlayerState:
         "3": 0.0,
         "4": 0.0,
         "interact": 0.0,
+        "respawn": 0.0,
     })
+
+    def clear_move_target(self) -> None:
+        """Annule l'ordre de marche et immobilise immédiatement le joueur."""
+        self.has_move_target = False
+        self.vx = 0.0
+        self.vy = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -279,6 +321,12 @@ class PlayerState:
             "arcane_sight_active": self.arcane_sight_until > time.time(),
             "is_stunned": self.stun_until > time.time(),
             "cooldowns": {k: round(max(0.0, v), 2) for k, v in self.spell_cooldowns.items()},
+            "has_move_target": self.has_move_target,
+            "move_target_x": round(self.move_target_x, 2),
+            "move_target_y": round(self.move_target_y, 2),
+            "survival_time": round(self.survival_time, 1),
+            "monster_active_time": round(self.monster_active_time, 1),
+            "score": round(self.score, 1),
         }
 
 
@@ -296,6 +344,7 @@ class MonsterState:
     anim: str = "idle"
     hp: float = 100.0
     max_hp: float = 100.0
+    monster_type: str = "hunter"
     state: str = "PATROL"  # PATROL, CHASE, SEARCH
     last_known_pos: tuple[float, float] | None = None
     target_player_id: str | None = None
@@ -313,6 +362,7 @@ class MonsterState:
             "id": self.id,
             "name": self.name,
             "skin": self.skin,
+            "monster_type": self.monster_type,
             "x": round(self.x, 2),
             "y": round(self.y, 2),
             "vx": round(self.vx, 2),
@@ -375,14 +425,16 @@ class GameRoom:
         self.pending_tile_updates: list[dict[str, Any]] = []
         self.events: list[dict[str, Any]] = []
 
-        self.crystals: list[dict[str, Any]] = self.dungeon.get("crystals", [])
-        self.crystals_collected: int = sum(1 for c in self.crystals if c.get("collected", False))
-        self.portal: dict[str, Any] = self.dungeon.get(
-            "portal", {"x": 200.0, "y": 200.0, "tx": 12, "ty": 12, "active": False}
-        )
+        # Mode Survie Pure : aucun cristal ni portail, les joueurs sont condamnés à perdre.
+        # Le but est de survivre le plus longtemps possible (cf. PlayerState.score).
         self.fountains: list[dict[str, Any]] = self.dungeon.get("fountains", [])
-        self.game_status: str = "RUNNING"  # RUNNING, HUMANS_WIN, MONSTERS_WIN
+        self.game_status: str = "RUNNING"  # RUNNING, GAME_OVER
         self.projectile_seq: int = 0
+        self.monster_seq: int = 0
+        self.monsters_killed: int = 0
+        self.monster_spawn_timer: float = MONSTER_SPAWN_INTERVAL
+        # Classement figé au passage en GAME_OVER (None tant que la partie tourne)
+        self.final_ranking: list[dict[str, Any]] | None = None
 
         self.generator = DungeonGenerator(self.width, self.height)
         self._spawn_initial_monsters()
@@ -395,31 +447,186 @@ class GameRoom:
         """Recalcule l'autotiling autour d'une case modifiée."""
         return self.generator.recompute_area(self.dungeon, tx, ty, radius=radius)
 
-    def _spawn_initial_monsters(self) -> None:
-        """Fait apparaître 4 monstres IA dans les salles distantes."""
-        spawns = self.dungeon.get("monster_spawns", [])
-        if not spawns:
-            # Trouver des cases de sol loin du spawn
-            spawns = [(self.width * 12, self.height * 12)]
+    def choose_next_monster_type(self) -> str:
+        """
+        Choisit le type du prochain monstre IA selon des poids probabilistes
+        dépendant du nombre de monstres déjà éliminés (`self.monsters_killed`).
 
-        count = min(4, max(1, len(spawns)))
-        for i in range(4):
-            sx, sy = spawns[i % len(spawns)]
-            # Décaler légèrement pour ne pas empiler
-            sx += (i % 2) * 16 - 8
-            sy += (i // 2) * 16 - 8
-            skin = MONSTER_SKINS[i % len(MONSTER_SKINS)]
-            m = MonsterState(
-                id=f"m_{i+1}",
-                name=f"Monster {i+1}",
-                skin=skin,
-                x=float(sx),
-                y=float(sy),
-                hp=100.0,
-                max_hp=100.0,
-                state="PATROL",
+        Seuls les types présents dans `MONSTER_TYPES` dont le palier
+        `unlock_kills` est atteint participent au tirage.
+
+        Paliers futurs prévus (NON activés tant qu'ils ne sont pas ajoutés à MONSTER_TYPES) :
+          - 10 kills : « Rôdeur » (skin `skelet`), rapide mais fragile ;
+          - 25 kills : « Brute » (skin `big_zombie`), lente, très résistante ;
+          - 45 kills : « Chaman » (skin `masked_orc`), sorts à distance.
+        Leur poids croîtra avec `monsters_killed` au-delà de leur palier, celui du
+        Chasseur de base décroissant d'autant.
+
+        Tant que seul le Chasseur Honnête est activé, retourne toujours `"hunter"`
+        (skin `chort`).
+        """
+        unlocked = [
+            name for name, spec in MONSTER_TYPES.items()
+            if self.monsters_killed >= spec["unlock_kills"]
+        ]
+        if not unlocked:
+            raise RuntimeError(
+                f"Aucun type de monstre débloqué pour monsters_killed={self.monsters_killed}"
             )
-            self.monsters.append(m)
+        weights = [MONSTER_TYPES[name]["base_weight"] for name in unlocked]
+        return random.choices(unlocked, weights=weights, k=1)[0]
+
+    def _create_monster(self, monster_type: str, x: float, y: float) -> MonsterState:
+        """Instancie un monstre IA du type demandé avec ses statistiques de base fixes."""
+        spec = MONSTER_TYPES[monster_type]
+        self.monster_seq += 1
+        m = MonsterState(
+            id=f"m_{self.monster_seq}",
+            name=f"Monster {self.monster_seq}",
+            skin=spec["skin"],
+            x=float(x),
+            y=float(y),
+            hp=spec["hp"],
+            max_hp=spec["hp"],
+            monster_type=monster_type,
+            state="PATROL",
+            speed=spec["speed"],
+        )
+        self.monsters.append(m)
+        return m
+
+    def _spawn_initial_monsters(self) -> None:
+        """
+        Fait apparaître les Chasseurs initiaux sur des points de spawn distincts,
+        à au moins MONSTER_SPAWN_MIN_TILES cases de tout point d'apparition joueur
+        (même règle que l'apparition continue : pas de monstre collé au départ).
+        """
+        spawns = self.dungeon.get("monster_spawns", [])
+        player_spawns = self.dungeon.get("spawn_points", [])
+        if not spawns or not player_spawns:
+            raise ValueError("Le donjon généré doit contenir 'monster_spawns' et 'spawn_points'.")
+
+        min_px = MONSTER_SPAWN_MIN_TILES * TILE_SIZE
+        far_spawns = [
+            (mx, my) for mx, my in spawns
+            if min(math.hypot(mx - sx, my - sy) for sx, sy in player_spawns) >= min_px
+        ]
+        if len(far_spawns) < INITIAL_AI_MONSTERS:
+            raise ValueError(
+                f"Seulement {len(far_spawns)} monster_spawns à >= {MONSTER_SPAWN_MIN_TILES} cases "
+                f"du départ (requis : {INITIAL_AI_MONSTERS})."
+            )
+
+        for sx, sy in random.sample(far_spawns, INITIAL_AI_MONSTERS):
+            self._create_monster(self.choose_next_monster_type(), sx, sy)
+
+    def _living_humans(self) -> list[PlayerState]:
+        """Joueurs humains encore en vie."""
+        return [p for p in self.players.values() if not p.is_monster and p.hp > 0]
+
+    def _find_far_spawn_position(self) -> tuple[float, float, float | None] | None:
+        """
+        Cherche une case de sol libre à au moins MONSTER_SPAWN_MIN_TILES cases
+        de tout humain vivant. Retourne (x, y, distance_min_en_cases) — distance
+        None s'il n'y a plus aucun humain vivant — ou None si aucune case du
+        donjon ne satisfait la contrainte.
+        """
+        humans = self._living_humans()
+        min_px = MONSTER_SPAWN_MIN_TILES * TILE_SIZE
+        candidates: list[tuple[float, float, float | None]] = []
+        for ty in range(self.height):
+            for tx in range(self.width):
+                if self.grid[ty][tx] != FLOOR:
+                    continue
+                cx = tx * TILE_SIZE + 8.0
+                cy = ty * TILE_SIZE + 8.0
+                if check_box_collision(self.grid, cx, cy, r=5.5):
+                    continue
+                if not humans:
+                    candidates.append((cx, cy, None))
+                    continue
+                d = min(math.hypot(h.x - cx, h.y - cy) for h in humans)
+                if d >= min_px:
+                    candidates.append((cx, cy, d / TILE_SIZE))
+        if not candidates:
+            return None
+        return random.choice(candidates)
+
+    def _update_monster_spawning(self, dt: float) -> None:
+        """Apparition continue d'un monstre IA toutes les MONSTER_SPAWN_INTERVAL secondes."""
+        self.monster_spawn_timer -= dt
+        if self.monster_spawn_timer > 0:
+            return
+        self.monster_spawn_timer = MONSTER_SPAWN_INTERVAL
+
+        alive_ai = sum(1 for m in self.monsters if m.hp > 0)
+        if alive_ai >= MAX_ACTIVE_AI_MONSTERS:
+            return
+
+        pos = self._find_far_spawn_position()
+        if pos is None:
+            # Règle de jeu explicite : on ne fait jamais apparaître un monstre à
+            # moins de 12 cases d'un humain. Le cycle est sauté et signalé.
+            self.events.append({
+                "type": "monster_spawn_skipped",
+                "reason": f"aucune case à >= {MONSTER_SPAWN_MIN_TILES} cases des humains",
+            })
+            return
+
+        sx, sy, _ = pos
+        m = self._create_monster(self.choose_next_monster_type(), sx, sy)
+        self.events.append({
+            "type": "monster_spawned",
+            "monster_id": m.id,
+            "monster_type": m.monster_type,
+            "x": m.x,
+            "y": m.y,
+        })
+
+    def _respawn_player_monster(self, player: PlayerState) -> None:
+        """
+        Un Joueur-Monstre abattu ne meurt pas : il réapparaît loin des humains,
+        PV restaurés, étourdi PLAYER_MONSTER_RESPAWN_STUN secondes.
+        """
+        pos = self._find_far_spawn_position()
+        if pos is not None:
+            nx, ny, dist_tiles = pos
+            far_enough = True
+        else:
+            # Aucune case à >= 12 cases : on prend explicitement la case de sol la
+            # plus éloignée de tous les humains (signalé dans l'événement).
+            humans = self._living_humans()
+            best: tuple[float, float, float] | None = None
+            for ty in range(self.height):
+                for tx in range(self.width):
+                    if self.grid[ty][tx] != FLOOR:
+                        continue
+                    cx = tx * TILE_SIZE + 8.0
+                    cy = ty * TILE_SIZE + 8.0
+                    if check_box_collision(self.grid, cx, cy, r=5.5):
+                        continue
+                    d = min(math.hypot(h.x - cx, h.y - cy) for h in humans)
+                    if best is None or d > best[2]:
+                        best = (cx, cy, d)
+            if best is None:
+                raise RuntimeError("Aucune case de sol libre pour la réapparition du Joueur-Monstre.")
+            nx, ny, dist_tiles = best[0], best[1], best[2] / TILE_SIZE
+            far_enough = False
+
+        player.x = nx
+        player.y = ny
+        player.hp = player.max_hp
+        player.clear_move_target()
+        player.stun_until = time.time() + PLAYER_MONSTER_RESPAWN_STUN
+        player.spell_cooldowns["respawn"] = PLAYER_MONSTER_RESPAWN_STUN
+        self.events.append({
+            "type": "player_monster_respawn",
+            "player_id": player.id,
+            "x": nx,
+            "y": ny,
+            "distance_tiles": round(dist_tiles, 1) if dist_tiles is not None else None,
+            "min_distance_met": far_enough,
+        })
 
     def add_player(self, player_id: str, name: str, skin: str = "wizzard_m") -> PlayerState:
         """Ajoute un joueur à la partie sur l'un des points de réapparition."""
@@ -455,63 +662,25 @@ class GameRoom:
 
         now = time.time()
         if player.stun_until > now:
-            player.vx = 0.0
-            player.vy = 0.0
+            player.clear_move_target()
             player.anim = "hit"
             return
 
-        # Vitesse maximale selon statut
-        if player.is_monster:
-            max_speed = 92.0
-        elif player.sneak:
-            max_speed = 42.0
-        else:
-            max_speed = 76.0
-
-        # Orientation & angles
-        aim_angle = data.get("aim_angle", player.aim_angle)
-        player.aim_angle = float(aim_angle)
+        # Visée souris (utilisée pour la lampe torche uniquement à l'arrêt, cf. step())
+        if "aim_angle" in data:
+            player.mouse_aim_angle = float(data["aim_angle"])
         player.sneak = bool(data.get("sneak", False))
         player.mic_rms = max(0.0, min(1.0, float(data.get("mic_rms", 0.0))))
 
-        # Déplacement par touches (WASD / flèches) ou vecteur direct
-        vx = float(data.get("vx", 0.0))
-        vy = float(data.get("vy", 0.0))
-        keys = data.get("keys", {})
-        if keys:
-            kx = 0.0
-            ky = 0.0
-            if keys.get("left") or keys.get("KeyA") or keys.get("a"):
-                kx -= 1.0
-            if keys.get("right") or keys.get("KeyD") or keys.get("d"):
-                kx += 1.0
-            if keys.get("up") or keys.get("KeyW") or keys.get("w"):
-                ky -= 1.0
-            if keys.get("down") or keys.get("KeyS") or keys.get("s"):
-                ky += 1.0
-            if kx != 0.0 or ky != 0.0:
-                length = math.hypot(kx, ky)
-                vx = (kx / length) * max_speed
-                vy = (ky / length) * max_speed
-        elif math.hypot(vx, vy) > 0.0:
-            # Vecteur de direction envoyé par le client JS (ex: [-1..1])
-            mag = math.hypot(vx, vy)
-            if mag <= 1.05:
-                vx = (vx / mag) * max_speed
-                vy = (vy / mag) * max_speed
-
-        player.vx = vx
-        player.vy = vy
-
-        if vx < -0.1:
-            player.facing_left = True
-        elif vx > 0.1:
-            player.facing_left = False
-
-        if math.hypot(vx, vy) > 1.0:
-            player.anim = "run"
-        else:
-            player.anim = "idle"
+        # Déplacement au clic droit (style LoL) : la touche S / Espace annule l'ordre.
+        if data.get("stop"):
+            player.clear_move_target()
+        elif "move_target_x" in data and "move_target_y" in data:
+            world_w = float(self.width * TILE_SIZE)
+            world_h = float(self.height * TILE_SIZE)
+            player.move_target_x = max(0.0, min(world_w, float(data["move_target_x"])))
+            player.move_target_y = max(0.0, min(world_h, float(data["move_target_y"])))
+            player.has_move_target = True
 
         # Actions (supporte 'attack' et 'action_attack', 'spell' et 'action_spell', 'interact' et 'action_interact')
         if data.get("attack") or data.get("action_attack"):
@@ -526,9 +695,73 @@ class GameRoom:
 
     handle_input = handle_player_input
 
+    def _player_max_speed(self, player: PlayerState) -> float:
+        """Vitesse maximale du joueur selon son statut."""
+        if player.is_monster:
+            return 92.0
+        if player.sneak:
+            return 42.0
+        return 76.0
+
+    def _update_player_movement(self, player: PlayerState, dt: float, now: float) -> None:
+        """
+        Déplacement vers la cible du clic droit avec glissement AABB, puis couplage
+        de la lampe torche : en marche elle suit la direction de marche, à l'arrêt
+        elle suit le curseur de la souris.
+        """
+        stunned = player.stun_until > now
+        if stunned:
+            player.vx = 0.0
+            player.vy = 0.0
+        elif player.has_move_target:
+            dx = player.move_target_x - player.x
+            dy = player.move_target_y - player.y
+            dist = math.hypot(dx, dy)
+            if dist <= MOVE_TARGET_ARRIVAL_PX:
+                player.clear_move_target()
+            else:
+                # Ne pas dépasser la cible lors du dernier tick
+                speed = min(self._player_max_speed(player), dist / dt)
+                player.vx = (dx / dist) * speed
+                player.vy = (dy / dist) * speed
+        else:
+            player.vx = 0.0
+            player.vy = 0.0
+
+        if not stunned and (player.vx != 0.0 or player.vy != 0.0):
+            old_x, old_y = player.x, player.y
+            new_x, new_y, collided = move_entity_with_collision(
+                self.grid, player.x, player.y, player.vx, player.vy, dt, r=5.5
+            )
+            player.x = new_x
+            player.y = new_y
+            # Bloqué net contre un mur (aucun glissement possible) : l'ordre de marche est abandonné.
+            if collided and math.hypot(new_x - old_x, new_y - old_y) < 0.05:
+                player.clear_move_target()
+
+        moving = math.hypot(player.vx, player.vy) > MOVING_SPEED_THRESHOLD
+        if moving:
+            player.aim_angle = math.atan2(player.vy, player.vx)
+            if abs(player.vx) > 0.1:
+                player.facing_left = player.vx < 0
+            player.anim = "run"
+        else:
+            player.aim_angle = player.mouse_aim_angle
+            player.facing_left = math.cos(player.aim_angle) < 0
+            player.anim = "hit" if stunned else "idle"
+
     def _handle_attack(self, player: PlayerState) -> None:
         """Attaque de base (clic gauche)."""
-        now = time.time()
+        if not player.is_monster:
+            # Règle Mazic : l'attaque de base d'un mage ne se tire QU'À L'ARRÊT.
+            # Tout clic gauche en marche annule d'abord l'ordre de marche (même si
+            # l'attaque est en recharge ou si le mana manque) et oriente le mage
+            # vers le curseur.
+            player.clear_move_target()
+            player.aim_angle = player.mouse_aim_angle
+            player.facing_left = math.cos(player.aim_angle) < 0
+            player.anim = "idle"
+
         cd = player.spell_cooldowns.get("attack", 0.0)
         if cd > 0:
             return
@@ -553,9 +786,11 @@ class GameRoom:
                         if target.hp <= 0:
                             self._transform_player_to_monster(target)
         else:
-            # Humain : petit trait d'énergie rapide
+            # Humain : petit trait d'énergie rapide, tiré immobile (cf. ci-dessus).
             if player.mana < 10.0:
                 return
+            if player.has_move_target or player.vx != 0.0 or player.vy != 0.0:
+                raise RuntimeError(f"Attaque de base tirée en mouvement par {player.id}")
             player.mana -= 10.0
             player.spell_cooldowns["attack"] = 0.45
             self.projectile_seq += 1
@@ -701,6 +936,8 @@ class GameRoom:
 
             player.x = best_x
             player.y = best_y
+            # Le saut astral remplace l'ordre de marche en cours
+            player.clear_move_target()
             player.mana -= 35.0
             player.spell_cooldowns["4"] = 5.0
             player.noise_radius = max(player.noise_radius, 150.0)
@@ -806,6 +1043,22 @@ class GameRoom:
         """Tick autoritaire serveur à 30 Hz."""
         now = time.time()
 
+        # 0. Score de survie en temps réel & apparition continue des monstres.
+        # Tant qu'au moins un humain est en vie :
+        #   - chaque humain accumule du temps de survie ;
+        #   - chaque joueur transformé accumule du temps « monstre » (pénalité),
+        #     puisque d'autres joueurs humains sont encore en vie.
+        # score = survival_time - monster_active_time
+        survivors_now = self._living_humans()
+        if self.game_status == "RUNNING" and len(survivors_now) >= 1:
+            for p in self.players.values():
+                if p.is_monster:
+                    p.monster_active_time += dt
+                else:
+                    p.survival_time += dt
+                p.score = round(p.survival_time - p.monster_active_time, 1)
+            self._update_monster_spawning(dt)
+
         # 1. Mise à jour des joueurs
         for player in self.players.values():
             # Régénération passive de mana pour les humains
@@ -817,9 +1070,12 @@ class GameRoom:
                 if player.spell_cooldowns[k] > 0:
                     player.spell_cooldowns[k] = max(0.0, player.spell_cooldowns[k] - dt)
 
+            # Déplacement vers la cible du clic droit + couplage lampe torche
+            self._update_player_movement(player, dt, now)
+
             # Bruit sonore et micro
             speed = math.hypot(player.vx, player.vy)
-            if speed > 2.0:
+            if speed > MOVING_SPEED_THRESHOLD:
                 base_noise = 18.0 if player.sneak else 65.0
             else:
                 base_noise = 0.0
@@ -832,33 +1088,6 @@ class GameRoom:
                 player.noise_radius = base_noise
 
             player.noise_radius += player.mic_rms * 240.0
-
-            # Déplacement physique AABB si non étourdi
-            if player.stun_until <= now:
-                new_x, new_y, _ = move_entity_with_collision(
-                    self.grid, player.x, player.y, player.vx, player.vy, dt, r=5.5
-                )
-                player.x = new_x
-                player.y = new_y
-
-            # Collecte des cristaux pour les humains
-            if not player.is_monster:
-                for c in self.crystals:
-                    if not c.get("collected", False):
-                        cx = c.get("x", c.get("tx", 0) * 16 + 8)
-                        cy = c.get("y", c.get("ty", 0) * 16 + 8)
-                        if math.hypot(cx - player.x, cy - player.y) <= 16.0:
-                            c["collected"] = True
-                            self.crystals_collected += 1
-                            self.events.append({
-                                "type": "crystal_collected",
-                                "crystal_id": c.get("id"),
-                                "player_id": player.id,
-                                "total": self.crystals_collected,
-                            })
-                            if self.crystals_collected >= len(self.crystals):
-                                self.portal["active"] = True
-                                self.events.append({"type": "portal_activated"})
 
         # 2. Mise à jour des projectiles
         alive_projectiles: list[ProjectileState] = []
@@ -892,7 +1121,15 @@ class GameRoom:
                         "y": m.y,
                     })
                     if m.hp <= 0:
-                        self.events.append({"type": "monster_killed", "monster_id": m.id})
+                        self.monsters_killed += 1
+                        self.events.append({
+                            "type": "monster_killed",
+                            "monster_id": m.id,
+                            "killer_id": proj.owner_id,
+                            "total_killed": self.monsters_killed,
+                            "x": m.x,
+                            "y": m.y,
+                        })
                     break
 
             if hit:
@@ -904,6 +1141,7 @@ class GameRoom:
                 if p.id != proj.owner_id and p.is_monster and p.hp > 0:
                     if math.hypot(p.x - proj.x, p.y - proj.y) <= 9.0:
                         p.stun_until = now + 2.0
+                        p.clear_move_target()
                         p.hp -= proj.damage * 0.5
                         hit = True
                         self.events.append({
@@ -913,6 +1151,9 @@ class GameRoom:
                             "x": p.x,
                             "y": p.y,
                         })
+                        if p.hp <= 0:
+                            # Monstre Immortel : pas de mort définitive, réapparition éloignée
+                            self._respawn_player_monster(p)
                         break
 
             if hit:
@@ -922,22 +1163,32 @@ class GameRoom:
             alive_projectiles.append(proj)
         self.projectiles = alive_projectiles
 
+        # Les monstres IA éliminés sont retirés du monde (le plafond ne compte que les vivants)
+        self.monsters = [m for m in self.monsters if m.hp > 0]
+
         # 3. Machine à états de l'IA (« Chasseur Honnête »)
         self._update_monsters_ai(dt)
 
-        # 4. Vérification conditions de fin de partie
-        survivors = [p for p in self.players.values() if not p.is_monster and p.hp > 0]
-        if self.players and not survivors:
-            self.game_status = "MONSTERS_WIN"
-            self.events.append({"type": "game_over", "winner": "MONSTERS"})
-        elif self.portal.get("active", False):
-            px = self.portal.get("x", self.portal.get("tx", 0) * 16 + 8)
-            py = self.portal.get("y", self.portal.get("ty", 0) * 16 + 8)
-            for p in survivors:
-                if math.hypot(p.x - px, p.y - py) <= 16.0:
-                    self.game_status = "HUMANS_WIN"
-                    self.events.append({"type": "game_over", "winner": "HUMANS"})
-                    break
+        # 4. Fin de partie : uniquement quand tous les humains présents sont devenus monstres.
+        survivors = self._living_humans()
+        if self.game_status == "RUNNING" and self.players and len(survivors) == 0:
+            self.game_status = "GAME_OVER"
+            ranking = sorted(self.players.values(), key=lambda p: p.score, reverse=True)
+            self.final_ranking = [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "score": round(p.score, 1),
+                    "survival_time": round(p.survival_time, 1),
+                    "monster_active_time": round(p.monster_active_time, 1),
+                }
+                for p in ranking
+            ]
+            self.events.append({
+                "type": "game_over",
+                "monsters_killed": self.monsters_killed,
+                "ranking": self.final_ranking,
+            })
 
     def _update_monsters_ai(self, dt: float) -> None:
         """IA Chasseur Honnête sans triche pour chaque monstre."""
@@ -1123,10 +1374,10 @@ class GameRoom:
             "players_list": list(players_dict.values()),
             "monsters": [m.to_dict() for m in self.monsters],
             "projectiles": [proj.to_dict() for proj in self.projectiles],
-            "crystals": self.crystals,
-            "crystals_collected": self.crystals_collected,
+            "monsters_killed": self.monsters_killed,
+            "next_monster_spawn_in": round(max(0.0, self.monster_spawn_timer), 1),
+            "final_ranking": self.final_ranking,
             "fountains": self.fountains,
-            "portal": self.portal,
             "tile_updates": list(self.pending_tile_updates),
             "pending_tile_updates": list(self.pending_tile_updates),
             "events": list(self.events),

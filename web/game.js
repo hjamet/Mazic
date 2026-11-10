@@ -73,6 +73,8 @@
 
       this.assets = new AssetLoader();
       this.voice = new VoiceProximityEngine();
+      // Point d'accès global aux bruitages spatialisés : window.voiceChat.playSpatialSound(...)
+      window.voiceChat = this.voice;
 
       this.ws = null;
       this.myId = null;
@@ -90,10 +92,11 @@
       this.players = {};
       this.monsters = [];
       this.projectiles = [];
-      this.crystals = [];
       this.fountains = [];
-      this.portal = null;
       this.gameStatus = "RUNNING";
+      this.monstersKilled = 0;
+      this.nextMonsterSpawnIn = null;
+      this.finalRanking = null;
       this.events = [];
 
       // Vision Directionnelle & Oubli Progressif (last_seen)
@@ -107,7 +110,15 @@
       this.worldMouse = { x: 0, y: 0 };
       this.aimAngle = 0.0;
       this.mouseLeftDown = false;
+      // Déplacement au clic droit (style LoL)
+      this.mouseRightDown = false;
+      this.pendingMoveTarget = null; // { x, y } à envoyer au prochain input
+      this.pendingStop = false;
+      this.clickMarkers = []; // anneaux d'ordre de marche { x, y, born }
       this.spellCooldowns = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+      // Pas des monstres spatialisés : entityId -> dernier pas (ms)
+      this.footstepTimers = new Map();
 
       // Caméra
       this.camX = 0;
@@ -126,15 +137,31 @@
       window.addEventListener("resize", () => this.resizeCanvas());
       this.resizeCanvas();
 
+      // Politique d'autoplay : l'AudioContext (voix + bruitages) est créé au premier geste.
+      const unlockAudio = () => this.voice.ensureAudioContext();
+      window.addEventListener("pointerdown", unlockAudio);
+      window.addEventListener("keydown", unlockAudio);
+
       window.addEventListener("keydown", (e) => {
-        this.keys[e.key.toLowerCase()] = true;
+        // Ne pas intercepter la saisie dans les contrôles de formulaire (sélecteur de skin…)
+        if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA")) {
+          return;
+        }
+        const key = e.key.toLowerCase();
+        this.keys[key] = true;
         this.keys[e.code] = true;
 
-        if (e.key === "1") this.triggerSpell(1);
-        if (e.key === "2") this.triggerSpell(2);
-        if (e.key === "3") this.triggerSpell(3);
-        if (e.key === "4") this.triggerSpell(4);
-        if (e.key.toLowerCase() === "e") this.triggerInteract();
+        if (e.code === "Space") e.preventDefault();
+        if (e.repeat) return;
+
+        // Sorts : 1-4 ou A / Z / R (E est réservé aux portes, Clairvoyance reste sur 3)
+        if (key === "1" || key === "a") this.triggerSpell(1);
+        if (key === "2" || key === "z") this.triggerSpell(2);
+        if (key === "3") this.triggerSpell(3);
+        if (key === "4" || key === "r") this.triggerSpell(4);
+        if (key === "e") this.triggerInteract();
+        // Stop : annule l'ordre de marche
+        if (key === "s" || e.code === "Space") this.triggerStop();
       });
 
       window.addEventListener("keyup", (e) => {
@@ -146,32 +173,56 @@
         const rect = this.canvas.getBoundingClientRect();
         this.mousePos.x = e.clientX - rect.left;
         this.mousePos.y = e.clientY - rect.top;
-
-        // Conversion en coordonnées monde
-        this.worldMouse.x = (this.mousePos.x - this.canvas.width / 2) / SCALE + this.camX;
-        this.worldMouse.y = (this.mousePos.y - this.canvas.height / 2) / SCALE + this.camY;
-
-        const me = this.getMe();
-        if (me) {
-          this.aimAngle = Math.atan2(this.worldMouse.y - me.y, this.worldMouse.x - me.x);
-        }
+        this.updateWorldMouse();
       });
 
       this.canvas.addEventListener("mousedown", (e) => {
+        this.updateWorldMouse();
         if (e.button === 0) {
           this.mouseLeftDown = true;
           this.triggerAttack();
+        } else if (e.button === 2) {
+          // Clic droit : ordre de marche vers le curseur (maintien = suivi continu)
+          this.mouseRightDown = true;
+          this.issueMoveOrder();
         }
       });
 
-      this.canvas.addEventListener("mouseup", (e) => {
+      // Relâchement capté sur window pour ne jamais rester « bloqué » hors du canvas
+      window.addEventListener("mouseup", (e) => {
         if (e.button === 0) {
           this.mouseLeftDown = false;
+        } else if (e.button === 2) {
+          this.mouseRightDown = false;
         }
       });
 
-      // Empêcher le menu contextuel sur le canvas
+      // Empêcher le menu contextuel sur le canvas (clic droit = déplacement)
       this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+
+    /** Recalcule la position monde du curseur (la caméra bouge même sans mouvement de souris). */
+    updateWorldMouse() {
+      this.worldMouse.x = (this.mousePos.x - this.canvas.width / 2) / SCALE + this.camX;
+      this.worldMouse.y = (this.mousePos.y - this.canvas.height / 2) / SCALE + this.camY;
+      const me = this.getMe();
+      if (me) {
+        this.aimAngle = Math.atan2(this.worldMouse.y - me.y, this.worldMouse.x - me.x);
+      }
+    }
+
+    issueMoveOrder() {
+      this.pendingStop = false;
+      this.pendingMoveTarget = { x: this.worldMouse.x, y: this.worldMouse.y };
+      this.clickMarkers.push({ x: this.worldMouse.x, y: this.worldMouse.y, born: performance.now() });
+      this.sendInput();
+    }
+
+    triggerStop() {
+      this.mouseRightDown = false;
+      this.pendingMoveTarget = null;
+      this.pendingStop = true;
+      this.sendInput();
     }
 
     resizeCanvas() {
@@ -267,6 +318,15 @@
 
       if (resetBtn) {
         resetBtn.addEventListener("click", () => {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: "reset_game" }));
+          }
+        });
+      }
+
+      const goRestartBtn = document.getElementById("btn-go-restart");
+      if (goRestartBtn) {
+        goRestartBtn.addEventListener("click", () => {
           if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({ type: "reset_game" }));
           }
@@ -393,10 +453,11 @@
       }
       this.monsters = state.monsters || [];
       this.projectiles = state.projectiles || [];
-      this.crystals = state.crystals || [];
       this.fountains = state.fountains || [];
-      this.portal = state.portal || null;
       this.gameStatus = state.game_status || state.status || "RUNNING";
+      this.monstersKilled = state.monsters_killed;
+      this.nextMonsterSpawnIn = state.next_monster_spawn_in;
+      this.finalRanking = state.final_ranking;
 
       // Mises à jour de tuiles dynamiques (sort Brise-Mur, porte ouverte...)
       const tileUpdates = state.tile_updates || state.pending_tile_updates;
@@ -438,6 +499,67 @@
       } else if (ev.type === "spell" || ev.type === "spell_cast") {
         this.triggerSoundWave(ex, ey, 60, "#8b5cf6");
       }
+
+      // Bruitages Web Audio spatialisés (stéréo relative au regard + occlusion murale)
+      const sfx = this.eventToSpatialSound(ev);
+      const me = this.getMe();
+      if (sfx && me) {
+        this.voice.playSpatialSound(sfx, ex, ey, me, this.grid);
+      }
+    }
+
+    /** Associe un événement serveur à un bruitage spatialisé (ou null si muet). */
+    eventToSpatialSound(ev) {
+      switch (ev.type) {
+        case "door_open":
+          return "door_open";
+        case "door_close":
+          return "door_close";
+        case "spell_cast":
+          return ev.spell === "energy_bolt" ? "attack" : "spell_cast";
+        case "astral_jump":
+          return "spell_cast";
+        case "hit":
+        case "explosion":
+          return "hit";
+        case "wall_broken":
+        case "wall_built":
+          return "wall_break";
+        default:
+          return null;
+      }
+    }
+
+    /**
+     * Pas lourds des monstres en mouvement dans un rayon de 14 cases,
+     * spatialisés en stéréo (audibles même hors champ de vision, à travers les murs assourdis).
+     */
+    updateMonsterFootsteps(now) {
+      const me = this.getMe();
+      if (!me || !this.grid) return;
+      const rangePx = 14 * 16;
+      const seen = new Set();
+
+      const walkers = [
+        ...this.monsters,
+        ...Object.values(this.players).filter((p) => p.is_monster && p.id !== this.myId),
+      ];
+      for (const m of walkers) {
+        const speed = Math.hypot(m.vx || 0, m.vy || 0);
+        if (speed <= 2.0) continue;
+        if (Math.hypot(m.x - me.x, m.y - me.y) > rangePx) continue;
+        seen.add(m.id);
+        // Cadence de pas : plus rapide quand le monstre court (42 px/s ≈ 0.48 s, 92 px/s ≈ 0.22 s)
+        const intervalMs = Math.max(220, Math.min(600, (20 / speed) * 1000));
+        const last = this.footstepTimers.get(m.id);
+        if (last === undefined || now - last >= intervalMs) {
+          this.footstepTimers.set(m.id, now);
+          this.voice.playSpatialSound("monster_step", m.x, m.y, me, this.grid);
+        }
+      }
+      for (const id of Array.from(this.footstepTimers.keys())) {
+        if (!seen.has(id)) this.footstepTimers.delete(id);
+      }
     }
 
     triggerSoundWave(x, y, maxRadius, color) {
@@ -456,7 +578,17 @@
     }
 
     triggerAttack() {
-      this.sendInput({ attack: true });
+      // Attaque de base uniquement à l'arrêt : un clic gauche en marche annule d'abord
+      // l'ordre de marche (le serveur immobilise le mage et l'oriente vers le curseur).
+      const me = this.getMe();
+      const moving = !!(me && (me.has_move_target || Math.hypot(me.vx || 0, me.vy || 0) > 2.0));
+      if (moving && !(me && me.is_monster)) {
+        this.mouseRightDown = false;
+        this.pendingMoveTarget = null;
+        this.sendInput({ attack: true, stop: true });
+      } else {
+        this.sendInput({ attack: true });
+      }
     }
 
     triggerSpell(slot) {
@@ -470,26 +602,11 @@
     sendInput(extra = {}) {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-      let vx = 0;
-      let vy = 0;
-      if (this.keys["z"] || this.keys["w"] || this.keys["arrowup"]) vy -= 1;
-      if (this.keys["s"] || this.keys["arrowdown"]) vy += 1;
-      if (this.keys["q"] || this.keys["a"] || this.keys["arrowleft"]) vx -= 1;
-      if (this.keys["d"] || this.keys["arrowright"]) vx += 1;
-
-      // Normalisation du vecteur de marche
-      if (vx !== 0 && vy !== 0) {
-        const inv = 1 / Math.SQRT2;
-        vx *= inv;
-        vy *= inv;
-      }
-
       const sneak = !!(this.keys["shift"] || this.keys["shiftleft"] || this.keys["shiftright"]);
 
       const payload = {
         type: "input",
-        vx: vx,
-        vy: vy,
+        // Angle souris : le serveur ne l'applique à la lampe torche que lorsque le joueur est à l'arrêt
         aim_angle: this.aimAngle,
         attack: !!(extra.attack || this.mouseLeftDown),
         spell: extra.spell || 0,
@@ -497,6 +614,20 @@
         sneak: sneak,
         mic_rms: this.voice.currentRms || 0.0,
       };
+
+      // Maintien du clic droit : la destination suit le curseur en continu
+      if (this.mouseRightDown) {
+        this.pendingMoveTarget = { x: this.worldMouse.x, y: this.worldMouse.y };
+      }
+
+      if (extra.stop || this.pendingStop) {
+        payload.stop = true;
+        this.pendingStop = false;
+      } else if (this.pendingMoveTarget) {
+        payload.move_target_x = this.pendingMoveTarget.x;
+        payload.move_target_y = this.pendingMoveTarget.y;
+        this.pendingMoveTarget = null;
+      }
 
       this.ws.send(JSON.stringify(payload));
     }
@@ -569,12 +700,6 @@
       }
 
       // 3. Détection des entités visibles (avec ligne de vue directe libre)
-      const portalList = [];
-      if (this.portal) {
-        if (!this.portal.id) this.portal.id = "portal_main";
-        portalList.push(this.portal);
-      }
-
       const fountainsList = this.fountains.map((f, idx) => {
         if (!f.id) f.id = "fountain_" + idx;
         return f;
@@ -588,10 +713,8 @@
       const allEntities = [
         ...Object.values(this.players),
         ...this.monsters,
-        ...this.crystals,
         ...fountainsList,
         ...projectilesList,
-        ...portalList,
       ];
 
       for (const ent of allEntities) {
@@ -617,8 +740,10 @@
         }
 
         this.updateCamera();
+        this.updateWorldMouse();
         this.updateVision(timestamp);
         this.updateSoundWaves();
+        this.updateMonsterFootsteps(timestamp);
         this.render(timestamp);
 
         requestAnimationFrame(loop);
@@ -736,29 +861,11 @@
         }
       }
 
+      // --- PASSE 1bis : Marqueur d'ordre de marche (clic droit) au sol ---
+      this.renderMoveMarkers(ctx, now);
+
       // --- PASSE 2 : Entités triées par Y (Y-sorting) ---
       const renderList = [];
-
-      // Portail
-      if (this.portal) {
-        if (!this.portal.id) this.portal.id = "portal_main";
-        renderList.push({
-          type: "portal",
-          y: this.portal.y,
-          ent: this.portal,
-        });
-      }
-
-      // Cristaux d'Arcane
-      for (const cr of this.crystals) {
-        if (!cr.collected) {
-          renderList.push({
-            type: "crystal",
-            y: cr.y,
-            ent: cr,
-          });
-        }
-      }
 
       // Fontaines runiques
       this.fountains.forEach((f, idx) => {
@@ -876,11 +983,6 @@
         this.renderPlayer(ctx, ent, px, py);
       } else if (type === "monster") {
         this.renderMonster(ctx, ent, px, py);
-      } else if (type === "crystal") {
-        const img = this.assets.getImage("flask_big_blue");
-        if (img) {
-          ctx.drawImage(img, px - 8, py - 12);
-        }
       } else if (type === "fountain") {
         const frame = Math.floor((performance.now() / 200) % 3);
         const top = this.assets.getImage(`wall_fountain_mid_red_anim_f${frame}`);
@@ -922,9 +1024,36 @@
         ctx.arc(2, 0, isFireball ? 2.5 : 1.8, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-      } else if (type === "portal") {
-        const ladder = this.assets.getImage("floor_ladder");
-        if (ladder) ctx.drawImage(ladder, px - 8, py - 8);
+      }
+    }
+
+    /** Cercle discret à la destination courante + anneau éphémère à chaque clic droit. */
+    renderMoveMarkers(ctx, now) {
+      const me = this.getMe();
+      if (me && me.has_move_target) {
+        const pulse = 0.5 + 0.5 * Math.sin(now / 180);
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = me.is_monster ? "#ef4444" : "#34d399";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.ellipse(me.move_target_x, me.move_target_y, 4 + pulse * 1.5, 2.2 + pulse * 0.8, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const LIFE_MS = 450;
+      this.clickMarkers = this.clickMarkers.filter((m) => now - m.born < LIFE_MS);
+      for (const m of this.clickMarkers) {
+        const t = (now - m.born) / LIFE_MS;
+        ctx.save();
+        ctx.globalAlpha = 0.8 * (1 - t);
+        ctx.strokeStyle = "#a7f3d0";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(m.x, m.y, 2 + t * 7, 1 + t * 3.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
       }
     }
 
@@ -972,14 +1101,16 @@
       ctx.fillStyle = isMe ? "#f59e0b" : isMonster ? "#fca5a5" : "#e2e8f0";
       ctx.fillText(p.name || "Aventurier", px, py - 32);
 
-      // Indicateur visuel de visée (lampe torche)
+      // Indicateur visuel de la lampe torche (angle autoritaire serveur :
+      // direction de marche en mouvement, curseur souris à l'arrêt)
       if (isMe) {
+        const torchAngle = p.aim_angle || 0;
         ctx.save();
         ctx.strokeStyle = isMonster ? "rgba(239, 68, 68, 0.35)" : "rgba(251, 191, 36, 0.35)";
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(px, py - 12);
-        ctx.lineTo(px + Math.cos(this.aimAngle) * 32, py - 12 + Math.sin(this.aimAngle) * 32);
+        ctx.lineTo(px + Math.cos(torchAngle) * 32, py - 12 + Math.sin(torchAngle) * 32);
         ctx.stroke();
         ctx.restore();
       }
@@ -1089,7 +1220,6 @@
       const hpText = document.getElementById("hp-val");
       const manaFill = document.getElementById("mana-bar-fill");
       const manaText = document.getElementById("mana-val");
-      const crystalCount = document.getElementById("crystal-count");
       const statusBadge = document.getElementById("role-badge");
       const voiceModeText = document.getElementById("voice-mode-text");
 
@@ -1107,14 +1237,14 @@
         manaFill.style.width = `${Math.min(100, (mana / maxMana) * 100)}%`;
       }
 
-      if (crystalCount) {
-        const collected = this.crystals.filter((c) => c.collected).length;
-        crystalCount.textContent = `${collected} / 5`;
-      }
+      this.updateScoreHUD(me);
 
       if (statusBadge) {
         if (me.is_monster) {
-          statusBadge.textContent = "👹 MONSTRE DÉMONIAQUE (ESPRIT DE RUCHE)";
+          const respawnCd = me.cooldowns ? me.cooldowns.respawn : 0;
+          statusBadge.textContent = respawnCd > 0
+            ? `👹 MONSTRE ABATTU — RÉAPPARITION (${respawnCd.toFixed(1)}s)`
+            : "👹 MONSTRE DÉMONIAQUE (ESPRIT DE RUCHE)";
           statusBadge.className = "status-badge monster";
         } else {
           statusBadge.textContent = "🛡️ SURVIVANT HUMAIN";
@@ -1129,6 +1259,73 @@
         } else {
           voiceModeText.textContent = "🗣️ Voix Humaine (Proximité + Occlusion Murs)";
           voiceModeText.style.color = "#38bdf8";
+        }
+      }
+    }
+
+    static formatScore(score) {
+      const s = Number(score);
+      return `${s >= 0 ? "+" : "−"}${Math.abs(s).toFixed(1)}s`;
+    }
+
+    static escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = String(text);
+      return div.innerHTML;
+    }
+
+    /** Score individuel en direct, monstres tués, classement live et tableau de fin de partie. */
+    updateScoreHUD(me) {
+      const scoreLine = document.getElementById("score-line");
+      const killsCount = document.getElementById("kills-count");
+      const spawnTimer = document.getElementById("spawn-timer");
+      const liveRanking = document.getElementById("live-ranking");
+      const overlay = document.getElementById("game-over-overlay");
+
+      if (scoreLine) {
+        scoreLine.textContent =
+          `Score : ${MazicGame.formatScore(me.score)} ` +
+          `(Survie: ${Math.floor(me.survival_time)}s − Monstre: ${Math.floor(me.monster_active_time)}s)`;
+        scoreLine.classList.toggle("negative", me.score < 0);
+      }
+
+      if (killsCount) {
+        killsCount.textContent = `Monstres tués : ${this.monstersKilled}`;
+      }
+
+      if (spawnTimer) {
+        spawnTimer.textContent = this.gameStatus === "RUNNING"
+          ? `Prochain monstre dans ${Math.ceil(this.nextMonsterSpawnIn)}s`
+          : "Partie terminée";
+      }
+
+      const ranked = Object.values(this.players).slice().sort((a, b) => b.score - a.score);
+      if (liveRanking) {
+        liveRanking.innerHTML = ranked.map((p, i) => {
+          const cls = ["rank-row", p.id === this.myId ? "me" : "", p.is_monster ? "monster" : ""].join(" ");
+          return `<div class="${cls}"><span>${i + 1}. ${p.is_monster ? "👹" : "🛡️"} ${MazicGame.escapeHtml(p.name)}</span>` +
+            `<span>${MazicGame.formatScore(p.score)}</span></div>`;
+        }).join("");
+      }
+
+      if (overlay) {
+        const isOver = this.gameStatus === "GAME_OVER" && Array.isArray(this.finalRanking);
+        overlay.classList.toggle("hidden", !isOver);
+        if (isOver) {
+          const summary = document.getElementById("go-summary");
+          if (summary) {
+            summary.textContent = `Tous les mages ont été transformés. Monstres tués : ${this.monstersKilled}`;
+          }
+          const tbody = document.querySelector("#go-table tbody");
+          if (tbody) {
+            tbody.innerHTML = this.finalRanking.map((r, i) =>
+              `<tr class="${r.id === this.myId ? "me" : ""}"><td>${i + 1}</td>` +
+              `<td>${MazicGame.escapeHtml(r.name)}</td>` +
+              `<td>${MazicGame.formatScore(r.score)}</td>` +
+              `<td>${Math.floor(r.survival_time)}s</td>` +
+              `<td>${Math.floor(r.monster_active_time)}s</td></tr>`
+            ).join("");
+          }
         }
       }
     }

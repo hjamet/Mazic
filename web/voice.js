@@ -1,7 +1,55 @@
 /**
  * Mazic — Voice Proximity & Esprit de Ruche Engine
  * Web Audio API + WebSocket Audio Relay (PCM16 Base64) + Occlusion Murs + DemonicScrambler
+ * + Bruitages d'environnement synthétisés et spatialisés en stéréo (relatifs au regard).
  */
+
+// --- Spatialisation stéréo partagée (voix ET bruitages) ---
+// Le panoramique est relatif à l'angle de la lampe torche du joueur local (me.aim_angle) :
+// une source à droite du faisceau sort dans l'oreille droite, à gauche dans l'oreille gauche,
+// pile dans l'axe au centre. Les sources derrière le joueur sont légèrement assourdies.
+const REAR_COS_THRESHOLD = -0.2;
+const REAR_LOWPASS_FACTOR = 0.6;
+const REAR_LOWPASS_MAX_HZ = 5000;
+// Occlusion par les murs (identique pour la voix humaine et les bruitages)
+const WALL_LOWPASS_1_HZ = 850;
+const WALL_GAIN_1 = 0.65;
+const WALL_LOWPASS_2_HZ = 340;
+const WALL_GAIN_2 = 0.35;
+const OPEN_AIR_LOWPASS_HZ = 16000;
+// Bruitages
+const SFX_RANGE_TILES = 14;
+const SFX_ROLLOFF = 1.6;
+const SFX_MASTER_GAIN = 0.55;
+const SFX_TYPES = new Set([
+  "monster_step", "door_open", "door_close", "spell_cast", "attack", "hit", "wall_break",
+]);
+
+/**
+ * Calcule les paramètres spatiaux d'une source (sx, sy) entendue par `me`.
+ * @returns {{distTiles:number, pan:number, isBehind:boolean}}
+ */
+function computeSpatialParams(me, sx, sy) {
+  const distTiles = Math.hypot(sx - me.x, sy - me.y) / 16;
+  const sourceAngle = Math.atan2(sy - me.y, sx - me.x);
+  const relAngle = sourceAngle - (me.aim_angle || 0);
+  const distFactor = Math.min(1.0, distTiles / 2.5);
+  const pan = Math.max(-1, Math.min(1, Math.sin(relAngle) * distFactor));
+  const isBehind = Math.cos(relAngle) < REAR_COS_THRESHOLD;
+  return { distTiles, pan, isBehind };
+}
+
+/** Abaisse légèrement la coupure du passe-bas pour une source située derrière le joueur. */
+function applyRearOcclusion(freq, isBehind) {
+  return isBehind ? Math.min(freq * REAR_LOWPASS_FACTOR, REAR_LOWPASS_MAX_HZ) : freq;
+}
+
+/** Occlusion murale commune : retourne {freq, gainFactor} selon le nombre de murs traversés. */
+function wallOcclusion(wallCount) {
+  if (wallCount === 1) return { freq: WALL_LOWPASS_1_HZ, gainFactor: WALL_GAIN_1 };
+  if (wallCount >= 2) return { freq: WALL_LOWPASS_2_HZ, gainFactor: WALL_GAIN_2 };
+  return { freq: OPEN_AIR_LOWPASS_HZ, gainFactor: 1.0 };
+}
 
 class VoiceProximityEngine {
   constructor() {
@@ -19,6 +67,8 @@ class VoiceProximityEngine {
     this.sampleRate = 16000; // Fréquence cible pour les trames vocales
     this.onRmsUpdate = null; // Callback UI (rms, isLoud)
     this.onStatusUpdate = null; // Callback UI
+    this._noiseBuffer = null; // Bruit blanc partagé pour les bruitages synthétisés
+    this._sfxBlockedLogged = false;
   }
 
   /**
@@ -246,6 +296,197 @@ class VoiceProximityEngine {
     return walls;
   }
 
+  // --- Bruitages d'environnement synthétisés & spatialisés (aucun fichier externe) ---
+
+  /**
+   * Joue un bruitage spatialisé en stéréo relatif au regard du joueur local.
+   * Même panoramique (me.aim_angle), même atténuation par la distance et même
+   * occlusion murale (850 Hz derrière 1 mur, 340 Hz derrière 2+) que la voix humaine.
+   * @param {string} type  monster_step | door_open | door_close | spell_cast | attack | hit | wall_break
+   * @param {number} x     position monde de la source (px)
+   * @param {number} y
+   * @param {object} me    joueur local (x, y, aim_angle)
+   * @param {number[][]} grid grille du donjon pour l'occlusion
+   * @returns {boolean} true si le son a été planifié
+   */
+  playSpatialSound(type, x, y, me, grid) {
+    if (!SFX_TYPES.has(type)) {
+      throw new Error(`[VoiceEngine] Bruitage inconnu : ${type}`);
+    }
+    if (!me) {
+      throw new Error("[VoiceEngine] playSpatialSound appelé sans joueur local");
+    }
+    // Politique d'autoplay des navigateurs : aucun son possible tant que l'utilisateur
+    // n'a pas interagi avec la page (l'AudioContext est créé au premier clic/touche).
+    if (!this.audioCtx || this.audioCtx.state !== "running") {
+      if (!this._sfxBlockedLogged) {
+        console.info("[VoiceEngine] Bruitages en attente d'une interaction utilisateur (autoplay).");
+        this._sfxBlockedLogged = true;
+      }
+      return false;
+    }
+
+    const { distTiles, pan, isBehind } = computeSpatialParams(me, x, y);
+    if (distTiles > SFX_RANGE_TILES) return false;
+
+    const walls = this.countWallsBetween(grid, me.x, me.y, x, y);
+    const occ = wallOcclusion(walls);
+    let gain = Math.pow(Math.max(0, 1.0 - distTiles / SFX_RANGE_TILES), SFX_ROLLOFF) * occ.gainFactor;
+    if (gain <= 0.001) return false;
+    const freq = applyRearOcclusion(occ.freq, isBehind);
+
+    const ctx = this.audioCtx;
+    const t0 = ctx.currentTime + 0.005;
+
+    // Chaîne : bus -> passe-bas (murs/arrière) -> gain distance -> panoramique -> sortie
+    const bus = ctx.createGain();
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = "lowpass";
+    lowpass.frequency.value = freq;
+    const distGain = ctx.createGain();
+    distGain.gain.value = gain * SFX_MASTER_GAIN;
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = pan;
+    bus.connect(lowpass);
+    lowpass.connect(distGain);
+    distGain.connect(panner);
+    panner.connect(ctx.destination);
+
+    const duration = this._synthesize(type, bus, t0);
+    setTimeout(() => {
+      bus.disconnect();
+      panner.disconnect();
+    }, (duration + 0.3) * 1000);
+    return true;
+  }
+
+  /** Construit le bruitage dans `bus` à partir de t0 et retourne sa durée totale (s). */
+  _synthesize(type, bus, t0) {
+    switch (type) {
+      case "monster_step": {
+        // Pas lourd (thump grave) + frottement, grognement sourd occasionnel
+        this._tone(bus, t0, 0.18, "sine", 75, 38, 0.9, 0.005);
+        this._noise(bus, t0, 0.12, "lowpass", 320, 120, 0.7, 0.5);
+        if (Math.random() < 0.15) {
+          this._tone(bus, t0 + 0.05, 0.75, "sawtooth", 52, 44, 0.22, 0.12, 380, { rate: 9, depth: 6 });
+          return 0.85;
+        }
+        return 0.2;
+      }
+      case "door_open": {
+        // Grincement : dent de scie glissante filtrée avec vibrato
+        this._tone(bus, t0, 0.6, "sawtooth", 170, 430, 0.16, 0.06, 1800, { rate: 17, depth: 28 });
+        this._noise(bus, t0 + 0.55, 0.12, "lowpass", 700, 200, 0.7, 0.35);
+        return 0.7;
+      }
+      case "door_close": {
+        // Claquement sourd
+        this._noise(bus, t0, 0.25, "lowpass", 900, 180, 0.7, 0.8);
+        this._tone(bus, t0, 0.3, "sine", 95, 50, 0.9, 0.004);
+        return 0.32;
+      }
+      case "spell_cast": {
+        // Déflagration magique : souffle filtré montant + harmonique
+        this._noise(bus, t0, 0.42, "bandpass", 500, 2600, 2.0, 0.6);
+        this._tone(bus, t0, 0.36, "triangle", 220, 880, 0.3, 0.02);
+        this._tone(bus, t0, 0.25, "sine", 110, 70, 0.5, 0.005);
+        return 0.45;
+      }
+      case "attack": {
+        // Trait d'énergie : zap descendant bref
+        this._tone(bus, t0, 0.13, "square", 1400, 340, 0.16, 0.003, 4200);
+        this._noise(bus, t0, 0.06, "highpass", 2200, 2200, 0.7, 0.18);
+        return 0.15;
+      }
+      case "hit": {
+        // Impact
+        this._noise(bus, t0, 0.1, "lowpass", 1800, 400, 0.7, 0.7);
+        this._tone(bus, t0, 0.12, "sine", 160, 70, 0.6, 0.003);
+        return 0.14;
+      }
+      case "wall_break": {
+        // Effondrement de pierre : grondement + éclats
+        this._noise(bus, t0, 1.1, "lowpass", 900, 120, 0.7, 0.9);
+        this._tone(bus, t0, 0.9, "sine", 60, 32, 0.8, 0.01);
+        for (let i = 0; i < 5; i++) {
+          const off = 0.05 + Math.random() * 0.6;
+          this._noise(bus, t0 + off, 0.07, "bandpass", 1500 + Math.random() * 1500, 900, 3.0, 0.35);
+        }
+        return 1.15;
+      }
+      default:
+        throw new Error(`[VoiceEngine] Bruitage non synthétisable : ${type}`);
+    }
+  }
+
+  /** Enveloppe percussive : montée linéaire puis décroissance exponentielle. */
+  _envelope(gainNode, t0, dur, peak, attack) {
+    gainNode.gain.setValueAtTime(0.0001, t0);
+    gainNode.gain.linearRampToValueAtTime(peak, t0 + attack);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  }
+
+  /** Oscillateur à glissement de fréquence f0 -> f1, filtrage et vibrato optionnels. */
+  _tone(bus, t0, dur, wave, f0, f1, peak, attack, lowpassHz = null, vibrato = null) {
+    const ctx = this.audioCtx;
+    const osc = ctx.createOscillator();
+    osc.type = wave;
+    osc.frequency.setValueAtTime(f0, t0);
+    osc.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    const env = ctx.createGain();
+    this._envelope(env, t0, dur, peak, attack);
+
+    let head = osc;
+    if (lowpassHz !== null) {
+      const f = ctx.createBiquadFilter();
+      f.type = "lowpass";
+      f.frequency.value = lowpassHz;
+      osc.connect(f);
+      head = f;
+    }
+    head.connect(env);
+    env.connect(bus);
+
+    if (vibrato !== null) {
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = vibrato.rate;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = vibrato.depth;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(t0);
+      lfo.stop(t0 + dur + 0.05);
+    }
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  }
+
+  /** Bruit blanc filtré (fréquence de coupure glissante f0 -> f1). */
+  _noise(bus, t0, dur, filterType, f0, f1, q, peak) {
+    const ctx = this.audioCtx;
+    if (!this._noiseBuffer) {
+      const len = ctx.sampleRate;
+      this._noiseBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = this._noiseBuffer.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this._noiseBuffer;
+    src.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = filterType;
+    filter.Q.value = q;
+    filter.frequency.setValueAtTime(f0, t0);
+    filter.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    const env = ctx.createGain();
+    this._envelope(env, t0, dur, peak, 0.004);
+    src.connect(filter);
+    filter.connect(env);
+    env.connect(bus);
+    src.start(t0, Math.random() * 0.5);
+    src.stop(t0 + dur + 0.05);
+  }
+
   // --- Utilitaires de conversion audio PCM ---
   downsampleBuffer(buffer, inputRate, outputRate) {
     if (outputRate === inputRate) return buffer;
@@ -361,8 +602,8 @@ class PeerAudioChannel {
    * Met à jour les paramètres acoustiques selon les 3 régimes
    */
   updateAcoustics(me, speaker, wallCount) {
-    const distTiles = Math.hypot(speaker.x - me.x, speaker.y - me.y) / 16;
-    const pan = Math.max(-1, Math.min(1, (speaker.x - me.x) / (8 * 16)));
+    // Panoramique stéréo relatif à l'angle de la lampe torche (me.aim_angle)
+    const { distTiles, pan, isBehind } = computeSpatialParams(me, speaker.x, speaker.y);
 
     if (this.pannerNode && this.pannerNode.pan) {
       this.pannerNode.pan.setTargetAtTime(pan, this.audioCtx.currentTime, 0.05);
@@ -373,27 +614,23 @@ class PeerAudioChannel {
 
     if (!meIsMonster && !speakerIsMonster) {
       // REGIME A : Survivant -> Survivant
-      // Portée 13 cases, occlusion murs
+      // Portée 13 cases, occlusion murs (mêmes valeurs que les bruitages spatialisés)
       this.normalGain.gain.setTargetAtTime(1.0, this.audioCtx.currentTime, 0.05);
       this.demonicGain.gain.setTargetAtTime(0.0, this.audioCtx.currentTime, 0.05);
 
       let gain = Math.max(0, 1.0 - distTiles / 13.0);
       gain = Math.pow(gain, 1.6);
 
-      let freq = 16000;
-      if (wallCount === 1) {
-        freq = 850;
-        gain *= 0.65;
-      } else if (wallCount >= 2) {
-        freq = 340;
-        gain *= 0.35;
-      }
+      const occ = wallOcclusion(wallCount);
+      gain *= occ.gainFactor;
+      const freq = applyRearOcclusion(occ.freq, isBehind);
       this.wallFilter.frequency.setTargetAtTime(freq, this.audioCtx.currentTime, 0.05);
       this.masterGain.gain.setTargetAtTime(gain, this.audioCtx.currentTime, 0.05);
 
     } else if (meIsMonster && speakerIsMonster) {
       // REGIME B : Monstre -> Monstre (« Esprit de Ruche »)
       // Télépathie totale : portée infinie dans le donjon, voix claire + léger reverb/chorus
+      // (pas d'occlusion arrière : la voix est « dans la tête », seul le panoramique s'applique)
       this.normalGain.gain.setTargetAtTime(1.0, this.audioCtx.currentTime, 0.05);
       this.demonicGain.gain.setTargetAtTime(0.0, this.audioCtx.currentTime, 0.05);
 
@@ -417,6 +654,7 @@ class PeerAudioChannel {
         freq = 300;
         gain *= 0.40;
       }
+      freq = applyRearOcclusion(freq, isBehind);
       this.wallFilter.frequency.setTargetAtTime(freq, this.audioCtx.currentTime, 0.05);
       this.masterGain.gain.setTargetAtTime(gain, this.audioCtx.currentTime, 0.05);
 
@@ -428,6 +666,7 @@ class PeerAudioChannel {
       let gain = Math.max(0, 1.0 - distTiles / 16.0);
       gain = Math.pow(gain, 1.5);
       let freq = wallCount >= 1 ? 900 : 14000;
+      freq = applyRearOcclusion(freq, isBehind);
       this.wallFilter.frequency.setTargetAtTime(freq, this.audioCtx.currentTime, 0.05);
       this.masterGain.gain.setTargetAtTime(gain, this.audioCtx.currentTime, 0.05);
     }
